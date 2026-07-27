@@ -5,747 +5,182 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="theme-color" content="#0B0B0B">
 <title>NOGA — Дашборд</title>
-<style>
-/* ============================================================
-   ТОКЕНЫ
-   ============================================================ */
-:root{
-  --bg:            #0B0B0B;
-  --bg-elevated:   #0F0F0F;
-  --card:          #111111;
-  --card-2:        #141414;
-  --nav-bg:        #121212;
-
-  --gold:          #D4AF37;
-  --gold-deep:     #C9A227;
-  --gold-soft:     rgba(212, 175, 55, .14);
-  --gold-line:     rgba(212, 175, 55, .18);
-
-  --text:          #F2F2F2;
-  --text-muted:    #8A8A8A;
-  --text-dim:      #6E6E6E;
-
-  --amber:         #F59E0B;
-  --blue:          #3B82F6;
-  --green:         #22C55E;
-  --red:           #EF4444;
-
-  --hairline:      rgba(255, 255, 255, .06);
-  --shadow-card:   0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.55);
-  --shadow-hero:   0 18px 40px rgba(0,0,0,.65), 0 0 0 1px rgba(212,175,55,.16);
-
-  --radius-lg:     20px;
-  --radius:        16px;
-  --radius-sm:     12px;
-
-  --gutter:        16px;
-  --nav-h:         64px;
-
-  --ease:          cubic-bezier(.4, 0, .2, 1);
-}
-
-*,*::before,*::after{ box-sizing:border-box; }
-
-html,body{ height:100%; }
-
-body{
-  margin:0;
-  font-family:"Inter","SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"Helvetica Neue",Arial,sans-serif;
-  background:#000;
-  color:var(--text);
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100dvh;
-  overflow:hidden;
-}
-
-/* ============================================================
-   КОРПУС ПРИЛОЖЕНИЯ (mobile frame 390–430px)
-   ============================================================ */
-.app{
-  position:relative;
-  width:min(100vw, 430px);
-  height:100dvh;
-  max-height:100dvh;
-  background:
-    radial-gradient(120% 60% at 50% -10%, rgba(212,175,55,.05), transparent 60%),
-    linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 42%);
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-}
-
-@media (min-width:520px) and (min-height:720px){
-  .app{
-    width:390px;
-    height:min(844px, calc(100dvh - 32px));
-    border-radius:40px;
-    box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 40px 90px rgba(0,0,0,.9);
-  }
-}
-
-/* Скроллируемая область контента */
-.screen{
-  flex:1;
-  overflow-y:auto;
-  overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none;
-  padding:0 var(--gutter) calc(var(--nav-h) + 34px);
-}
-.screen::-webkit-scrollbar{ display:none; }
-
-/* ============================================================
-   HEADER
-   ============================================================ */
-.topbar{
-  position:relative;
-  display:flex;
-  align-items:flex-start;
-  justify-content:center;
-  padding-top:14px;
-  min-height:52px;
-}
-
-.logo{
-  display:block;
-  width:42px;
-  height:42px;
-  object-fit:contain;
-  filter:drop-shadow(0 2px 10px rgba(212,175,55,.35));
-}
-
-.bell{
-  position:absolute;
-  top:12px;
-  right:0;
-  width:38px;
-  height:38px;
-  display:grid;
-  place-items:center;
-  border:0;
-  padding:0;
-  border-radius:50%;
-  background:transparent;
-  color:var(--gold);
-  cursor:pointer;
-  transition:background .25s var(--ease), transform .2s var(--ease);
-}
-.bell:hover{ background:var(--gold-soft); }
-.bell:active{ transform:scale(.9); }
-.bell svg{ width:20px; height:20px; }
-
-.bell .badge{
-  position:absolute;
-  top:7px; right:8px;
-  width:7px; height:7px;
-  border-radius:50%;
-  background:var(--red);
-  box-shadow:0 0 0 2px var(--bg), 0 0 8px rgba(239,68,68,.8);
-  opacity:0;
-  transform:scale(.4);
-  transition:opacity .25s var(--ease), transform .25s var(--ease);
-}
-.bell.has-alert .badge{ opacity:1; transform:scale(1); }
-
-.greeting{
-  margin:6px 0 18px;
-  line-height:1.28;
-}
-.greeting__hello{
-  display:block;
-  font-size:13px;
-  font-weight:400;
-  color:var(--text-muted);
-  letter-spacing:.1px;
-}
-.greeting__name{
-  display:block;
-  margin-top:2px;
-  font-size:22px;
-  font-weight:700;
-  letter-spacing:.2px;
-  background:linear-gradient(180deg, #E7C766 0%, var(--gold) 45%, var(--gold-deep) 100%);
-  -webkit-background-clip:text;
-  background-clip:text;
-  color:transparent;
-}
-
-/* ============================================================
-   КАРТОЧКА ОБОРОТА
-   ============================================================ */
-.turnover{
-  position:relative;
-  isolation:isolate;
-  min-height:126px;
-  padding:18px;
-  border-radius:var(--radius-lg);
-  overflow:hidden;
-  box-shadow:var(--shadow-hero);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  transition:transform .3s var(--ease), box-shadow .3s var(--ease);
-}
-.turnover:hover{
-  transform:translateY(-2px);
-  box-shadow:0 24px 50px rgba(0,0,0,.7), 0 0 0 1px rgba(212,175,55,.3);
-}
-
-/*
-  Фон-«фотография»: стопки денег, кошелёк и бокал виски в тёплом
-  приглушённом свете, собранные из CSS-градиентов (без внешних файлов).
-  Чтобы подставить реальный снимок — достаточно одной строки:
-  .turnover__photo{ background-image:url("money.jpg"); background-size:cover; }
-*/
-.turnover__photo{
-  position:absolute;
-  inset:0;
-  z-index:-2;
-  background-color:#0C0904;
-  background-image:
-    /* тёплый источник света сверху справа */
-    radial-gradient(80% 110% at 78% -15%, rgba(206,156,68,.34), transparent 66%),
-    /* янтарный блик бокала виски */
-    radial-gradient(20% 34% at 74% 58%, rgba(255,178,84,.24), transparent 72%),
-    /* мягкая подсветка кошелька слева */
-    radial-gradient(38% 56% at 14% 74%, rgba(138,96,40,.26), transparent 74%),
-    /* объём сцены */
-    linear-gradient(158deg, #201709 0%, #130D06 46%, #080603 100%);
-  background-repeat:no-repeat;
-}
-
-/* Расфокусированные корешки банкнот в стопках */
-.turnover__photo::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background-image:
-    repeating-linear-gradient(94deg,
-      rgba(232,196,128,.24) 0 2px,
-      rgba(26,18,9,.30) 2px 8px),
-    repeating-linear-gradient(-6deg,
-      rgba(212,174,110,.17) 0 2px,
-      rgba(18,12,6,.26) 2px 9px);
-  background-size:78% 46%, 46% 52%;
-  background-position:left bottom, 92% 88%;
-  background-repeat:no-repeat;
-  filter:blur(1.1px);
-  -webkit-mask-image:linear-gradient(to top, #000 0%, rgba(0,0,0,.35) 62%, transparent 100%);
-          mask-image:linear-gradient(to top, #000 0%, rgba(0,0,0,.35) 62%, transparent 100%);
-}
-
-/* Виньетка + зерно, чтобы «фото» не выглядело плоским */
-.turnover__photo::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:
-    radial-gradient(130% 110% at 46% 34%, transparent 26%, rgba(0,0,0,.7) 100%),
-    repeating-radial-gradient(circle at 30% 60%, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
-}
-
-/* Затемняющий оверлей под текст */
-.turnover__overlay{
-  position:absolute;
-  inset:0;
-  z-index:-1;
-  background:
-    linear-gradient(100deg, rgba(6,6,6,.86) 0%, rgba(8,8,8,.56) 44%, rgba(10,8,4,.42) 100%);
-}
-
-.turnover__col{ min-width:0; }
-.turnover__col--right{ text-align:right; }
-
-.turnover__label{
-  margin:0 0 6px;
-  font-size:12px;
-  font-weight:400;
-  color:#B9B4AB;
-  letter-spacing:.1px;
-  white-space:nowrap;
-}
-.turnover__value{
-  margin:0;
-  font-size:21px;
-  font-weight:700;
-  letter-spacing:.2px;
-  white-space:nowrap;
-  color:#FFFFFF;
-  text-shadow:0 2px 14px rgba(0,0,0,.7);
-  font-variant-numeric:tabular-nums;
-}
-.turnover__value .cur{
-  font-weight:600;
-  color:rgba(255,255,255,.9);
-}
-
-/* ============================================================
-   ЗАГОЛОВКИ СЕКЦИЙ
-   ============================================================ */
-.section-title{
-  margin:22px 0 12px;
-  font-size:14px;
-  font-weight:600;
-  letter-spacing:.2px;
-  color:#E8E4DC;
-}
-
-/* ============================================================
-   СТАТИСТИКА — сетка 3 × 2
-   ============================================================ */
-.stats{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:10px;
-}
-
-.stat{
-  position:relative;
-  padding:12px 12px 11px;
-  border-radius:var(--radius);
-  border:1px solid var(--hairline);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.035) 0%, rgba(255,255,255,0) 55%),
-    linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
-  box-shadow:var(--shadow-card);
-  cursor:pointer;
-  transition:transform .22s var(--ease), border-color .22s var(--ease), box-shadow .22s var(--ease);
-}
-.stat:hover{
-  transform:translateY(-2px);
-  border-color:var(--gold-line);
-  box-shadow:0 10px 26px rgba(0,0,0,.6), 0 0 0 1px rgba(212,175,55,.12);
-}
-.stat:active{ transform:translateY(0) scale(.985); }
-
-.stat__top{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  min-height:28px;
-}
-.stat__num{
-  font-size:19px;
-  font-weight:700;
-  line-height:1;
-  letter-spacing:.2px;
-  font-variant-numeric:tabular-nums;
-}
-.stat__label{
-  display:block;
-  margin-top:9px;
-  font-size:11px;
-  font-weight:400;
-  color:var(--text-dim);
-  letter-spacing:.1px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-/* Иконка-документ в тёмном квадрате */
-.stat__icon{
-  flex:0 0 auto;
-  width:26px;
-  height:26px;
-  border-radius:8px;
-  display:grid;
-  place-items:center;
-  border:1px solid rgba(255,255,255,.08);
-  background:linear-gradient(180deg, #1C1C1C, #131313);
-  color:#CFCAC0;
-}
-.stat__icon svg{ width:13px; height:13px; }
-
-/* Цветные индикаторы-кружки */
-.dot{
-  flex:0 0 auto;
-  width:16px;
-  height:16px;
-  border-radius:50%;
-  position:relative;
-}
-.dot::after{
-  content:"";
-  position:absolute;
-  inset:-5px;
-  border-radius:50%;
-  background:currentColor;
-  opacity:.14;
-}
-.dot--amber{ color:var(--amber); background:var(--amber); box-shadow:0 0 12px rgba(245,158,11,.5); }
-.dot--blue { color:var(--blue);  background:var(--blue);  box-shadow:0 0 12px rgba(59,130,246,.5); }
-.dot--red  { color:var(--red);   background:var(--red);   box-shadow:0 0 12px rgba(239,68,68,.5); }
-
-.dot--check{
-  width:18px; height:18px;
-  color:var(--green);
-  background:var(--green);
-  display:grid;
-  place-items:center;
-  box-shadow:0 0 12px rgba(34,197,94,.45);
-}
-.dot--check svg{ width:10px; height:10px; color:#07240F; }
-
-/* ============================================================
-   ПОСЛЕДНИЕ ОПЕРАЦИИ
-   ============================================================ */
-.operations{
-  margin-top:22px;
-  padding:14px 14px 14px;
-  border-radius:var(--radius-lg);
-  border:1px solid var(--hairline);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.035) 0%, rgba(255,255,255,0) 40%),
-    linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
-  box-shadow:var(--shadow-card);
-}
-.operations__title{
-  margin:2px 2px 10px;
-  font-size:14px;
-  font-weight:600;
-  letter-spacing:.2px;
-  color:#E8E4DC;
-}
-
-.op-list{
-  list-style:none;
-  margin:0;
-  padding:0;
-}
-
-.op{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:10px;
-  padding:12px 4px;
-  border-top:1px solid var(--hairline);
-  cursor:pointer;
-  border-radius:10px;
-  transition:background .22s var(--ease), padding-left .22s var(--ease);
-}
-.op:first-child{ border-top:0; }
-.op:hover{ background:rgba(255,255,255,.028); padding-left:8px; }
-.op:active{ background:rgba(255,255,255,.05); }
-
-.op__id{
-  margin:0;
-  font-size:14px;
-  font-weight:600;
-  letter-spacing:.3px;
-  color:#F0EDE6;
-  font-variant-numeric:tabular-nums;
-}
-.op__meta{
-  margin:5px 0 0;
-  font-size:11.5px;
-  color:var(--text-dim);
-  letter-spacing:.1px;
-}
-
-.op__right{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex:0 0 auto;
-  padding-top:1px;
-}
-.op__status{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  font-size:11.5px;
-  font-weight:500;
-  letter-spacing:.1px;
-  white-space:nowrap;
-}
-.op__status::before{
-  content:"";
-  width:6px; height:6px;
-  border-radius:50%;
-  background:currentColor;
-  box-shadow:0 0 8px currentColor;
-}
-.op__status--amber{ color:var(--amber); }
-.op__status--blue { color:var(--blue); }
-.op__status--green{ color:var(--green); }
-/* у синего и зелёного статусов на референсе точка не показана */
-.op__status--blue::before,
-.op__status--green::before{ display:none; }
-
-.op__time{
-  font-size:11.5px;
-  color:var(--text-dim);
-  font-variant-numeric:tabular-nums;
-  white-space:nowrap;
-}
-
-.btn-all{
-  display:block;
-  width:100%;
-  margin-top:14px;
-  padding:13px 16px;
-  border-radius:var(--radius);
-  border:1px solid var(--hairline);
-  background:linear-gradient(180deg, #171717 0%, #101010 100%);
-  color:#E9E5DC;
-  font:inherit;
-  font-size:13px;
-  font-weight:500;
-  letter-spacing:.2px;
-  cursor:pointer;
-  transition:border-color .25s var(--ease), color .25s var(--ease), transform .18s var(--ease), background .25s var(--ease);
-}
-.btn-all:hover{
-  border-color:var(--gold-line);
-  color:var(--gold);
-  background:linear-gradient(180deg, #1B1710 0%, #121010 100%);
-}
-.btn-all:active{ transform:scale(.985); }
-
-/* ============================================================
-   НИЖНЯЯ НАВИГАЦИЯ
-   ============================================================ */
-.tabbar{
-  position:absolute;
-  left:0; right:0; bottom:0;
-  z-index:20;
-  height:calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
-  padding-bottom:env(safe-area-inset-bottom, 0px);
-  display:grid;
-  grid-template-columns:repeat(5, 1fr);
-  align-items:center;
-  background:linear-gradient(180deg, #151515 0%, var(--nav-bg) 100%);
-  border-top:1px solid var(--hairline);
-  box-shadow:0 -10px 30px rgba(0,0,0,.6);
-}
-
-.tab{
-  position:relative;
-  height:100%;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:4px;
-  border:0;
-  background:transparent;
-  color:var(--text-dim);
-  font:inherit;
-  font-size:10.5px;
-  letter-spacing:.1px;
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-  transition:color .22s var(--ease);
-}
-.tab svg{ width:20px; height:20px; }
-.tab:hover{ color:#B9B4AB; }
-.tab.is-active{ color:var(--gold); font-weight:600; }
-.tab.is-active svg{ filter:drop-shadow(0 0 8px rgba(212,175,55,.45)); }
-.tab:active svg{ transform:scale(.9); }
-
-/* Центральная золотая кнопка «+» */
-.tab--fab{ overflow:visible; }
-.fab{
-  position:absolute;
-  top:-18px;
-  left:50%;
-  transform:translateX(-50%);
-  width:56px;
-  height:56px;
-  border-radius:50%;
-  display:grid;
-  place-items:center;
-  border:1px solid rgba(233,203,116,.55);
-  background:
-    radial-gradient(120% 120% at 30% 20%, #E9CB74 0%, var(--gold) 42%, #A67C1E 100%);
-  color:#100C03;
-  box-shadow:
-    0 10px 24px rgba(0,0,0,.6),
-    0 0 22px rgba(212,175,55,.28),
-    inset 0 1px 0 rgba(255,255,255,.35);
-  cursor:pointer;
-  padding:0;
-  transition:transform .22s var(--ease), box-shadow .22s var(--ease);
-}
-.fab svg{ width:24px; height:24px; }
-.fab:hover{
-  transform:translateX(-50%) translateY(-3px);
-  box-shadow:0 16px 30px rgba(0,0,0,.65), 0 0 30px rgba(212,175,55,.45), inset 0 1px 0 rgba(255,255,255,.4);
-}
-.fab:active{ transform:translateX(-50%) scale(.94); }
-
-/* ============================================================
-   АНИМАЦИЯ ПОЯВЛЕНИЯ
-   ============================================================ */
-.reveal{
-  opacity:0;
-  transform:translateY(10px);
-  animation:reveal .55s var(--ease) forwards;
-}
-@keyframes reveal{ to{ opacity:1; transform:none; } }
-
-@media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
-  .reveal{ opacity:1; transform:none; }
-}
-</style>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/app.css">
+<link rel="stylesheet" href="assets/css/screens.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 
-<div class="app">
-  <main class="screen" id="screen">
+<div class="app" id="app">
 
-    <!-- ========== HEADER ========== -->
-    <header class="topbar reveal" style="animation-delay:.02s">
-      <img class="logo" src="assets/img/logo.png" alt="NOGA Systems" width="42" height="42">
+  <!-- Splash -->
+  <div class="splash" id="splash" aria-live="polite">
+    <img class="splash__logo" src="assets/img/logo.png" alt="NOGA" width="64" height="64">
+    <div class="splash__spinner" aria-hidden="true"></div>
+    <p class="splash__text">Авторизация…</p>
+  </div>
 
-      <button class="bell has-alert" id="bell" type="button" aria-label="Уведомления">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-        </svg>
-        <span class="badge" aria-hidden="true"></span>
-      </button>
-    </header>
+  <!-- No access -->
+  <div class="gate" id="gate" hidden>
+    <img class="splash__logo" src="assets/img/logo.png" alt="" width="56" height="56">
+    <h1 class="gate__title" id="gateTitle">Доступ закрыт</h1>
+    <p class="gate__text" id="gateText"></p>
+    <p class="gate__code" id="gateCode"></p>
+  </div>
 
-    <p class="greeting reveal" style="animation-delay:.06s">
-      <span class="greeting__hello">Добро пожаловать,</span>
-      <span class="greeting__name">Owner</span>
-    </p>
+  <!-- Dev login (browser only) -->
+  <div class="dev-panel" id="devPanel" hidden>
+    <p class="dev-panel__title">Dev-вход (без Telegram)</p>
+    <form id="devLoginForm">
+      <div class="field">
+        <label for="devTelegramId">Telegram ID</label>
+        <input id="devTelegramId" name="telegram_id" type="number" required placeholder="123456789">
+      </div>
+      <div class="field">
+        <label for="devSecret">DEV_AUTH_SECRET</label>
+        <input id="devSecret" name="secret" type="password" required>
+      </div>
+      <button class="btn-all" type="submit">Войти</button>
+    </form>
+  </div>
 
-    <!-- ========== КАРТОЧКА ОБОРОТА ========== -->
-    <section class="turnover reveal" style="animation-delay:.1s" aria-label="Оборот за сегодня">
-      <div class="turnover__photo" aria-hidden="true"></div>
-      <div class="turnover__overlay" aria-hidden="true"></div>
+  <main class="screen" id="appMain" hidden>
 
-      <div class="turnover__col">
-        <p class="turnover__label">Общий оборот сегодня</p>
-        <p class="turnover__value"><span data-count="5400000">5 400 000</span> <span class="cur">₽</span></p>
+    <!-- ===== HOME ===== -->
+    <div class="view" id="viewHome">
+      <header class="topbar reveal" style="animation-delay:.02s">
+        <img class="logo" src="assets/img/logo.png" alt="NOGA Systems" width="42" height="42">
+        <button class="bell has-alert" id="bell" type="button" aria-label="Уведомления">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="badge" aria-hidden="true"></span>
+        </button>
+      </header>
+
+      <p class="greeting reveal" style="animation-delay:.06s">
+        <span class="greeting__hello">Добро пожаловать,</span>
+        <span class="greeting__name" id="greetingName">…</span>
+        <span class="greeting__role" id="greetingRole"></span>
+      </p>
+
+      <section class="turnover reveal" id="turnoverCard" style="animation-delay:.1s" aria-label="Оборот за сегодня">
+        <div class="turnover__photo" aria-hidden="true"></div>
+        <div class="turnover__overlay" aria-hidden="true"></div>
+        <div class="turnover__col">
+          <p class="turnover__label">Общий оборот сегодня</p>
+          <p class="turnover__value"><span id="turn-rub" data-count="0">0</span> <span class="cur">₽</span></p>
+        </div>
+        <div class="turnover__col turnover__col--right">
+          <p class="turnover__label">USD эквивалент</p>
+          <p class="turnover__value"><span id="turn-usd" data-count="0">0</span> <span class="cur">$</span></p>
+        </div>
+      </section>
+
+      <h2 class="section-title reveal" style="animation-delay:.14s">Статистика на сегодня</h2>
+
+      <section class="stats reveal" style="animation-delay:.18s" aria-label="Статистика на сегодня">
+        <article class="stat" tabindex="0">
+          <div class="stat__top">
+            <span class="stat__num" id="stat-created">0</span>
+            <span class="stat__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6M8 13h8M8 17h5"/>
+              </svg>
+            </span>
+          </div>
+          <span class="stat__label">Создано</span>
+        </article>
+        <article class="stat" tabindex="0">
+          <div class="stat__top">
+            <span class="stat__num" id="stat-in-progress">0</span>
+            <span class="dot dot--amber" aria-hidden="true"></span>
+          </div>
+          <span class="stat__label">В работе</span>
+        </article>
+        <article class="stat" tabindex="0">
+          <div class="stat__top">
+            <span class="stat__num" id="stat-entries">0</span>
+            <span class="dot dot--blue" aria-hidden="true"></span>
+          </div>
+          <span class="stat__label">Заходов</span>
+        </article>
+        <article class="stat" tabindex="0">
+          <div class="stat__top">
+            <span class="stat__num" id="stat-paid">0</span>
+            <span class="dot dot--check" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5"/>
+              </svg>
+            </span>
+          </div>
+          <span class="stat__label">Выплачено</span>
+        </article>
+        <article class="stat" tabindex="0">
+          <div class="stat__top">
+            <span class="stat__num" id="stat-remaining">0</span>
+            <span class="dot dot--red" aria-hidden="true"></span>
+          </div>
+          <span class="stat__label">Осталось</span>
+        </article>
+        <article class="stat" tabindex="0">
+          <div class="stat__top">
+            <span class="stat__num" id="stat-total">0</span>
+          </div>
+          <span class="stat__label">Всего операций</span>
+        </article>
+      </section>
+
+      <section class="operations reveal" style="animation-delay:.22s" aria-label="Последние операции">
+        <h2 class="operations__title">Последние операции</h2>
+        <ul class="op-list" id="opList"></ul>
+        <button class="btn-all" id="btnAll" type="button">Все операции</button>
+      </section>
+
+      <button class="btn-all" id="usersEntry" type="button" hidden style="margin-top:16px">Пользователи</button>
+    </div>
+
+    <!-- ===== USERS ===== -->
+    <div class="view" id="viewUsers" hidden>
+      <div class="users-toolbar">
+        <h2 class="users-toolbar__title">Пользователи</h2>
+        <button class="btn-gold" id="btnAddUser" type="button">+ Добавить</button>
       </div>
 
-      <div class="turnover__col turnover__col--right">
-        <p class="turnover__label">USD эквивалент</p>
-        <p class="turnover__value"><span data-count="59340">59 340</span> <span class="cur">$</span></p>
-      </div>
-    </section>
-
-    <!-- ========== СТАТИСТИКА ========== -->
-    <h2 class="section-title reveal" style="animation-delay:.14s">Статистика на сегодня</h2>
-
-    <section class="stats reveal" style="animation-delay:.18s" aria-label="Статистика на сегодня">
-
-      <article class="stat" tabindex="0">
-        <div class="stat__top">
-          <span class="stat__num" data-count="18">18</span>
-          <span class="stat__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <path d="M14 2v6h6M8 13h8M8 17h5"/>
-            </svg>
-          </span>
+      <form class="form-card" id="userCreateForm" hidden>
+        <p class="form-card__title">Новый пользователь</p>
+        <div class="field">
+          <label for="newUserTelegramId">Telegram ID</label>
+          <input id="newUserTelegramId" type="number" required placeholder="123456789">
         </div>
-        <span class="stat__label">Создано</span>
-      </article>
-
-      <article class="stat" tabindex="0">
-        <div class="stat__top">
-          <span class="stat__num" data-count="5">5</span>
-          <span class="dot dot--amber" aria-hidden="true"></span>
+        <div class="field">
+          <label for="newUserName">Отображаемое имя</label>
+          <input id="newUserName" type="text" placeholder="Иван">
         </div>
-        <span class="stat__label">В работе</span>
-      </article>
-
-      <article class="stat" tabindex="0">
-        <div class="stat__top">
-          <span class="stat__num" data-count="8">8</span>
-          <span class="dot dot--blue" aria-hidden="true"></span>
+        <div class="field">
+          <label for="newUserRole">Роль</label>
+          <select id="newUserRole">
+            <option value="noga">Нога</option>
+            <option value="admin">Администратор</option>
+            <option value="right_hand">Правая рука</option>
+            <option value="owner">Owner</option>
+          </select>
         </div>
-        <span class="stat__label">Заходов</span>
-      </article>
-
-      <article class="stat" tabindex="0">
-        <div class="stat__top">
-          <span class="stat__num" data-count="5">5</span>
-          <span class="dot dot--check" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 6 9 17l-5-5"/>
-            </svg>
-          </span>
+        <div class="form-actions">
+          <button class="btn-all" id="btnCancelUser" type="button">Отмена</button>
+          <button class="btn-gold" type="submit" style="flex:1">Создать</button>
         </div>
-        <span class="stat__label">Выплачено</span>
-      </article>
+      </form>
 
-      <article class="stat" tabindex="0">
-        <div class="stat__top">
-          <span class="stat__num" data-count="3">3</span>
-          <span class="dot dot--red" aria-hidden="true"></span>
-        </div>
-        <span class="stat__label">Осталось</span>
-      </article>
-
-      <article class="stat" tabindex="0">
-        <div class="stat__top">
-          <span class="stat__num" data-count="67">67</span>
-        </div>
-        <span class="stat__label">Всего операций</span>
-      </article>
-
-    </section>
-
-    <!-- ========== ПОСЛЕДНИЕ ОПЕРАЦИИ ========== -->
-    <section class="operations reveal" style="animation-delay:.22s" aria-label="Последние операции">
-      <h2 class="operations__title">Последние операции</h2>
-
-      <ul class="op-list">
-        <li class="op" tabindex="0">
-          <div>
-            <p class="op__id">EM-000125</p>
-            <p class="op__meta">Тула • Иван</p>
-          </div>
-          <div class="op__right">
-            <span class="op__status op__status--amber">В работе</span>
-            <span class="op__time">12:42</span>
-          </div>
-        </li>
-
-        <li class="op" tabindex="0">
-          <div>
-            <p class="op__id">EM-000124</p>
-            <p class="op__meta">Самара • Алексей</p>
-          </div>
-          <div class="op__right">
-            <span class="op__status op__status--blue">Ждет подтверждения</span>
-            <span class="op__time">12:35</span>
-          </div>
-        </li>
-
-        <li class="op" tabindex="0">
-          <div>
-            <p class="op__id">EM-000123</p>
-            <p class="op__meta">Казань • Максим</p>
-          </div>
-          <div class="op__right">
-            <span class="op__status op__status--green">Выплачено</span>
-            <span class="op__time">11:58</span>
-          </div>
-        </li>
-      </ul>
-
-      <button class="btn-all" id="btnAll" type="button">Все операции</button>
-    </section>
+      <div id="usersList"></div>
+    </div>
 
   </main>
 
-  <!-- ========== НИЖНЯЯ НАВИГАЦИЯ ========== -->
-  <nav class="tabbar" aria-label="Основная навигация">
+  <nav class="tabbar" id="tabbar" aria-label="Основная навигация" hidden>
     <button class="tab is-active" type="button" data-tab="home" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M3 10.5 12 3l9 7.5"/>
@@ -754,7 +189,6 @@ body{
       </svg>
       <span>Главная</span>
     </button>
-
     <button class="tab" type="button" data-tab="operations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -762,15 +196,13 @@ body{
       </svg>
       <span>Операции</span>
     </button>
-
-    <div class="tab tab--fab" aria-hidden="false">
+    <div class="tab tab--fab">
       <button class="fab" id="fab" type="button" aria-label="Создать операцию">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
           <path d="M12 5v14M5 12h14"/>
         </svg>
       </button>
     </div>
-
     <button class="tab" type="button" data-tab="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="11" cy="11" r="7"/>
@@ -778,7 +210,6 @@ body{
       </svg>
       <span>Поиск</span>
     </button>
-
     <button class="tab" type="button" data-tab="profile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="9"/>
@@ -790,90 +221,13 @@ body{
   </nav>
 </div>
 
-<script>
-(function () {
-  "use strict";
-
-  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  /* ---------- Форматирование чисел с неразрывными пробелами ---------- */
-  function format(n) {
-    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
-  }
-
-  /* ---------- Анимированный счётчик ---------- */
-  function countUp(el, target, duration) {
-    var start = performance.now();
-
-    function frame(now) {
-      var p = Math.min((now - start) / duration, 1);
-      var eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = format(Math.round(target * eased));
-      if (p < 1) requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-  }
-
-  var counters = document.querySelectorAll("[data-count]");
-  Array.prototype.forEach.call(counters, function (el, i) {
-    var target = Number(el.getAttribute("data-count"));
-    if (reduceMotion) {
-      el.textContent = format(target);
-      return;
-    }
-    el.textContent = format(0);
-    setTimeout(function () {
-      countUp(el, target, 900);
-    }, 220 + i * 70);
-  });
-
-  /* ---------- Нижняя навигация ---------- */
-  var tabs = document.querySelectorAll(".tab[data-tab]");
-  Array.prototype.forEach.call(tabs, function (tab) {
-    tab.addEventListener("click", function () {
-      Array.prototype.forEach.call(tabs, function (t) {
-        t.classList.remove("is-active");
-        t.removeAttribute("aria-current");
-      });
-      tab.classList.add("is-active");
-      tab.setAttribute("aria-current", "page");
-    });
-  });
-
-  /* ---------- Колокольчик: снимаем индикатор новых событий ---------- */
-  var bell = document.getElementById("bell");
-  bell.addEventListener("click", function () {
-    bell.classList.toggle("has-alert");
-  });
-
-  /* ---------- Клавиатурная активация карточек ---------- */
-  var focusables = document.querySelectorAll(".stat, .op");
-  Array.prototype.forEach.call(focusables, function (el) {
-    el.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        el.click();
-      }
-    });
-  });
-
-  /* ---------- Кнопки-заглушки: короткий отклик на нажатие ---------- */
-  var actions = [
-    { el: document.getElementById("btnAll"), base: "" },
-    { el: document.getElementById("fab"), base: "translateX(-50%) " }
-  ];
-
-  actions.forEach(function (item) {
-    item.el.addEventListener("click", function () {
-      if (reduceMotion || !item.el.animate) return;
-      item.el.animate([
-        { transform: item.base + "scale(1)" },
-        { transform: item.base + "scale(.93)" },
-        { transform: item.base + "scale(1)" }
-      ], { duration: 180, easing: "cubic-bezier(.4,0,.2,1)" });
-    });
-  });
-})();
-</script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/telegram.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/roles.js"></script>
+<script src="assets/js/screens/dashboard.js"></script>
+<script src="assets/js/screens/no-access.js"></script>
+<script src="assets/js/screens/users.js"></script>
+<script src="assets/js/auth.js"></script>
 </body>
 </html>

@@ -1,0 +1,15 @@
+[Unit]
+Description=NOGA Systems API + Telegram bot
+After=network.target
+
+[Service]
+Type=simple
+User=noga
+WorkingDirectory=/opt/noga/backend
+EnvironmentFile=/opt/noga/backend/.env
+ExecStart=/opt/noga/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
