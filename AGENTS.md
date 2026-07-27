@@ -63,8 +63,11 @@ Dev-вход (`POST /api/auth/dev`) только при `DEV_AUTH_ENABLED=true`.
 
 ## Управление пользователями
 
-- Команды бота: `/adduser`, `/setrole`, `/block`, `/unblock`, `/users`
+- Команды бота: `/adduser`, `/setrole`, `/block`, `/unblock`, `/users`, `/deleteuser`
 - Экран «Пользователи» в Mini App (Owner / right_hand с правом `users:manage`)
+- Удаление (`users:delete`) — только Owner; общая логика в `delete_user_account()`
+  (`backend/app/services/users.py`), её используют и API, и бот
+- Диалоги в Mini App — через `NogaTelegram.confirmAction/notify`, а не `window.confirm/alert`
 
 ## Что ещё не сделано
 

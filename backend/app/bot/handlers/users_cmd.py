@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
-from aiogram.types import Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.permissions import (
     ROLE_LABELS_RU,
+    USERS_DELETE,
     USERS_MANAGE,
     can_assign_role,
     can_modify_user,
@@ -15,6 +21,7 @@ from app.auth.permissions import (
 )
 from app.db.models import User, UserRole, UserStatus
 from app.services.audit import write_audit
+from app.services.users import UserActionError, delete_user_account
 
 router = Router(name="users_cmd")
 
@@ -198,6 +205,112 @@ async def cmd_setrole(
     await message.answer(
         f"Роль <code>{tid}</code>: {ROLE_LABELS_RU[old]} → <b>{ROLE_LABELS_RU[role]}</b>"
     )
+
+
+DELETE_CB_PREFIX = "deluser"
+
+
+@router.message(Command("deleteuser"))
+async def cmd_deleteuser(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    db_user: User | None,
+    is_allowed: bool,
+) -> None:
+    if not is_allowed or db_user is None:
+        await message.answer(_denied())
+        return
+    if not has_permission(db_user.role, USERS_DELETE):
+        await message.answer("Недостаточно прав: удалять пользователей может только Owner.")
+        return
+
+    args = (command.args or "").split()
+    if len(args) < 1:
+        await message.answer(
+            "Использование: /deleteuser &lt;telegram_id&gt;\n"
+            "Удаление безвозвратно — пользователь теряет доступ сразу."
+        )
+        return
+
+    try:
+        tid = int(args[0])
+    except ValueError:
+        await message.answer("telegram_id должен быть числом.")
+        return
+
+    result = await session.execute(select(User).where(User.telegram_id == tid))
+    target = result.scalar_one_or_none()
+    if target is None:
+        await message.answer("Пользователь не найден.")
+        return
+    if target.id == db_user.id:
+        await message.answer("Нельзя удалить себя.")
+        return
+
+    role = ROLE_LABELS_RU.get(target.role, target.role.value)
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Удалить", callback_data=f"{DELETE_CB_PREFIX}:{target.id}"
+                ),
+                InlineKeyboardButton(text="Отмена", callback_data=f"{DELETE_CB_PREFIX}:cancel"),
+            ]
+        ]
+    )
+    await message.answer(
+        f"Удалить пользователя <b>{target.display_name}</b>?\n"
+        f"ID: <code>{target.telegram_id}</code>\n"
+        f"Роль: {role}",
+        reply_markup=keyboard,
+    )
+
+
+@router.callback_query(F.data.startswith(f"{DELETE_CB_PREFIX}:"))
+async def cb_deleteuser(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    db_user: User | None,
+    is_allowed: bool,
+) -> None:
+    payload = (callback.data or "").split(":", 1)[1]
+
+    if payload == "cancel":
+        if isinstance(callback.message, Message):
+            await callback.message.edit_text("Удаление отменено.")
+        await callback.answer()
+        return
+
+    if not is_allowed or db_user is None:
+        await callback.answer("Доступ закрыт.", show_alert=True)
+        return
+
+    try:
+        target_id = int(payload)
+    except ValueError:
+        await callback.answer("Некорректные данные.", show_alert=True)
+        return
+
+    target = await session.get(User, target_id)
+    if target is None:
+        if isinstance(callback.message, Message):
+            await callback.message.edit_text("Пользователь уже удалён.")
+        await callback.answer()
+        return
+
+    try:
+        snapshot = await delete_user_account(session, actor=db_user, target=target, via="bot")
+    except UserActionError as exc:
+        await callback.answer(exc.message, show_alert=True)
+        return
+
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(
+            f"Пользователь <b>{snapshot['display_name']}</b> "
+            f"(<code>{snapshot['telegram_id']}</code>) удалён."
+        )
+    await callback.answer("Удалён")
 
 
 @router.message(Command("block"))

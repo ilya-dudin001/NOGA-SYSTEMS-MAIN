@@ -113,7 +113,7 @@
       await global.NogaApi.updateUser(u.id, { role: next });
       await loadAndRender();
     } catch (err) {
-      window.alert(err.message || "Ошибка смены роли");
+      global.NogaTelegram.notify(err.message || "Ошибка смены роли");
     }
   }
 
@@ -123,18 +123,26 @@
       await global.NogaApi.updateUser(u.id, { status: next });
       await loadAndRender();
     } catch (err) {
-      window.alert(err.message || "Ошибка");
+      global.NogaTelegram.notify(err.message || "Ошибка");
     }
   }
 
-  async function removeUser(u) {
-    if (!window.confirm("Удалить пользователя " + u.display_name + "?")) return;
-    try {
-      await global.NogaApi.deleteUser(u.id);
-      await loadAndRender();
-    } catch (err) {
-      window.alert(err.message || "Ошибка удаления");
-    }
+  function removeUser(u) {
+    var question =
+      "Удалить пользователя " +
+      u.display_name +
+      " (ID " +
+      u.telegram_id +
+      ")?\nДоступ пропадёт сразу, восстановить нельзя.";
+
+    global.NogaTelegram.confirmAction(question, async function () {
+      try {
+        await global.NogaApi.deleteUser(u.id);
+        await loadAndRender();
+      } catch (err) {
+        global.NogaTelegram.notify(err.message || "Ошибка удаления");
+      }
+    });
   }
 
   var formBound = false;
@@ -172,7 +180,7 @@
           form.hidden = true;
           await loadAndRender();
         } catch (err) {
-          window.alert(err.message || "Не удалось добавить");
+          global.NogaTelegram.notify(err.message || "Не удалось добавить");
         }
       });
     }

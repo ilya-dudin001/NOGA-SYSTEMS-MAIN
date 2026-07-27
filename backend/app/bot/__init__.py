@@ -44,6 +44,7 @@ async def setup_bot_commands(bot: Bot) -> None:
             BotCommand(command="setrole", description="Сменить роль"),
             BotCommand(command="block", description="Заблокировать"),
             BotCommand(command="unblock", description="Разблокировать"),
+            BotCommand(command="deleteuser", description="Удалить пользователя"),
         ]
     )
 

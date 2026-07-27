@@ -8,17 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import get_current_user, require_permission
 from app.auth.permissions import (
-    USERS_DELETE,
     USERS_MANAGE,
     USERS_READ,
     can_assign_role,
     can_modify_user,
-    has_permission,
 )
 from app.db import get_session
 from app.db.models import User, UserRole, UserStatus
 from app.schemas import UserCreateIn, UserOut, UserUpdateIn
 from app.services.audit import write_audit
+from app.services.users import UserActionError, delete_user_account
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -150,37 +149,20 @@ async def delete_user(
     session: Annotated[AsyncSession, Depends(get_session)],
     actor: Annotated[User, Depends(get_current_user)],
 ) -> None:
-    if not has_permission(actor.role, USERS_DELETE):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "FORBIDDEN", "message": "Missing permission: users:delete"},
-        )
-
     result = await session.execute(select(User).where(User.id == user_id))
     target = result.scalar_one_or_none()
     if target is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "User not found"},
-        )
-    if target.id == actor.id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "BAD_REQUEST", "message": "Cannot delete yourself"},
-        )
-    if target.role == UserRole.owner and actor.role != UserRole.owner:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "FORBIDDEN", "message": "Cannot delete owner"},
+            detail={"code": "NOT_FOUND", "message": "Пользователь не найден"},
         )
 
-    await write_audit(
-        session,
-        action="user.deleted",
-        actor_user_id=actor.id,
-        target_type="user",
-        target_id=str(target.id),
-        payload={"telegram_id": target.telegram_id, "role": target.role.value},
-    )
-    await session.delete(target)
-    await session.commit()
+    try:
+        await delete_user_account(session, actor=actor, target=target, via="miniapp")
+    except UserActionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN
+            if exc.code == "FORBIDDEN"
+            else status.HTTP_400_BAD_REQUEST,
+            detail={"code": exc.code, "message": exc.message},
+        ) from exc

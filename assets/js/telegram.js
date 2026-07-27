@@ -31,10 +31,42 @@
     return Boolean(getInitData());
   }
 
+  /* window.confirm/alert are ignored inside the Telegram WebView, so prefer the native
+     dialogs (Bot API 6.2+) and fall back to the browser ones. */
+  function confirmAction(message, onConfirm) {
+    var wa = getWebApp();
+    if (wa && typeof wa.showConfirm === "function") {
+      try {
+        wa.showConfirm(message, function (ok) {
+          if (ok) onConfirm();
+        });
+        return;
+      } catch (e) {
+        /* unsupported client version — fall through */
+      }
+    }
+    if (global.confirm(message)) onConfirm();
+  }
+
+  function notify(message) {
+    var wa = getWebApp();
+    if (wa && typeof wa.showAlert === "function") {
+      try {
+        wa.showAlert(message);
+        return;
+      } catch (e) {
+        /* unsupported client version — fall through */
+      }
+    }
+    global.alert(message);
+  }
+
   global.NogaTelegram = {
     init: initTelegram,
     getInitData: getInitData,
     isTelegramContext: isTelegramContext,
     getWebApp: getWebApp,
+    confirmAction: confirmAction,
+    notify: notify,
   };
 })(window);

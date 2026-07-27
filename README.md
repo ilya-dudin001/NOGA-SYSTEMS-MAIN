@@ -96,8 +96,13 @@ docker compose up -d --build
 | `/adduser <id> <role>` | manage | Добавить |
 | `/setrole <id> <role>` | manage | Сменить роль |
 | `/block` / `/unblock` | manage | Блок |
+| `/deleteuser <id>` | owner | Удалить (с подтверждением) |
 
 Роли: `owner`, `right_hand`, `admin`, `noga`.
+
+Удаление доступно только Owner — и в боте, и в Mini App (кнопка «Удалить» на карточке
+пользователя). Себя удалить нельзя. После удаления выданный ранее JWT перестаёт
+работать сразу же: `/api/me` вернёт 401.
 
 ## API (кратко)
 
@@ -108,6 +113,14 @@ docker compose up -d --build
 - `GET /api/dashboard/summary` — пока нули, со скоупом по роли
 
 Миграции Alembic: `alembic upgrade head` (из `backend/`). При старте также вызывается `create_all` + bootstrap Owner.
+
+Тесты (из `backend/`, venv активирован):
+
+```bash
+python tests/test_delete_user.py
+```
+
+Использует отдельную БД `data/test_delete.db` и не трогает рабочую.
 
 ## Чеклист приёмки
 
