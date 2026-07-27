@@ -14,9 +14,13 @@ OPERATIONS_PAYOUT = "operations:payout"
 SETTINGS_MANAGE = "settings:manage"
 CITIES_MANAGE = "cities:manage"
 CITIES_READ = "cities:read"
+# «Чужие» скоупы: без них роль правит только то, что завела сама (админ).
+CITIES_ALL = "cities:all"
+NOGAS_ALL = "nogas:all"
 NOGAS_MANAGE = "nogas:manage"
 NOGAS_READ = "nogas:read"
-# Паспорта, адрес и телефоны ног — отдельное право: nogas:read есть и у админа.
+# Паспорта, адрес и телефоны ног. Есть и у админа: если нога другого админа
+# пропала со связи, с ней надо уметь связаться напрямую.
 NOGAS_PERSONAL = "nogas:personal"
 RAZGRUZ_MANAGE = "razgruz:manage"
 RAZGRUZ_READ = "razgruz:read"
@@ -35,8 +39,10 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             SETTINGS_MANAGE,
             CITIES_MANAGE,
             CITIES_READ,
+            CITIES_ALL,
             NOGAS_MANAGE,
             NOGAS_READ,
+            NOGAS_ALL,
             NOGAS_PERSONAL,
             RAZGRUZ_MANAGE,
             RAZGRUZ_READ,
@@ -53,13 +59,17 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             OPERATIONS_PAYOUT,
             CITIES_MANAGE,
             CITIES_READ,
+            CITIES_ALL,
             NOGAS_MANAGE,
             NOGAS_READ,
+            NOGAS_ALL,
             NOGAS_PERSONAL,
             RAZGRUZ_MANAGE,
             RAZGRUZ_READ,
         }
     ),
+    # Админ ведёт свой участок: заводит и правит только собственные города и ноги
+    # (нет cities:all / nogas:all), но читает справочники и личные данные любых ног.
     UserRole.admin: frozenset(
         {
             USERS_READ,
@@ -68,8 +78,11 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             OPERATIONS_OWN,
             OPERATIONS_CONFIRM,
             OPERATIONS_PAYOUT,
+            CITIES_MANAGE,
             CITIES_READ,
+            NOGAS_MANAGE,
             NOGAS_READ,
+            NOGAS_PERSONAL,
             RAZGRUZ_READ,
         }
     ),

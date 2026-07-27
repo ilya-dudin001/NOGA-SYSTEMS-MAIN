@@ -95,8 +95,12 @@ async def load_all(
     city_id: Optional[int] = None,
     include_test: bool = True,
     only_active: bool = False,
+    owner_id: Optional[int] = None,
 ) -> Sequence[Noga]:
+    """owner_id ограничивает выдачу своими ногами: у админа скоуп — то, что он завёл."""
     query = select(Noga).options(*LOAD_OPTIONS)
+    if owner_id is not None:
+        query = query.where(Noga.created_by_id == owner_id)
     if city_id is not None:
         query = query.where(Noga.city_id == city_id)
     if not include_test:
@@ -131,14 +135,21 @@ def remember_city(noga: Noga, city_name: str) -> None:
 
 
 async def attach_to_city(
-    session: AsyncSession, city: City, noga_ids: Sequence[int]
+    session: AsyncSession, city: City, noga_ids: Sequence[int], *, owner_id: Optional[int] = None
 ) -> tuple[list[int], list[int]]:
-    """Приводит состав города к списку: возвращает (прикреплённые, откреплённые)."""
+    """Приводит состав города к списку: возвращает (прикреплённые, откреплённые).
+
+    owner_id — скоуп актора: чужие ноги в городе остаются на месте, даже если их
+    нет в списке. Иначе админ, правя свой город, снёс бы ноги соседа.
+    """
     wanted = set(noga_ids)
     conditions = [Noga.city_id == city.id]
     if wanted:
         conditions.append(Noga.id.in_(wanted))
-    result = await session.execute(select(Noga).where(or_(*conditions)))
+    query = select(Noga).where(or_(*conditions))
+    if owner_id is not None:
+        query = query.where(Noga.created_by_id == owner_id)
+    result = await session.execute(query)
 
     attached: list[int] = []
     detached: list[int] = []
@@ -188,7 +199,7 @@ async def rename_city_snapshots(session: AsyncSession, old_name: str, new_name: 
     )
 
 
-def to_out(noga: Noga) -> NogaOut:
+def to_out(noga: Noga, *, can_manage: bool = False) -> NogaOut:
     return NogaOut(
         id=noga.id,
         name=noga.name,
@@ -200,6 +211,7 @@ def to_out(noga: Noga) -> NogaOut:
         is_active=noga.is_active,
         created_at=noga.created_at,
         created_by_name=noga.created_by.display_name if noga.created_by else None,
+        can_manage=can_manage,
     )
 
 
@@ -215,8 +227,10 @@ def file_to_out(item: NogaFile) -> NogaFileOut:
     )
 
 
-def to_detail_out(noga: Noga, *, include_personal: bool) -> NogaDetailOut:
-    base = to_out(noga)
+def to_detail_out(
+    noga: Noga, *, include_personal: bool, can_manage: bool = False
+) -> NogaDetailOut:
+    base = to_out(noga, can_manage=can_manage)
     if not include_personal:
         return NogaDetailOut(**base.model_dump(), has_personal_access=False)
     return NogaDetailOut(

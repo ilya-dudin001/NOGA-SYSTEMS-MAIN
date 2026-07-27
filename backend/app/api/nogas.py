@@ -7,7 +7,13 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import require_permission
-from app.auth.permissions import NOGAS_MANAGE, NOGAS_PERSONAL, NOGAS_READ, has_permission
+from app.auth.permissions import (
+    NOGAS_ALL,
+    NOGAS_MANAGE,
+    NOGAS_PERSONAL,
+    NOGAS_READ,
+    has_permission,
+)
 from app.db import get_session
 from app.db.models import City, Noga, NogaFile, NogaFileKind, User
 from app.schemas import NogaCreateIn, NogaDetailOut, NogaFileOut, NogaOut, NogaUpdateIn
@@ -38,6 +44,27 @@ def require_personal(actor: User) -> None:
         )
 
 
+def scope_owner(actor: User) -> Optional[int]:
+    """None — актор работает со всеми ногами, иначе видит в списке только свои."""
+    return None if has_permission(actor.role, NOGAS_ALL) else actor.id
+
+
+def can_manage(actor: User, noga: Noga) -> bool:
+    return has_permission(actor.role, NOGAS_ALL) or noga.created_by_id == actor.id
+
+
+def require_own(actor: User, noga: Noga) -> None:
+    """Читать ногу может любой с nogas:read, а править — только её автор."""
+    if not can_manage(actor, noga):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "FORBIDDEN",
+                "message": "Ногу завёл другой пользователь — её можно только смотреть",
+            },
+        )
+
+
 def conflict(name: str, city_name: Optional[str]) -> HTTPException:
     where = f"в городе {city_name}" if city_name else "среди ног без города"
     return HTTPException(
@@ -53,11 +80,23 @@ async def list_nogas(
     city_id: Optional[int] = Query(default=None),
     include_test: bool = Query(default=True),
     only_active: bool = Query(default=False),
+    scope: str = Query(default="own", pattern="^(own|all)$"),
 ) -> list[NogaOut]:
+    """scope=own — только свои ноги (для админа это и есть весь его участок)."""
+    if scope == "all" and not has_permission(actor.role, NOGAS_ALL):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "Нет доступа к чужим ногам"},
+        )
+    owner_id = None if scope == "all" else scope_owner(actor)
     nogas = await nogas_service.load_all(
-        session, city_id=city_id, include_test=include_test, only_active=only_active
+        session,
+        city_id=city_id,
+        include_test=include_test,
+        only_active=only_active,
+        owner_id=owner_id,
     )
-    return [nogas_service.to_out(n) for n in nogas]
+    return [nogas_service.to_out(n, can_manage=can_manage(actor, n)) for n in nogas]
 
 
 @router.get("/{noga_id}", response_model=NogaDetailOut)
@@ -66,9 +105,13 @@ async def get_noga(
     session: Annotated[AsyncSession, Depends(get_session)],
     actor: Annotated[User, Depends(require_permission(NOGAS_READ))],
 ) -> NogaDetailOut:
+    # Карточку чужой ноги читать можно: админу нужны контакты ноги соседа,
+    # если та пропала со связи. Править — нельзя, отсюда can_manage.
     personal = has_permission(actor.role, NOGAS_PERSONAL)
     noga = await load_noga(session, noga_id, with_files=personal)
-    return nogas_service.to_detail_out(noga, include_personal=personal)
+    return nogas_service.to_detail_out(
+        noga, include_personal=personal, can_manage=can_manage(actor, noga)
+    )
 
 
 @router.post("", response_model=NogaDetailOut, status_code=status.HTTP_201_CREATED)
@@ -122,7 +165,9 @@ async def create_noga(
     await session.commit()
     personal = has_permission(actor.role, NOGAS_PERSONAL)
     return nogas_service.to_detail_out(
-        await load_noga(session, noga.id, with_files=personal), include_personal=personal
+        await load_noga(session, noga.id, with_files=personal),
+        include_personal=personal,
+        can_manage=True,
     )
 
 
@@ -139,6 +184,7 @@ async def update_noga(
         require_personal(actor)
 
     noga = await load_noga(session, noga_id, with_files=personal)
+    require_own(actor, noga)
 
     # Всё, что требует SELECT'ов, считаем до мутаций: autoflush иначе упрётся
     # в UNIQUE и отдаст 500 вместо понятного 409.
@@ -220,7 +266,9 @@ async def update_noga(
 
     await session.commit()
     return nogas_service.to_detail_out(
-        await load_noga(session, noga_id, with_files=personal), include_personal=personal
+        await load_noga(session, noga_id, with_files=personal),
+        include_personal=personal,
+        can_manage=True,
     )
 
 
@@ -233,6 +281,7 @@ async def delete_noga(
     # files грузим всегда: relationship объявлен lazy="raise", а каскад ORM
     # без загруженной коллекции упадёт при удалении.
     noga = await load_noga(session, noga_id, with_files=True)
+    require_own(actor, noga)
     await write_audit(
         session,
         action="noga.deleted",
@@ -265,6 +314,7 @@ async def upload_noga_file(
 ) -> NogaFileOut:
     require_personal(actor)
     noga = await load_noga(session, noga_id)
+    require_own(actor, noga)
 
     try:
         stored_path, size, ext = await nogas_service.save_upload(
@@ -352,6 +402,7 @@ async def delete_noga_file(
     actor: Annotated[User, Depends(require_permission(NOGAS_MANAGE))],
 ) -> None:
     require_personal(actor)
+    require_own(actor, await load_noga(session, noga_id))
     item = await get_file_or_404(session, noga_id, file_id)
     stored_path = item.stored_path
     await write_audit(

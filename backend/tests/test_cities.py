@@ -280,8 +280,13 @@ def main() -> None:
         admin_h = {"Authorization": "Bearer " + token(client, ADMIN_USER)}
         assert client.get("/api/cities", headers=admin_h).status_code == 200
         assert client.get("/api/razgruzy", headers=admin_h).status_code == 200
-        assert client.post("/api/cities", headers=admin_h, json={"name": "Y"}).status_code == 403
+        # Админ ведёт свой участок: город завести может, разгруз — нет
+        r = client.post("/api/cities", headers=admin_h, json={"name": "Админовск"})
+        assert r.status_code == 201, r.text
+        assert r.json()["can_manage"] is True, r.text
+        admin_city = r.json()["id"]
         assert client.post("/api/razgruzy", headers=admin_h, json={"name": "Y"}).status_code == 403
+        assert client.delete(f"/api/cities/{admin_city}", headers=admin_h).status_code == 204
         print("permissions ok")
 
         # --- Сводка на дашборде ---

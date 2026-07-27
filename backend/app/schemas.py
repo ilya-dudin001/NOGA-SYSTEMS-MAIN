@@ -91,6 +91,8 @@ class NogaBriefOut(BaseModel):
     is_active: bool
     created_at: datetime
     created_by_name: Optional[str] = None
+    # Своя ли это нога для смотрящего: админ чужую только читает.
+    can_manage: bool = False
 
 
 class CityOut(BaseModel):
@@ -103,6 +105,7 @@ class CityOut(BaseModel):
     razgruzy: list[RazgruzOut] = Field(default_factory=list)
     created_at: datetime
     created_by_name: Optional[str] = None
+    can_manage: bool = False
 
 
 class CityDetailOut(CityOut):
@@ -142,6 +145,7 @@ class NogaOut(BaseModel):
     is_active: bool
     created_at: datetime
     created_by_name: Optional[str] = None
+    can_manage: bool = False
 
 
 class NogaFileOut(BaseModel):

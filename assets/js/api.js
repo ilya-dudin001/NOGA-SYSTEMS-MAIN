@@ -138,8 +138,9 @@
     deleteUser: function (id) {
       return request("/api/users/" + id, { method: "DELETE" });
     },
-    listCities: function () {
-      return request("/api/cities");
+    /** scope: "own" — свой участок, "working" — общая витрина городов в работе. */
+    listCities: function (scope) {
+      return request("/api/cities" + (scope ? "?scope=" + scope : ""));
     },
     getCity: function (id) {
       return request("/api/cities/" + id);

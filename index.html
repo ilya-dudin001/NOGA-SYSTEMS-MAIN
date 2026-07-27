@@ -252,6 +252,8 @@
         <button class="btn-gold" id="btnAddCity" type="button" hidden>+ Добавить</button>
       </div>
 
+      <div class="tabs" id="citiesModes" role="tablist"></div>
+
       <form class="form-card" id="cityForm" hidden>
         <p class="form-card__title" id="cityFormTitle">Новый город</p>
         <div class="field">
@@ -328,7 +330,7 @@
         <path d="M5 9.8V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.8"/>
         <path d="M9.5 21v-6h5v6"/>
       </svg>
-      <span>Главная</span>
+      <span id="tabHomeLabel">Главная</span>
     </button>
     <button class="tab" type="button" data-tab="operations">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -336,6 +338,13 @@
         <path d="M14 2v6h6M8 13h8M8 17h5"/>
       </svg>
       <span>Операции</span>
+    </button>
+    <button class="tab" type="button" data-tab="nogas" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="7" r="3.2"/>
+        <path d="M6 21v-2.2A4.8 4.8 0 0 1 10.8 14h2.4A4.8 4.8 0 0 1 18 18.8V21"/>
+      </svg>
+      <span>Ноги</span>
     </button>
     <div class="tab tab--fab">
       <button class="fab" id="fab" type="button" aria-label="Создать операцию">
@@ -350,6 +359,15 @@
         <path d="m20 20-3.6-3.6"/>
       </svg>
       <span>Поиск</span>
+    </button>
+    <button class="tab" type="button" data-tab="cities" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 21h18"/>
+        <path d="M5 21V9l5-3.5V21"/>
+        <path d="M14 21V11h5v10"/>
+        <path d="M7.6 12h.01M7.6 15.5h.01M16.4 14.5h.01M16.4 17.5h.01"/>
+      </svg>
+      <span>Города</span>
     </button>
     <button class="tab" type="button" data-tab="profile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

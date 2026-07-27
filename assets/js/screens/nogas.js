@@ -15,6 +15,11 @@
     return global.NogaRoles.can("nogas:manage");
   }
 
+  /** Свою ногу правит автор, чужую — только роли со скоупом на всех. */
+  function canManageNoga(noga) {
+    return canManage() && noga.can_manage !== false;
+  }
+
   function canPersonal() {
     return global.NogaRoles.can("nogas:personal");
   }
@@ -53,9 +58,23 @@
 
   /* ---------- список ---------- */
 
+  /** Свои города плюс общая витрина: ногу можно поставить и в чужой город в работе. */
   async function loadCities() {
     try {
-      cities = await global.NogaApi.listCities();
+      var lists = await Promise.all([
+        global.NogaApi.listCities("own"),
+        global.NogaApi.listCities("working"),
+      ]);
+      var seen = {};
+      cities = [];
+      lists[0].concat(lists[1]).forEach(function (city) {
+        if (seen[city.id]) return;
+        seen[city.id] = true;
+        cities.push(city);
+      });
+      cities.sort(function (a, b) {
+        return a.name.localeCompare(b.name, "ru");
+      });
     } catch (err) {
       cities = [];
     }
@@ -125,7 +144,7 @@
     });
     actions.appendChild(detailBtn);
 
-    if (canManage()) {
+    if (canManageNoga(noga)) {
       actions.appendChild(
         makeBtn("Изменить", function () {
           openForm(noga);
@@ -283,23 +302,48 @@
     host.appendChild(list);
 
     if (!noga.has_personal_access) {
-      host.appendChild(
-        el("p", "detail__empty", "Личные данные доступны Owner и правой руке")
+      host.appendChild(el("p", "detail__empty", "Нет доступа к личным данным ноги"));
+    }
+  }
+
+  /** Карточка ноги внутри чужого экрана (детали города): только чтение. */
+  async function renderCard(nogaId, container) {
+    container.innerHTML = "";
+    container.appendChild(el("p", "empty-hint", "Загрузка…"));
+    try {
+      var noga = await global.NogaApi.getNoga(nogaId);
+      container.innerHTML = "";
+      renderMainTab(noga, container);
+      if (noga.has_personal_access) {
+        container.appendChild(el("p", "detail__title", "Личные данные"));
+        renderPersonalTab(noga, container, true);
+      }
+      if (!canManageNoga(noga)) {
+        container.appendChild(
+          el("p", "detail__empty", "Ногу завёл " + (noga.created_by_name || "другой пользователь"))
+        );
+      }
+    } catch (err) {
+      container.innerHTML = "";
+      container.appendChild(
+        el("p", "empty-hint", "Не удалось загрузить: " + (err.message || "ошибка"))
       );
     }
   }
 
   /* ---------- личные данные ---------- */
 
-  function renderPersonalTab(noga, host) {
-    var editable = canManage();
+  function renderPersonalTab(noga, host, forceReadonly) {
+    var editable = !forceReadonly && canManageNoga(noga);
 
     var addressField = el("div", "field");
     var addressLabel = el("label", null, "Домашний адрес");
-    addressLabel.setAttribute("for", "nogaAddress");
+    // id уникален по ноге: в деталях города можно раскрыть несколько карточек сразу.
+    var addressId = "nogaAddress-" + noga.id;
+    addressLabel.setAttribute("for", addressId);
     addressField.appendChild(addressLabel);
     var address = document.createElement("textarea");
-    address.id = "nogaAddress";
+    address.id = addressId;
     address.rows = 2;
     address.placeholder = "Город, улица, дом, квартира";
     address.value = noga.address || "";
@@ -729,5 +773,11 @@
     global.NogaViews.show("viewHome");
   }
 
-  global.NogaNogas = { show: show, hide: hide, reload: loadAndRender };
+  global.NogaNogas = {
+    show: show,
+    hide: hide,
+    reload: loadAndRender,
+    renderCard: renderCard,
+    release: releaseBlobs,
+  };
 })(window);

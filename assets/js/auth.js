@@ -43,6 +43,7 @@
       );
     }
 
+    global.NogaRoles.applyTabbar();
     global.NogaViews.show("viewHome");
 
     try {
@@ -112,11 +113,20 @@
 
   function bindNav() {
     var tabs = document.querySelectorAll(".tab[data-tab]");
-    Array.prototype.forEach.call(tabs, function (tab) {
-      tab.addEventListener("click", function () {
-        var name = tab.getAttribute("data-tab");
+    Array.prototype.forEach.call(tabs, function (tabNode) {
+      tabNode.addEventListener("click", function () {
+        var name = tabNode.getAttribute("data-tab");
         if (name === "home") {
           global.NogaViews.show("viewHome");
+          return;
+        }
+        if (name === "nogas") {
+          global.NogaNogas.show();
+          return;
+        }
+        if (name === "cities") {
+          // Из таббара открываем свой участок, из плашки на дашборде — общий.
+          global.NogaCities.show({ mode: "own" });
           return;
         }
         if (name === "profile") {
@@ -132,30 +142,21 @@
     });
     bindEntry("nogasEntry", function () {
       global.NogaNogas.show();
-    });
+    }, "nogas");
     bindEntry("citiesEntry", function () {
-      global.NogaCities.show();
-    });
+      global.NogaCities.show({ mode: "working" });
+    }, "cities");
     bindEntry("razgruzyEntry", function () {
       global.NogaRazgruzy.show();
     });
   }
 
-  function bindEntry(id, open) {
+  function bindEntry(id, open, tabName) {
     var entry = document.getElementById(id);
     if (!entry) return;
     entry.addEventListener("click", function () {
       open();
-      var profileTab = document.querySelector('.tab[data-tab="profile"]');
-      if (profileTab) {
-        var tabs = document.querySelectorAll(".tab[data-tab]");
-        Array.prototype.forEach.call(tabs, function (t) {
-          t.classList.remove("is-active");
-          t.removeAttribute("aria-current");
-        });
-        profileTab.classList.add("is-active");
-        profileTab.setAttribute("aria-current", "page");
-      }
+      global.NogaRoles.activateTab(tabName || "profile");
     });
   }
 

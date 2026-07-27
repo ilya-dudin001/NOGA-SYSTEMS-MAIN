@@ -4,11 +4,23 @@
   var razgruzy = [];
   var nogas = [];
   var editingId = null;
+  var editingCity = null;
   var openDetailId = null;
   var formBound = false;
+  // own — свой участок, working — общая витрина городов в работе.
+  var mode = "own";
 
   function canManage() {
     return global.NogaRoles.can("cities:manage");
+  }
+
+  function seesAllCities() {
+    return global.NogaRoles.can("cities:all");
+  }
+
+  /** Правка города: у админа — только свои, остальное решает сервер флагом can_manage. */
+  function canManageCity(city) {
+    return canManage() && city.can_manage !== false;
   }
 
   function canSeeRazgruzy() {
@@ -61,12 +73,46 @@
 
   /* ---------- список ---------- */
 
+  var MODES = [
+    { id: "own", hint: "Города, которые ведёте вы" },
+    { id: "working", label: "В работе", hint: "Города в работе у всей команды" },
+  ];
+
+  function modeLabel(id) {
+    if (id === "working") return "В работе";
+    return seesAllCities() ? "Все города" : "Мои города";
+  }
+
+  function renderModes() {
+    var bar = document.getElementById("citiesModes");
+    if (!bar) return;
+    bar.innerHTML = "";
+    MODES.forEach(function (item) {
+      var btn = el("button", "tabs__btn", modeLabel(item.id));
+      btn.type = "button";
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("data-mode", item.id);
+      var active = mode === item.id;
+      if (active) btn.classList.add("is-active");
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+      btn.title = item.hint;
+      btn.addEventListener("click", function () {
+        if (mode === item.id) return;
+        mode = item.id;
+        openDetailId = null;
+        renderModes();
+        loadAndRender();
+      });
+      bar.appendChild(btn);
+    });
+  }
+
   async function loadAndRender() {
     var listEl = document.getElementById("citiesList");
     if (!listEl) return;
     listEl.innerHTML = '<p class="empty-hint">Загрузка…</p>';
     try {
-      var cities = await global.NogaApi.listCities();
+      var cities = await global.NogaApi.listCities(mode);
       renderList(cities);
     } catch (err) {
       listEl.innerHTML = "";
@@ -80,7 +126,13 @@
     var listEl = document.getElementById("citiesList");
     listEl.innerHTML = "";
     if (!cities || !cities.length) {
-      listEl.appendChild(el("p", "empty-hint", "Городов пока нет"));
+      listEl.appendChild(
+        el(
+          "p",
+          "empty-hint",
+          mode === "working" ? "Городов в работе пока нет" : "Городов пока нет"
+        )
+      );
       return;
     }
     cities.forEach(function (city) {
@@ -88,9 +140,27 @@
     });
   }
 
+  var ORPHAN_QUESTION =
+    "К городу не прикреплена нога — заказ отдавать некому. " +
+    "Всё равно оставить статус «В работе»?";
+
+  /** Город в работе без единой ноги — заказ отдать некому, это авария. */
+  function isOrphan(city) {
+    return city.status === "working" && !city.nogas_count;
+  }
+
+  function buildWarning(city) {
+    return el(
+      "p",
+      "alert-banner",
+      "!! ВНИМАНИЕ !! К городу «" + city.name + "» не прикреплена нога"
+    );
+  }
+
   function buildCard(city) {
     var status = global.NogaDict.cityStatus(city.status);
-    var card = el("article", "user-card city-card");
+    var orphan = isOrphan(city);
+    var card = el("article", "user-card city-card" + (orphan ? " city-card--alert" : ""));
 
     var top = el("div", "user-card__top");
     var head = el("div");
@@ -100,9 +170,18 @@
     meta += " · Ног: " + city.nogas_count;
     if (canSeeRazgruzy()) meta += " · Разгрузов: " + city.razgruzy.length;
     head.appendChild(el("p", "user-card__meta", meta));
+    if (!canManageCity(city)) {
+      head.appendChild(
+        el("p", "user-card__meta user-card__meta--history", "Ведёт " + (city.created_by_name || "другой пользователь"))
+      );
+    }
     top.appendChild(head);
-    top.appendChild(el("span", "status-pill " + status.cls, status.label));
+    top.appendChild(
+      el("span", "status-pill " + (orphan ? "status-pill--alert" : status.cls), status.label)
+    );
     card.appendChild(top);
+
+    if (orphan) card.appendChild(buildWarning(city));
 
     if (canSeeRazgruzy() && city.razgruzy.length) {
       var chips = el("div", "chips");
@@ -114,7 +193,7 @@
       card.appendChild(chips);
     }
 
-    if (canManage()) {
+    if (canManageCity(city)) {
       card.appendChild(buildStatusSwitch(city));
     }
 
@@ -126,7 +205,7 @@
       toggleDetail(city, detailWrap, detailBtn);
     });
     actions.appendChild(detailBtn);
-    if (canManage()) {
+    if (canManageCity(city)) {
       actions.appendChild(
         makeIconBtn("edit", "Изменить", function () {
           openForm(city);
@@ -167,6 +246,12 @@
       btn.setAttribute("aria-pressed", active ? "true" : "false");
       btn.addEventListener("click", function () {
         if (city.status === item.value) return;
+        if (item.value === "working" && !city.nogas_count) {
+          global.NogaTelegram.confirmAction(ORPHAN_QUESTION, function () {
+            patch(city, { status: item.value });
+          });
+          return;
+        }
         patch(city, { status: item.value });
       });
       wrap.appendChild(btn);
@@ -202,8 +287,53 @@
     }
   }
 
+  /** Строка ноги в деталях города: ноги тут все, включая чужие, с карточкой по клику. */
+  function buildNogaRow(noga) {
+    var flags = [];
+    if (noga.is_test) flags.push("тестовая");
+    if (!noga.is_active) flags.push("выключена");
+    if (!flags.length) flags.push("рабочая");
+
+    var line = el("li", "detail-list__item");
+    var head = el("div", "detail-list__head");
+    var text = el("div", "detail-list__text");
+    text.appendChild(el("span", "detail-list__name", noga.name));
+    text.appendChild(
+      el(
+        "span",
+        "detail-list__meta",
+        flags.join(", ") +
+          " · добавил " +
+          (noga.created_by_name || "—") +
+          " · " +
+          global.NogaDict.formatDate(noga.created_at)
+      )
+    );
+    head.appendChild(text);
+
+    var panel = el("div", "detail-list__panel");
+    panel.hidden = true;
+    var btn = makeIconBtn("detail", "Подробнее", function () {
+      if (!panel.hidden) {
+        panel.hidden = true;
+        panel.innerHTML = "";
+        setDetailBtnState(btn, false);
+        return;
+      }
+      panel.hidden = false;
+      setDetailBtnState(btn, true);
+      global.NogaNogas.renderCard(noga.id, panel);
+    });
+    head.appendChild(btn);
+
+    line.appendChild(head);
+    line.appendChild(panel);
+    return line;
+  }
+
   function renderDetail(city, container) {
     container.innerHTML = "";
+    if (isOrphan(city)) container.appendChild(buildWarning(city));
 
     if (global.NogaRoles.can("nogas:read")) {
       container.appendChild(el("p", "detail__title", "Ноги (" + city.nogas.length + ")"));
@@ -212,24 +342,7 @@
       } else {
         var nogasList = el("ul", "detail-list");
         city.nogas.forEach(function (noga) {
-          var flags = [];
-          if (noga.is_test) flags.push("тестовая");
-          if (!noga.is_active) flags.push("выключена");
-          if (!flags.length) flags.push("рабочая");
-          var line = el("li", "detail-list__item");
-          line.appendChild(el("span", "detail-list__name", noga.name));
-          line.appendChild(
-            el(
-              "span",
-              "detail-list__meta",
-              flags.join(", ") +
-                " · добавил " +
-                (noga.created_by_name || "—") +
-                " · " +
-                global.NogaDict.formatDate(noga.created_at)
-            )
-          );
-          nogasList.appendChild(line);
+          nogasList.appendChild(buildNogaRow(noga));
         });
         container.appendChild(nogasList);
       }
@@ -476,15 +589,32 @@
   }
 
   /** Отмеченные ноги работают в этом городе, снятые — открепляются. */
-  function fillNogaChecklist(cityId) {
+  function fillNogaChecklist(city) {
+    var cityId = city ? city.id : null;
     var field = document.getElementById("cityNogasField");
     var box = document.getElementById("cityNogas");
     if (!field || !box) return;
     field.hidden = !canManageNogas();
     box.innerHTML = "";
 
+    // Чужие ноги в городе двигать нельзя — показываем их отдельной подписью,
+    // чтобы состав в форме сходился с тем, что видно в деталях города.
+    var mineNow = nogas.filter(function (noga) {
+      return cityId !== null && noga.city_id === cityId;
+    }).length;
+    var foreign = city ? Math.max(0, city.nogas_count - mineNow) : 0;
+    if (foreign) {
+      box.appendChild(
+        el(
+          "p",
+          "detail__empty",
+          "Ещё " + foreign + " ног(и) в городе завели другие — их состав менять нельзя"
+        )
+      );
+    }
+
     if (!nogas.length) {
-      box.appendChild(el("p", "detail__empty", "Ног пока нет — добавьте их на экране «Ноги»"));
+      box.appendChild(el("p", "detail__empty", "Ваших ног пока нет — добавьте их на экране «Ноги»"));
       return;
     }
 
@@ -523,6 +653,7 @@
     fillCurrencySelect();
 
     editingId = city ? city.id : null;
+    editingCity = city || null;
     document.getElementById("cityFormTitle").textContent = city
       ? "Изменить город"
       : "Новый город";
@@ -540,7 +671,7 @@
           })
         : []
     );
-    fillNogaChecklist(city ? city.id : null);
+    fillNogaChecklist(city || null);
 
     form.hidden = false;
     form.scrollIntoView({ block: "nearest" });
@@ -550,6 +681,7 @@
     var form = document.getElementById("cityForm");
     if (form) form.hidden = true;
     editingId = null;
+    editingCity = null;
   }
 
   function collectPayload() {
@@ -593,38 +725,66 @@
 
     var form = document.getElementById("cityForm");
     if (!form) return;
-    form.addEventListener("submit", async function (e) {
+    form.addEventListener("submit", function (e) {
       e.preventDefault();
       var payload = collectPayload();
       if (!payload) return;
-      try {
-        if (editingId === null) {
-          await global.NogaApi.createCity(payload);
-        } else {
-          await global.NogaApi.updateCity(editingId, payload);
-        }
-        closeForm();
-        // Состав города мог поменяться — перечитываем ноги, чтобы чек-лист
-        // в следующий раз показал актуальную привязку.
-        await loadNogas();
-        await loadAndRender();
-        await refreshDashboard();
-      } catch (err) {
-        global.NogaTelegram.notify(err.message || "Не удалось сохранить город");
+      if (payload.status === "working" && nogasAfterSave(payload) === 0) {
+        global.NogaTelegram.confirmAction(ORPHAN_QUESTION, function () {
+          saveCity(payload);
+        });
+        return;
       }
+      saveCity(payload);
     });
   }
 
-  async function show() {
+  /** Сколько ног останется в городе после сохранения — с учётом чужих. */
+  function nogasAfterSave(payload) {
+    if (!editingCity) return payload.noga_ids ? payload.noga_ids.length : 0;
+    if (!payload.noga_ids) return editingCity.nogas_count;
+    var mineNow = nogas.filter(function (noga) {
+      return noga.city_id === editingCity.id;
+    }).length;
+    var foreign = Math.max(0, editingCity.nogas_count - mineNow);
+    return foreign + payload.noga_ids.length;
+  }
+
+  async function saveCity(payload) {
+    try {
+      if (editingId === null) {
+        await global.NogaApi.createCity(payload);
+      } else {
+        await global.NogaApi.updateCity(editingId, payload);
+      }
+      closeForm();
+      // Состав города мог поменяться — перечитываем ноги, чтобы чек-лист
+      // в следующий раз показал актуальную привязку.
+      await loadNogas();
+      await loadAndRender();
+      await refreshDashboard();
+    } catch (err) {
+      global.NogaTelegram.notify(err.message || "Не удалось сохранить город");
+    }
+  }
+
+  async function show(options) {
     global.NogaViews.show("viewCities");
+    if (options && options.mode && options.mode !== mode) {
+      mode = options.mode;
+      openDetailId = null;
+    }
     bindForm();
     closeForm();
+    renderModes();
+    global.NogaNogas.release();
     await loadRazgruzy();
     await loadNogas();
     await loadAndRender();
   }
 
   function hide() {
+    global.NogaNogas.release();
     global.NogaViews.show("viewHome");
   }
 

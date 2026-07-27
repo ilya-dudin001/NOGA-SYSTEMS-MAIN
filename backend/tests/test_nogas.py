@@ -144,11 +144,21 @@ def main() -> None:
         print("noga: nogas 403, cities 200 ok")
 
         admin_h = {"Authorization": "Bearer " + token(client, ADMIN_USER)}
-        assert client.get("/api/nogas", headers=admin_h).status_code == 200
+        # Свой участок: в списке только свои ноги, чужие править нельзя
+        assert client.get("/api/nogas", headers=admin_h).json() == []
+        assert client.get("/api/nogas?scope=all", headers=admin_h).status_code == 403
         r = client.post("/api/nogas", headers=admin_h, json={"name": "X", "city_id": tula_id})
-        assert r.status_code == 403, r.text
+        assert r.status_code == 201, r.text
+        admin_noga = r.json()["id"]
+        assert [n["name"] for n in client.get("/api/nogas", headers=admin_h).json()] == ["X"]
         assert client.delete(f"/api/nogas/{ivan_id}", headers=admin_h).status_code == 403
-        print("admin: read ok, write 403 ok")
+        assert (
+            client.patch(f"/api/nogas/{ivan_id}", headers=admin_h, json={"name": "Z"}).status_code
+            == 403
+        )
+        assert client.get(f"/api/nogas/{ivan_id}", headers=admin_h).status_code == 200
+        assert client.delete(f"/api/nogas/{admin_noga}", headers=admin_h).status_code == 204
+        print("admin: own scope, foreign nogas read-only ok")
 
         # Удаление
         assert client.delete(f"/api/nogas/{ivan_id}", headers=owner).status_code == 204

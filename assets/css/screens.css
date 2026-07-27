@@ -391,6 +391,34 @@
   border-color:rgba(34,197,94,.35);
   background:rgba(34,197,94,.08);
 }
+/* Город в работе, но без ноги: статус остаётся, только кричит красным */
+.status-pill--alert{
+  color:var(--red);
+  border-color:rgba(239,68,68,.45);
+  background:rgba(239,68,68,.12);
+  animation:alert-pulse 1.8s var(--ease) infinite;
+}
+@keyframes alert-pulse{
+  0%, 100%{ opacity:1; }
+  50%{ opacity:.55; }
+}
+@media (prefers-reduced-motion: reduce){
+  .status-pill--alert{ animation:none; }
+}
+.alert-banner{
+  margin:8px 0 0;
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid rgba(239,68,68,.45);
+  background:rgba(239,68,68,.1);
+  color:#FCA5A5;
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:.2px;
+}
+.city-card--alert{
+  border-color:rgba(239,68,68,.32);
+}
 .status-pill--paused{
   color:var(--amber);
   border-color:rgba(245,158,11,.35);
@@ -502,6 +530,26 @@
 .detail-list__item--history .detail-list__meta{
   color:#565656;
 }
+.detail-list__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.detail-list__text{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+}
+.detail-list__panel{
+  margin-top:8px;
+  padding:10px;
+  border-radius:12px;
+  border:1px solid var(--hairline);
+  background:rgba(255,255,255,.02);
+}
+.detail-list__panel[hidden]{ display:none !important; }
 
 /* Плашка городов на дашборде */
 .cities-card{

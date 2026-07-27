@@ -302,11 +302,15 @@ def main() -> None:
 
         me_admin = client.get("/api/me", headers=admin).json()
         assert "nogas:read" in me_admin["permissions"]
-        assert "nogas:personal" not in me_admin["permissions"]
+        # Личные данные чужой ноги админу нужны: если нога соседа пропала со
+        # связи, с ней надо связаться напрямую. Править её при этом нельзя.
+        assert "nogas:personal" in me_admin["permissions"]
+        assert "nogas:all" not in me_admin["permissions"]
 
         detail = client.get(f"/api/nogas/{ivan}", headers=admin).json()
-        assert detail["has_personal_access"] is False, detail
-        assert detail["address"] is None and detail["phones"] == [] and detail["files"] == []
+        assert detail["has_personal_access"] is True, detail
+        assert detail["telegrams"] and detail["files"], detail
+        assert detail["can_manage"] is False, detail
         assert detail["name"] == "Иван"
 
         r = client.patch(f"/api/nogas/{ivan}", headers=admin, json={"address": "Куда-то"})
@@ -320,8 +324,8 @@ def main() -> None:
         assert r.status_code == 403, r.text
         files_left = client.get(f"/api/nogas/{ivan}", headers=owner).json()["files"]
         r = client.get(f"/api/nogas/{ivan}/files/{files_left[0]['id']}", headers=admin)
-        assert r.status_code == 403, r.text
-        print("admin: sees noga, no personal data ok")
+        assert r.status_code == 200, r.text
+        print("admin: reads foreign noga with personal data, cannot edit ok")
 
         me_owner = client.get("/api/me", headers=owner).json()
         assert "nogas:personal" in me_owner["permissions"]

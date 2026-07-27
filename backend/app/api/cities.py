@@ -8,15 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import require_permission
 from app.auth.permissions import (
+    CITIES_ALL,
     CITIES_MANAGE,
     CITIES_READ,
+    NOGAS_ALL,
     NOGAS_MANAGE,
     NOGAS_READ,
     RAZGRUZ_READ,
     has_permission,
 )
 from app.db import get_session
-from app.db.models import City, Noga, Razgruz, User
+from app.db.models import City, CityStatus, Noga, Razgruz, User
 from app.schemas import CityCreateIn, CityDetailOut, CityOut, CityUpdateIn
 from app.services import cities as cities_service
 from app.services import nogas as nogas_service
@@ -26,13 +28,45 @@ from app.services.audit import write_audit
 router = APIRouter(prefix="/api/cities", tags=["cities"])
 
 
+def cities_scope_owner(actor: User) -> Optional[int]:
+    """None — актор ведёт все города, иначе только заведённые им."""
+    return None if has_permission(actor.role, CITIES_ALL) else actor.id
+
+
+def nogas_scope_owner(actor: User) -> Optional[int]:
+    return None if has_permission(actor.role, NOGAS_ALL) else actor.id
+
+
+def can_manage_city(actor: User, city: City) -> bool:
+    return has_permission(actor.role, CITIES_ALL) or city.created_by_id == actor.id
+
+
+def require_own_city(actor: User, city: City) -> None:
+    if not can_manage_city(actor, city):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "FORBIDDEN",
+                "message": "Город завёл другой пользователь — его можно только смотреть",
+            },
+        )
+
+
 async def build_detail(
     session: AsyncSession, city: City, actor: User
 ) -> CityDetailOut:
     """Состав ответа режется по правам: cities:read есть даже у роли noga."""
     show_nogas = has_permission(actor.role, NOGAS_READ)
     show_razgruzy = has_permission(actor.role, RAZGRUZ_READ)
-    nogas = await cities_service.load_nogas(session, city.id) if show_nogas else []
+    # Ноги в деталях города показываем все и с автором: в одном городе работают
+    # ноги разных админов, и по счётчику должно сходиться.
+    nogas = (
+        await cities_service.load_nogas(
+            session, city.id, manage_owner_id=nogas_scope_owner(actor)
+        )
+        if show_nogas
+        else []
+    )
     nogas_count = await session.scalar(
         select(func.count()).select_from(Noga).where(Noga.city_id == city.id)
     )
@@ -44,6 +78,7 @@ async def build_detail(
         if show_razgruzy
         else None,
         include_razgruzy=show_razgruzy,
+        can_manage=can_manage_city(actor, city),
     )
 
 
@@ -73,7 +108,13 @@ async def check_razgruz_ids(session: AsyncSession, razgruz_ids: Sequence[int]) -
         )
 
 
-async def check_noga_ids(session: AsyncSession, actor: User, noga_ids: Sequence[int]) -> None:
+async def check_noga_ids(
+    session: AsyncSession,
+    actor: User,
+    noga_ids: Sequence[int],
+    *,
+    city_id: Optional[int] = None,
+) -> None:
     """Ноги существуют, актор вправе их двигать, тёзок в новом составе города нет."""
     if not has_permission(actor.role, NOGAS_MANAGE):
         raise HTTPException(
@@ -96,7 +137,28 @@ async def check_noga_ids(session: AsyncSession, actor: User, noga_ids: Sequence[
             },
         )
 
+    owner_id = nogas_scope_owner(actor)
+    if owner_id is not None:
+        foreign = [n.name for n in found.values() if n.created_by_id != owner_id]
+        if foreign:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "FORBIDDEN",
+                    "message": "Чужие ноги двигать нельзя: " + ", ".join(sorted(foreign)),
+                },
+            )
+
     seen: set[str] = set()
+    if city_id is not None and owner_id is not None:
+        # Чужие ноги из города никуда не денутся — тёзку к ним не прикрепить.
+        staying = await session.execute(
+            select(Noga.name).where(
+                Noga.city_id == city_id, Noga.created_by_id != owner_id
+            )
+        )
+        seen.update(staying.scalars().all())
+
     for noga in found.values():
         if noga.name in seen:
             raise HTTPException(
@@ -124,8 +186,18 @@ def check_amount(amount: Optional[int], currency) -> None:
 async def list_cities(
     session: Annotated[AsyncSession, Depends(get_session)],
     actor: Annotated[User, Depends(require_permission(CITIES_READ))],
+    scope: str = Query(default="own", pattern="^(own|working)$"),
 ) -> list[CityOut]:
-    cities = await cities_service.load_all(session)
+    """own — свой участок (у админа: заведённые им и те, где стоят его ноги),
+    working — общая витрина городов в работе, одинаковая для всех ролей."""
+    if scope == "working":
+        cities = await cities_service.load_all(session, status=CityStatus.working)
+    else:
+        cities = await cities_service.load_all(
+            session,
+            owner_id=cities_scope_owner(actor),
+            with_nogas_of=nogas_scope_owner(actor),
+        )
     nogas = await cities_service.noga_counts(session)
     show_razgruzy = has_permission(actor.role, RAZGRUZ_READ)
     razgruz_counts = await razgruzy_service.city_counts(session) if show_razgruzy else {}
@@ -135,6 +207,7 @@ async def list_cities(
             nogas_count=nogas.get(city.id, 0),
             razgruz_city_counts=razgruz_counts,
             include_razgruzy=show_razgruzy,
+            can_manage=can_manage_city(actor, city),
         )
         for city in cities
     ]
@@ -182,7 +255,9 @@ async def create_city(
     await session.flush()
     await cities_service.replace_razgruzy(session, city.id, razgruz_ids)
     if noga_ids:
-        await nogas_service.attach_to_city(session, city, noga_ids)
+        await nogas_service.attach_to_city(
+            session, city, noga_ids, owner_id=nogas_scope_owner(actor)
+        )
     await write_audit(
         session,
         action="city.created",
@@ -210,6 +285,7 @@ async def update_city(
     actor: Annotated[User, Depends(require_permission(CITIES_MANAGE))],
 ) -> CityDetailOut:
     city = await get_city_or_404(session, city_id)
+    require_own_city(actor, city)
     provided = body.model_fields_set
 
     # Всё, что требует SELECT'ов, считаем до мутаций: autoflush иначе упрётся
@@ -230,7 +306,7 @@ async def update_city(
     noga_ids: Optional[list[int]] = None
     if "noga_ids" in provided:
         noga_ids = list(dict.fromkeys(body.noga_ids or []))
-        await check_noga_ids(session, actor, noga_ids)
+        await check_noga_ids(session, actor, noga_ids, city_id=city.id)
 
     new_name: Optional[str] = None
     if body.name is not None:
@@ -267,7 +343,9 @@ async def update_city(
             changes["razgruz_ids"] = {"from": before, "to": after}
             await cities_service.replace_razgruzy(session, city.id, razgruz_ids)
     if noga_ids is not None:
-        attached, detached = await nogas_service.attach_to_city(session, city, noga_ids)
+        attached, detached = await nogas_service.attach_to_city(
+            session, city, noga_ids, owner_id=nogas_scope_owner(actor)
+        )
         if attached or detached:
             changes["nogas"] = {"attached": attached, "detached": detached}
 
@@ -295,6 +373,7 @@ async def delete_city(
     ),
 ) -> None:
     city = await get_city_or_404(session, city_id)
+    require_own_city(actor, city)
 
     # Ноги не удаляем вместе с городом никогда: сначала спрашиваем пользователя,
     # он присылает detach_nogas=true, и только тогда снимаем привязку.
