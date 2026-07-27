@@ -144,22 +144,36 @@
     "К городу не прикреплена нога — заказ отдавать некому. " +
     "Всё равно оставить статус «В работе»?";
 
-  /** Город в работе без единой ноги — заказ отдать некому, это авария. */
-  function isOrphan(city) {
-    return city.status === "working" && !city.nogas_count;
+  /**
+   * Аварии города в работе: заказ некому отдать (нет ноги) или некуда разгрузить
+   * (нет разгруза). Про разгрузы молчим у ролей, которым их не показывают.
+   */
+  function cityProblems(city) {
+    if (city.status !== "working") return [];
+    var problems = [];
+    if (!city.nogas_count) {
+      problems.push("!! ВНИМАНИЕ !! К городу «" + city.name + "» не прикреплена нога");
+    }
+    if (canSeeRazgruzy() && !(city.razgruzy || []).length) {
+      problems.push("!! ГОРОД БЕЗ РАЗГРУЗА !! К «" + city.name + "» не привязан разгруз");
+    }
+    return problems;
   }
 
-  function buildWarning(city) {
-    return el(
-      "p",
-      "alert-banner",
-      "!! ВНИМАНИЕ !! К городу «" + city.name + "» не прикреплена нога"
-    );
+  function buildWarning(text) {
+    return el("p", "alert-banner", text);
+  }
+
+  function appendWarnings(node, problems) {
+    problems.forEach(function (text) {
+      node.appendChild(buildWarning(text));
+    });
   }
 
   function buildCard(city) {
     var status = global.NogaDict.cityStatus(city.status);
-    var orphan = isOrphan(city);
+    var problems = cityProblems(city);
+    var orphan = problems.length > 0;
     var card = el("article", "user-card city-card" + (orphan ? " city-card--alert" : ""));
 
     var top = el("div", "user-card__top");
@@ -181,7 +195,7 @@
     );
     card.appendChild(top);
 
-    if (orphan) card.appendChild(buildWarning(city));
+    appendWarnings(card, problems);
 
     if (canSeeRazgruzy() && city.razgruzy.length) {
       var chips = el("div", "chips");
@@ -333,7 +347,7 @@
 
   function renderDetail(city, container) {
     container.innerHTML = "";
-    if (isOrphan(city)) container.appendChild(buildWarning(city));
+    appendWarnings(container, cityProblems(city));
 
     if (global.NogaRoles.can("nogas:read")) {
       container.appendChild(el("p", "detail__title", "Ноги (" + city.nogas.length + ")"));
@@ -527,12 +541,29 @@
     }
   }
 
-  function fillRazgruzChecklist(selectedIds) {
+  /** Свои разгрузы подставляются в новый город: их автор ведёт участок целиком. */
+  function ownRazgruzIds() {
+    return razgruzy
+      .filter(function (r) {
+        return r.created_by_me && r.is_active;
+      })
+      .map(function (r) {
+        return r.id;
+      });
+  }
+
+  function fillRazgruzChecklist(selectedIds, prefilled) {
     var field = document.getElementById("cityRazgruzyField");
     var box = document.getElementById("cityRazgruzy");
     if (!field || !box) return;
     field.hidden = !canSeeRazgruzy();
     box.innerHTML = "";
+
+    if (prefilled && selectedIds.length) {
+      box.appendChild(
+        el("p", "detail__empty", "Ваши разгрузы отмечены сразу — лишние можно снять")
+      );
+    }
 
     if (!razgruzy.length) {
       box.appendChild(
@@ -664,13 +695,16 @@
     document.getElementById("cityCurrency").value =
       city && city.min_amount_currency ? city.min_amount_currency : "";
 
-    fillRazgruzChecklist(
-      city && city.razgruzy
-        ? city.razgruzy.map(function (r) {
-            return r.id;
-          })
-        : []
-    );
+    if (city && city.razgruzy) {
+      fillRazgruzChecklist(
+        city.razgruzy.map(function (r) {
+          return r.id;
+        }),
+        false
+      );
+    } else {
+      fillRazgruzChecklist(ownRazgruzIds(), true);
+    }
     fillNogaChecklist(city || null);
 
     form.hidden = false;

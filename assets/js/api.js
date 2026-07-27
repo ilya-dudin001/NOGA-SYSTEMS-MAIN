@@ -165,8 +165,9 @@
     updateRazgruz: function (id, payload) {
       return request("/api/razgruzy/" + id, { method: "PATCH", body: payload });
     },
-    deleteRazgruz: function (id) {
-      return request("/api/razgruzy/" + id, { method: "DELETE" });
+    deleteRazgruz: function (id, options) {
+      var query = options && options.detachCities ? "?detach_cities=true" : "";
+      return request("/api/razgruzy/" + id + query, { method: "DELETE" });
     },
     listNogas: function () {
       return request("/api/nogas");

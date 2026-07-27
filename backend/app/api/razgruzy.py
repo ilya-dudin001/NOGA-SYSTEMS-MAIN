@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import require_permission
-from app.auth.permissions import RAZGRUZ_MANAGE, RAZGRUZ_READ
+from app.auth.permissions import RAZGRUZ_ALL, RAZGRUZ_MANAGE, RAZGRUZ_READ, has_permission
 from app.db import get_session
 from app.db.models import Razgruz, User
 from app.schemas import RazgruzCreateIn, RazgruzOut, RazgruzUpdateIn
@@ -28,6 +28,31 @@ async def get_razgruz_or_404(
     return razgruz
 
 
+def can_manage(actor: User, razgruz: Razgruz) -> bool:
+    return has_permission(actor.role, RAZGRUZ_ALL) or razgruz.created_by_id == actor.id
+
+
+def require_own(actor: User, razgruz: Razgruz) -> None:
+    """Разгрузы видит вся команда, а правит и удаляет только тот, кто их завёл."""
+    if not can_manage(actor, razgruz):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "FORBIDDEN",
+                "message": "Разгруз завёл другой пользователь — его можно только смотреть",
+            },
+        )
+
+
+def out(actor: User, razgruz: Razgruz, *, cities_count: int = 0) -> RazgruzOut:
+    return razgruzy_service.to_out(
+        razgruz,
+        cities_count=cities_count,
+        can_manage=can_manage(actor, razgruz),
+        created_by_me=razgruz.created_by_id == actor.id,
+    )
+
+
 @router.get("", response_model=list[RazgruzOut])
 async def list_razgruzy(
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -36,7 +61,7 @@ async def list_razgruzy(
 ) -> list[RazgruzOut]:
     items = await razgruzy_service.load_all(session, only_active=only_active)
     counts = await razgruzy_service.city_counts(session)
-    return [razgruzy_service.to_out(r, cities_count=counts.get(r.id, 0)) for r in items]
+    return [out(actor, r, cities_count=counts.get(r.id, 0)) for r in items]
 
 
 @router.post("", response_model=RazgruzOut, status_code=status.HTTP_201_CREATED)
@@ -69,7 +94,7 @@ async def create_razgruz(
         payload={"name": razgruz.name, "commission_percent": body.commission_percent},
     )
     await session.commit()
-    return razgruzy_service.to_out(await get_razgruz_or_404(session, razgruz.id))
+    return out(actor, await get_razgruz_or_404(session, razgruz.id))
 
 
 @router.patch("/{razgruz_id}", response_model=RazgruzOut)
@@ -80,6 +105,7 @@ async def update_razgruz(
     actor: Annotated[User, Depends(require_permission(RAZGRUZ_MANAGE))],
 ) -> RazgruzOut:
     razgruz = await get_razgruz_or_404(session, razgruz_id)
+    require_own(actor, razgruz)
 
     # Проверка дубликата до мутаций: иначе autoflush перед SELECT'ом
     # упрётся в UNIQUE и отдаст 500 вместо понятного 409.
@@ -129,7 +155,7 @@ async def update_razgruz(
 
     counts = await razgruzy_service.city_counts(session)
     fresh = await get_razgruz_or_404(session, razgruz_id)
-    return razgruzy_service.to_out(fresh, cities_count=counts.get(fresh.id, 0))
+    return out(actor, fresh, cities_count=counts.get(fresh.id, 0))
 
 
 @router.delete("/{razgruz_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -137,19 +163,33 @@ async def delete_razgruz(
     razgruz_id: int,
     session: Annotated[AsyncSession, Depends(get_session)],
     actor: Annotated[User, Depends(require_permission(RAZGRUZ_MANAGE))],
+    detach_cities: bool = Query(
+        default=False,
+        description="Отвязать разгруз от городов и всё-таки удалить его",
+    ),
 ) -> None:
+    # cities грузим всегда: коллекция объявлена lazy="raise", а ORM снимает
+    # строки city_razgruzy только по загруженной коллекции.
     razgruz = await get_razgruz_or_404(session, razgruz_id, with_cities=True)
+    require_own(actor, razgruz)
 
-    counts = await razgruzy_service.city_counts(session)
-    linked = counts.get(razgruz.id, 0)
-    if linked:
+    linked = await razgruzy_service.city_names(session, razgruz.id)
+    if linked and not detach_cities:
+        lead = (
+            "Разгруз привязан к городу: "
+            if len(linked) == 1
+            else "Разгруз привязан к городам: "
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                "code": "CONFLICT",
+                "code": "RAZGRUZ_HAS_CITIES",
                 "message": (
-                    f"Разгруз привязан к {linked} городам — сначала отвяжите его от них"
+                    lead
+                    + ", ".join(linked)
+                    + ". При удалении разгруза они автоматически от него отвяжутся"
                 ),
+                "cities": linked,
             },
         )
 
@@ -162,7 +202,9 @@ async def delete_razgruz(
         payload={
             "name": razgruz.name,
             "commission_percent": float(razgruz.commission_percent),
+            "detached_cities": linked,
         },
     )
+    # Связи в city_razgruzy снимает сам ORM — города остаются, разгруз уходит.
     await session.delete(razgruz)
     await session.commit()

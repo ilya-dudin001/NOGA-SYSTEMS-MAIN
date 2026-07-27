@@ -183,6 +183,43 @@ def main() -> None:
         )
         print("foreign noga: personal data readable, edits blocked ok")
 
+        # ---------- разгрузы: свои правим, чужие только читаем ----------
+
+        r = client.post(
+            "/api/razgruzy", headers=a, json={"name": "Альфа", "commission_percent": 3}
+        )
+        assert r.status_code == 201, r.text
+        alfa = r.json()["id"]
+
+        mine, foreign = None, None
+        for row in client.get("/api/razgruzy", headers=b).json():
+            if row["id"] == alfa:
+                foreign = row
+        for row in client.get("/api/razgruzy", headers=a).json():
+            if row["id"] == alfa:
+                mine = row
+        assert mine["can_manage"] is True and mine["created_by_me"] is True, mine
+        assert foreign["can_manage"] is False and foreign["created_by_me"] is False, foreign
+
+        r = client.patch(f"/api/razgruzy/{alfa}", headers=b, json={"name": "Х"})
+        assert r.status_code == 403, r.text
+        assert client.delete(f"/api/razgruzy/{alfa}", headers=b).status_code == 403
+        print("foreign razgruz is read-only for another admin ok")
+
+        # Чужой разгруз можно привязать к своему городу — справочник общий
+        r = client.post(
+            "/api/cities", headers=b, json={"name": "Пермь", "razgruz_ids": [alfa]}
+        )
+        assert r.status_code == 201, r.text
+        perm = r.json()["id"]
+
+        r = client.delete(f"/api/razgruzy/{alfa}", headers=a)
+        assert r.status_code == 409 and r.json()["detail"]["cities"] == ["Пермь"], r.text
+        r = client.delete(f"/api/razgruzy/{alfa}?detach_cities=true", headers=a)
+        assert r.status_code == 204, r.text
+        assert client.get(f"/api/cities/{perm}", headers=b).json()["razgruzy"] == []
+        print("razgruz author unlinks foreign city and deletes ok")
+
         # Роль «нога» витрину видит, но состав — нет
         assert client.get("/api/cities?scope=working", headers=b).status_code == 200
         assert client.get(f"/api/cities/{samara}", headers=a).status_code == 200

@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import CityRazgruz, Razgruz
+from app.db.models import City, CityRazgruz, Razgruz
 from app.schemas import RazgruzOut
 
 LOAD_OPTIONS = (selectinload(Razgruz.created_by),)
@@ -36,6 +36,17 @@ async def city_counts(session: AsyncSession) -> dict[int, int]:
     return {razgruz_id: count for razgruz_id, count in result.all()}
 
 
+async def city_names(session: AsyncSession, razgruz_id: int) -> list[str]:
+    """Города, к которым привязан разгруз: нужны для вопроса перед удалением."""
+    result = await session.execute(
+        select(City.name)
+        .join(CityRazgruz, CityRazgruz.city_id == City.id)
+        .where(CityRazgruz.razgruz_id == razgruz_id)
+        .order_by(City.name.asc())
+    )
+    return list(result.scalars().all())
+
+
 async def load(
     session: AsyncSession, razgruz_id: int, *, with_cities: bool = False
 ) -> Optional[Razgruz]:
@@ -63,7 +74,13 @@ async def load_all(
     return result.scalars().all()
 
 
-def to_out(razgruz: Razgruz, *, cities_count: int = 0) -> RazgruzOut:
+def to_out(
+    razgruz: Razgruz,
+    *,
+    cities_count: int = 0,
+    can_manage: bool = False,
+    created_by_me: bool = False,
+) -> RazgruzOut:
     return RazgruzOut(
         id=razgruz.id,
         name=razgruz.name,
@@ -74,4 +91,6 @@ def to_out(razgruz: Razgruz, *, cities_count: int = 0) -> RazgruzOut:
         created_by_name=razgruz.created_by.display_name if razgruz.created_by else None,
         cities_count=cities_count,
         completed_orders=0,
+        can_manage=can_manage,
+        created_by_me=created_by_me,
     )

@@ -24,6 +24,7 @@ NOGAS_READ = "nogas:read"
 NOGAS_PERSONAL = "nogas:personal"
 RAZGRUZ_MANAGE = "razgruz:manage"
 RAZGRUZ_READ = "razgruz:read"
+RAZGRUZ_ALL = "razgruz:all"
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
     UserRole.owner: frozenset(
@@ -46,6 +47,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             NOGAS_PERSONAL,
             RAZGRUZ_MANAGE,
             RAZGRUZ_READ,
+            RAZGRUZ_ALL,
         }
     ),
     UserRole.right_hand: frozenset(
@@ -66,10 +68,11 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             NOGAS_PERSONAL,
             RAZGRUZ_MANAGE,
             RAZGRUZ_READ,
+            RAZGRUZ_ALL,
         }
     ),
-    # Админ ведёт свой участок: заводит и правит только собственные города и ноги
-    # (нет cities:all / nogas:all), но читает справочники и личные данные любых ног.
+    # Админ ведёт свой участок: заводит и правит только собственные города, ноги и
+    # разгрузы (нет *:all), но читает справочники и личные данные любых ног.
     UserRole.admin: frozenset(
         {
             USERS_READ,
@@ -84,6 +87,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             NOGAS_READ,
             NOGAS_PERSONAL,
             RAZGRUZ_READ,
+            RAZGRUZ_MANAGE,
         }
     ),
     UserRole.noga: frozenset(

@@ -30,20 +30,15 @@
   }
 
   /**
-   * Админ и правая рука работают в справочниках, а не в операциях:
-   * «Панель / Ноги / + / Города / Профиль» вместо «Главная / Операции / + / Поиск».
+   * Таббар: «Панель / Ноги / + / Города / Профиль».
+   * Ноги и города видны по правам; без права ячейка остаётся пустой, чтобы «+» не съезжал.
    */
   function applyTabbar() {
-    var role = current && current.role;
-    var workTabs = role === "admin" || role === "right_hand";
-
     var homeLabel = document.getElementById("tabHomeLabel");
-    if (homeLabel) homeLabel.textContent = workTabs ? "Панель" : "Главная";
+    if (homeLabel) homeLabel.textContent = "Панель";
 
-    setTabVisible("operations", !workTabs);
-    setTabVisible("search", !workTabs);
-    setTabVisible("nogas", workTabs && can("nogas:read"));
-    setTabVisible("cities", workTabs && can("cities:read"));
+    setTabVisible("nogas", can("nogas:read"));
+    setTabVisible("cities", can("cities:read"));
   }
 
   /** Подсвечивает вкладку; если её нет в таббаре — подсвечивает «Профиль». */

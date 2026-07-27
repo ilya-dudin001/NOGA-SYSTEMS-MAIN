@@ -220,10 +220,13 @@ def main() -> None:
         assert alfa_row["cities_count"] == 1, listing
         print("razgruz cities_count ok")
 
-        # Разгруз, привязанный к городу, не удаляется
-        assert client.delete(f"/api/razgruzy/{alfa['id']}", headers=owner).status_code == 409
+        # Привязанный разгруз просто так не удалить: сначала предупреждение с городами
+        r = client.delete(f"/api/razgruzy/{alfa['id']}", headers=owner)
+        assert r.status_code == 409, r.text
+        assert r.json()["detail"]["code"] == "RAZGRUZ_HAS_CITIES", r.text
+        assert r.json()["detail"]["cities"] == ["Ташкент"], r.text
         assert client.delete(f"/api/razgruzy/{beta['id']}", headers=owner).status_code == 204
-        print("linked razgruz -> 409, free razgruz deleted ok")
+        print("linked razgruz -> 409 with city names, free razgruz deleted ok")
 
         # --- Удаление города ---
         assert client.delete(f"/api/cities/{tula['id']}", headers=owner).status_code == 409
@@ -233,11 +236,23 @@ def main() -> None:
         assert client.get(f"/api/cities/{tula['id']}", headers=owner).status_code == 404
         print("city delete blocked by nogas, then ok")
 
+        # С флагом разгруз отвязывается от городов и удаляется, города остаются
+        r = client.delete(f"/api/razgruzy/{alfa['id']}?detach_cities=true", headers=owner)
+        assert r.status_code == 204, r.text
+        tashkent_after = client.get(f"/api/cities/{tashkent['id']}", headers=owner)
+        assert tashkent_after.status_code == 200 and tashkent_after.json()["razgruzy"] == []
+        print("detach_cities unlinks razgruz and keeps cities ok")
+
         # Удаление города снимает связи с разгрузами
+        r = client.post("/api/razgruzy", headers=owner, json={"name": "Дельта"})
+        delta_id = r.json()["id"]
+        client.patch(
+            f"/api/cities/{tashkent['id']}", headers=owner, json={"razgruz_ids": [delta_id]}
+        )
         assert client.delete(f"/api/cities/{tashkent['id']}", headers=owner).status_code == 204
         listing = client.get("/api/razgruzy", headers=owner).json()
-        assert [x for x in listing if x["id"] == alfa["id"]][0]["cities_count"] == 0
-        assert client.delete(f"/api/razgruzy/{alfa['id']}", headers=owner).status_code == 204
+        assert [x for x in listing if x["id"] == delta_id][0]["cities_count"] == 0
+        assert client.delete(f"/api/razgruzy/{delta_id}", headers=owner).status_code == 204
         print("city delete unlinks razgruzy ok")
 
         # --- Права ---
@@ -280,13 +295,24 @@ def main() -> None:
         admin_h = {"Authorization": "Bearer " + token(client, ADMIN_USER)}
         assert client.get("/api/cities", headers=admin_h).status_code == 200
         assert client.get("/api/razgruzy", headers=admin_h).status_code == 200
-        # Админ ведёт свой участок: город завести может, разгруз — нет
+        # Админ ведёт свой участок: заводит и город, и разгруз
         r = client.post("/api/cities", headers=admin_h, json={"name": "Админовск"})
         assert r.status_code == 201, r.text
         assert r.json()["can_manage"] is True, r.text
         admin_city = r.json()["id"]
-        assert client.post("/api/razgruzy", headers=admin_h, json={"name": "Y"}).status_code == 403
+        r = client.post("/api/razgruzy", headers=admin_h, json={"name": "Эпсилон"})
+        assert r.status_code == 201, r.text
+        assert r.json()["can_manage"] is True and r.json()["created_by_me"] is True, r.text
+        admin_razgruz = r.json()["id"]
+        # Чужой разгруз админу виден, но не правится
+        mine_for_owner = [
+            x for x in client.get("/api/razgruzy", headers=owner).json()
+            if x["id"] == admin_razgruz
+        ][0]
+        assert mine_for_owner["can_manage"] is True, "owner правит любые разгрузы"
+        assert mine_for_owner["created_by_me"] is False, mine_for_owner
         assert client.delete(f"/api/cities/{admin_city}", headers=admin_h).status_code == 204
+        assert client.delete(f"/api/razgruzy/{admin_razgruz}", headers=admin_h).status_code == 204
         print("permissions ok")
 
         # --- Сводка на дашборде ---

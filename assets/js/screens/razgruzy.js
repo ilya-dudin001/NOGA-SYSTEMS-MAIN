@@ -8,6 +8,11 @@
     return global.NogaRoles.can("razgruz:manage");
   }
 
+  /** Свой разгруз правит автор, чужой — только роли со скоупом на всех. */
+  function canManageRazgruz(razgruz) {
+    return canManage() && razgruz.can_manage !== false;
+  }
+
   function el(tag, className, text) {
     var node = document.createElement(tag);
     if (className) node.className = className;
@@ -82,7 +87,7 @@
       top.appendChild(badges);
       card.appendChild(top);
 
-      if (canManage()) {
+      if (canManageRazgruz(r)) {
         var actions = el("div", "user-card__actions");
         actions.appendChild(
           makeBtn("Изменить", function () {
@@ -114,6 +119,15 @@
     });
   }
 
+  async function refreshDashboard() {
+    try {
+      var summary = await global.NogaApi.dashboardSummary();
+      global.NogaDashboard.applySummary(summary, { animate: false });
+    } catch (e) {
+      /* дашборд обновится при следующем входе */
+    }
+  }
+
   async function patch(razgruz, payload) {
     try {
       await global.NogaApi.updateRazgruz(razgruz.id, payload);
@@ -123,15 +137,50 @@
     }
   }
 
+  function citiesQuestion(razgruz, names) {
+    var shown = names.slice(0, 5).join(", ");
+    if (names.length > 5) shown += " и ещё " + (names.length - 5);
+    var head =
+      names.length === 1
+        ? "Разгруз " + razgruz.name + " привязан к городу: "
+        : "Разгруз " + razgruz.name + " привязан к городам: ";
+    return (
+      head +
+      shown +
+      ". При удалении разгруза они автоматически от него отвяжутся. Удалить разгруз?"
+    );
+  }
+
   function removeRazgruz(razgruz) {
-    global.NogaTelegram.confirmAction("Удалить разгруз " + razgruz.name + "?", async function () {
-      try {
-        await global.NogaApi.deleteRazgruz(razgruz.id);
-        await loadAndRender();
-      } catch (err) {
-        global.NogaTelegram.notify(err.message || "Ошибка удаления");
-      }
+    // У привязанного разгруза имена городов знает только сервер: первый DELETE
+    // ничего не удалит, а вернёт 409 со списком — из него и собираем вопрос.
+    if (razgruz.cities_count) {
+      performDelete(razgruz, false);
+      return;
+    }
+    global.NogaTelegram.confirmAction("Удалить разгруз " + razgruz.name + "?", function () {
+      performDelete(razgruz, false);
     });
+  }
+
+  async function performDelete(razgruz, detachCities) {
+    try {
+      await global.NogaApi.deleteRazgruz(razgruz.id, { detachCities: detachCities });
+      await loadAndRender();
+      await refreshDashboard();
+    } catch (err) {
+      if (err.code === "RAZGRUZ_HAS_CITIES" && !detachCities) {
+        var names = (err.body && err.body.detail && err.body.detail.cities) || [];
+        global.NogaTelegram.confirmAction(
+          names.length ? citiesQuestion(razgruz, names) : err.message + ". Удалить разгруз?",
+          function () {
+            performDelete(razgruz, true);
+          }
+        );
+        return;
+      }
+      global.NogaTelegram.notify(err.message || "Ошибка удаления");
+    }
   }
 
   function openForm(razgruz) {

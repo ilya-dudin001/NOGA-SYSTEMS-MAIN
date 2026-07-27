@@ -504,6 +504,12 @@ body{
 .tab.is-active{ color:var(--gold); font-weight:600; }
 .tab.is-active svg{ filter:drop-shadow(0 0 8px rgba(212,175,55,.45)); }
 .tab:active svg{ transform:scale(.9); }
+/* Скрытая вкладка оставляет ячейку сетки — «+» остаётся по центру */
+.tabbar > .tab[hidden]{
+  display:flex !important;
+  visibility:hidden;
+  pointer-events:none;
+}
 
 /* Центральная золотая кнопка «+» */
 .tab--fab{ overflow:visible; }

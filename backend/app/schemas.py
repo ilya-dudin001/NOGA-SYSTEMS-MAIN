@@ -69,6 +69,10 @@ class RazgruzOut(BaseModel):
     cities_count: int = 0
     # Заказов ещё нет в схеме БД — до появления операций всегда 0.
     completed_orders: int = 0
+    can_manage: bool = False
+    # Свои разгрузы подставляются в форму нового города, поэтому «мой» и «могу
+    # править» — разные флаги: у owner can_manage истинно и для чужих.
+    created_by_me: bool = False
 
 
 class RazgruzCreateIn(BaseModel):
