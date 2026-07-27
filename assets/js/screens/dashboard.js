@@ -4,7 +4,7 @@
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function format(n) {
-    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+    return global.NogaDict.formatNumber(n);
   }
 
   function countUp(el, target, duration) {
@@ -18,9 +18,9 @@
     requestAnimationFrame(frame);
   }
 
-  function setCount(el, value) {
+  function setCount(el, value, animate) {
     var target = Number(value) || 0;
-    if (reduceMotion) {
+    if (reduceMotion || animate === false) {
       el.textContent = format(target);
       return;
     }
@@ -28,8 +28,36 @@
     countUp(el, target, 900);
   }
 
-  function applySummary(summary) {
+  function applyCities(cities) {
+    var card = document.getElementById("citiesCard");
+    if (!card) return;
+    if (!global.NogaRoles.can("cities:read")) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+
+    var map = {
+      citiesTotal: cities.total,
+      citiesWorking: cities.working,
+      citiesPaused: cities.paused,
+      citiesStopped: cities.stopped,
+    };
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = format(map[id] || 0);
+    });
+
+    var foot = document.getElementById("citiesFoot");
+    if (foot) {
+      foot.textContent =
+        "Ног: " + format(cities.nogas || 0) + " · Разгрузов: " + format(cities.razgruzy || 0);
+    }
+  }
+
+  function applySummary(summary, options) {
     summary = summary || {};
+    var animate = !options || options.animate !== false;
     var map = {
       "stat-created": summary.created,
       "stat-in-progress": summary.in_progress,
@@ -42,8 +70,10 @@
     };
     Object.keys(map).forEach(function (id) {
       var el = document.getElementById(id);
-      if (el) setCount(el, map[id] || 0);
+      if (el) setCount(el, map[id] || 0, animate);
     });
+
+    applyCities(summary.cities || {});
 
     var turnover = document.getElementById("turnoverCard");
     if (turnover) {

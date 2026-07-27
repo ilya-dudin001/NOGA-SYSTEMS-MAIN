@@ -16,6 +16,8 @@ CITIES_MANAGE = "cities:manage"
 CITIES_READ = "cities:read"
 NOGAS_MANAGE = "nogas:manage"
 NOGAS_READ = "nogas:read"
+RAZGRUZ_MANAGE = "razgruz:manage"
+RAZGRUZ_READ = "razgruz:read"
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
     UserRole.owner: frozenset(
@@ -33,6 +35,8 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             CITIES_READ,
             NOGAS_MANAGE,
             NOGAS_READ,
+            RAZGRUZ_MANAGE,
+            RAZGRUZ_READ,
         }
     ),
     UserRole.right_hand: frozenset(
@@ -48,6 +52,8 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             CITIES_READ,
             NOGAS_MANAGE,
             NOGAS_READ,
+            RAZGRUZ_MANAGE,
+            RAZGRUZ_READ,
         }
     ),
     UserRole.admin: frozenset(
@@ -60,6 +66,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             OPERATIONS_PAYOUT,
             CITIES_READ,
             NOGAS_READ,
+            RAZGRUZ_READ,
         }
     ),
     UserRole.noga: frozenset(

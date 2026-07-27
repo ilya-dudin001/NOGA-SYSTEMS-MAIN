@@ -33,7 +33,9 @@
     cities.forEach(function (city) {
       var opt = document.createElement("option");
       opt.value = String(city.id);
-      opt.textContent = city.is_active ? city.name : city.name + " (выкл.)";
+      var status = global.NogaDict.cityStatus(city.status);
+      opt.textContent =
+        city.status === "working" ? city.name : city.name + " (" + status.short + ")";
       select.appendChild(opt);
     });
 

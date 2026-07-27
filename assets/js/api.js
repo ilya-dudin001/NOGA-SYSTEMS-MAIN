@@ -110,8 +110,29 @@
     listCities: function () {
       return request("/api/cities");
     },
-    createCity: function (name) {
-      return request("/api/cities", { method: "POST", body: { name: name } });
+    getCity: function (id) {
+      return request("/api/cities/" + id);
+    },
+    createCity: function (payload) {
+      return request("/api/cities", { method: "POST", body: payload });
+    },
+    updateCity: function (id, payload) {
+      return request("/api/cities/" + id, { method: "PATCH", body: payload });
+    },
+    deleteCity: function (id) {
+      return request("/api/cities/" + id, { method: "DELETE" });
+    },
+    listRazgruzy: function () {
+      return request("/api/razgruzy");
+    },
+    createRazgruz: function (payload) {
+      return request("/api/razgruzy", { method: "POST", body: payload });
+    },
+    updateRazgruz: function (id, payload) {
+      return request("/api/razgruzy/" + id, { method: "PATCH", body: payload });
+    },
+    deleteRazgruz: function (id) {
+      return request("/api/razgruzy/" + id, { method: "DELETE" });
     },
     listNogas: function () {
       return request("/api/nogas");

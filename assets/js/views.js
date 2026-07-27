@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  var VIEW_IDS = ["viewHome", "viewUsers", "viewNogas"];
+  var VIEW_IDS = ["viewHome", "viewUsers", "viewNogas", "viewCities", "viewRazgruzy"];
 
   function show(id) {
     VIEW_IDS.forEach(function (viewId) {

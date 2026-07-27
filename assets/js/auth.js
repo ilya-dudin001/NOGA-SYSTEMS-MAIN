@@ -36,6 +36,13 @@
       );
     }
 
+    var razgruzyEntry = document.getElementById("razgruzyEntry");
+    if (razgruzyEntry) {
+      razgruzyEntry.hidden = !(
+        global.NogaRoles.can("razgruz:manage") || global.NogaRoles.can("razgruz:read")
+      );
+    }
+
     global.NogaViews.show("viewHome");
 
     try {
@@ -125,6 +132,12 @@
     });
     bindEntry("nogasEntry", function () {
       global.NogaNogas.show();
+    });
+    bindEntry("citiesEntry", function () {
+      global.NogaCities.show();
+    });
+    bindEntry("razgruzyEntry", function () {
+      global.NogaRazgruzy.show();
     });
   }
 

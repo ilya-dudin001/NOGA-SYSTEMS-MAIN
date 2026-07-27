@@ -1,19 +1,45 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import get_current_user
-from app.auth.permissions import DASHBOARD_GLOBAL, has_permission
-from app.db.models import User
-from app.schemas import DashboardSummaryOut
+from app.auth.permissions import CITIES_READ, DASHBOARD_GLOBAL, has_permission
+from app.db import get_session
+from app.db.models import City, CityStatus, Noga, Razgruz, User
+from app.schemas import CitiesSummaryOut, DashboardSummaryOut
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
+async def cities_summary(session: AsyncSession) -> CitiesSummaryOut:
+    by_status = await session.execute(
+        select(City.status, func.count()).group_by(City.status)
+    )
+    counts = {status: count for status, count in by_status.all()}
+    nogas = await session.scalar(select(func.count()).select_from(Noga)) or 0
+    razgruzy = await session.scalar(select(func.count()).select_from(Razgruz)) or 0
+    return CitiesSummaryOut(
+        total=sum(counts.values()),
+        working=counts.get(CityStatus.working, 0),
+        paused=counts.get(CityStatus.paused, 0),
+        stopped=counts.get(CityStatus.stopped, 0),
+        nogas=nogas,
+        razgruzy=razgruzy,
+    )
+
+
 @router.get("/summary", response_model=DashboardSummaryOut)
 async def dashboard_summary(
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> DashboardSummaryOut:
     """Aggregates for the home screen. Operations table not yet implemented — zeros with role scope."""
     scope = "global" if has_permission(user.role, DASHBOARD_GLOBAL) else "own"
-    return DashboardSummaryOut(scope=scope)
+    cities = (
+        await cities_summary(session)
+        if has_permission(user.role, CITIES_READ)
+        else CitiesSummaryOut()
+    )
+    return DashboardSummaryOut(scope=scope, cities=cities)
