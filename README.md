@@ -6,6 +6,7 @@ Telegram-бот + Mini App для учёта операций. Доступ по
 - Backend: `backend/` (FastAPI + aiogram + SQLite)
 
 Подробный контекст для разработки: [AGENTS.md](AGENTS.md).
+Обновление боевого сервера: [DEPLOY.md](DEPLOY.md).
 
 ## Быстрый старт (локально)
 
@@ -71,17 +72,20 @@ index.html?api=https://your-vps.example.com
 2. `/setmenubutton` или кнопка из `/start` → URL = `WEBAPP_URL`.
 3. Для продакшена Mini App должен быть на **HTTPS**.
 
-## Docker (VPS)
+## Деплой на VPS
+
+Фронтенд уезжает на GitHub Pages сам после пуша в `main`. Backend обновляется на сервере:
 
 ```bash
-cd backend
-cp .env.example .env   # заполнить
-mkdir -p data
-docker compose up -d --build
+ssh user@ваш-сервер
+sudo bash /opt/noga/backend/deploy/deploy.sh
 ```
 
-Или systemd: unit с `WorkingDirectory=/opt/noga/backend` и  
-`ExecStart=/opt/noga/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+Скрипт делает `git pull`, при необходимости переустанавливает зависимости, снимает бэкап
+базы, накатывает миграции и перезапускает `noga-api` с проверкой `/api/health`.
+
+Первичная установка, ручной деплой по шагам, откат, Docker-вариант и диагностика —
+в [DEPLOY.md](DEPLOY.md). Готовый systemd-unit: `backend/deploy/noga-api.service`.
 
 Перед CORS укажите `https://ilya-dudin001.github.io` в `CORS_ORIGINS`.  
 На фронте выставьте `apiBase` на публичный URL API (HTTPS).

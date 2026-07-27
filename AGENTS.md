@@ -236,8 +236,16 @@ python tests/test_cities.py
 В jsdom нужно доопределить `matchMedia` и `Element.prototype.scrollIntoView` — в браузере
 и Telegram WebView они есть.
 
-Прод: VPS + Docker (`backend/docker-compose.yml`, `Dockerfile`, том `./data`) или systemd;
-фронт — GitHub Pages. `CORS_ORIGINS` должен содержать origin фронта.
+Прод: VPS + Docker (`backend/docker-compose.yml`, `Dockerfile`, том `./data`) или systemd
+(`backend/deploy/noga-api.service`, репозиторий в `/opt/noga`, сервис `noga-api` от юзера
+`noga`); фронт — GitHub Pages, едет сам по пушу в `main`. `CORS_ORIGINS` должен содержать
+origin фронта.
+
+Выкатка бэкенда — `sudo bash /opt/noga/backend/deploy/deploy.sh` (pull → зависимости →
+бэкап базы → `alembic upgrade head` → рестарт → `/api/health`, с автоподъёмом сервиса при
+ошибке). Подробности, разовый `alembic stamp` для баз из `create_all` и откат — в
+[DEPLOY.md](DEPLOY.md). Скрипты и unit-файлы держим с LF (`.gitattributes`), иначе bash на
+сервере спотыкается о `\r`.
 
 ## Экраны Mini App
 
