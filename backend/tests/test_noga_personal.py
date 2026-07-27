@@ -144,7 +144,41 @@ def main() -> None:
         )
         assert r.status_code == 201, r.text
         assert [n["name"] for n in r.json()["nogas"]] == ["Максим"], r.text
+        kazan = r.json()["id"]
         print("noga_ids on city create ok")
+
+        # ---------- история городов ----------
+
+        # Максим-второй: заведён без города, прикреплён к Самаре, потом к Казани
+        r = client.get(f"/api/nogas/{maxim_two}", headers=owner).json()
+        assert r["initial_city_name"] == "Самара", r
+        assert r["last_city_name"] == "Казань", r
+        print("city history: first attach remembered, last overwritten ok")
+
+        # Переименование города подтягивает снимки
+        r = client.patch(f"/api/cities/{kazan}", headers=owner, json={"name": "Казань-2"})
+        assert r.status_code == 200, r.text
+        r = client.get(f"/api/nogas/{maxim_two}", headers=owner).json()
+        assert r["last_city_name"] == "Казань-2", r
+        print("city rename updates history ok")
+
+        # Удаление города с ногами: сначала вопрос, потом принудительное удаление
+        r = client.delete(f"/api/cities/{kazan}", headers=owner)
+        assert r.status_code == 409, r.text
+        detail = r.json()["detail"]
+        assert detail["code"] == "CITY_HAS_NOGAS", detail
+        assert detail["nogas"] == ["Максим"], detail
+        assert "Максим" in detail["message"], detail
+
+        r = client.delete(f"/api/cities/{kazan}?detach_nogas=true", headers=owner)
+        assert r.status_code == 204, r.text
+        assert client.get(f"/api/cities/{kazan}", headers=owner).status_code == 404
+
+        r = client.get(f"/api/nogas/{maxim_two}", headers=owner).json()
+        assert r["city_id"] is None and r["city_name"] is None, r
+        assert r["initial_city_name"] == "Самара", r
+        assert r["last_city_name"] == "Казань-2", "история должна пережить удаление города"
+        print("delete city with detach_nogas keeps nogas and their history ok")
 
         # ---------- личные данные ----------
 

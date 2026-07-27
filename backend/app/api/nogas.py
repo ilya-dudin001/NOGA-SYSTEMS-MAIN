@@ -97,6 +97,8 @@ async def create_noga(
     noga = Noga(
         name=name,
         city_id=city.id if city else None,
+        initial_city_name=city.name if city else None,
+        last_city_name=city.name if city else None,
         is_test=body.is_test,
         is_active=True,
         phones=[],
@@ -174,6 +176,11 @@ async def update_noga(
             "to": new_city.name if new_city else None,
         }
         noga.city_id = target_city_id
+        if new_city is not None:
+            nogas_service.remember_city(noga, new_city.name)
+        elif noga.city is not None:
+            # Открепление: если снимков ещё нет, хотя бы запомним, откуда сняли.
+            nogas_service.remember_city(noga, noga.city.name)
     if target_name != noga.name:
         changes["name"] = {"from": noga.name, "to": target_name}
         noga.name = target_name

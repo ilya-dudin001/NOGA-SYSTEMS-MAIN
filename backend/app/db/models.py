@@ -187,6 +187,9 @@ class Noga(Base):
     )
     is_test: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Снимки названий городов, а не FK: город могут удалить, а история должна остаться.
+    initial_city_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    last_city_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     # Списки строк: телефонов и телеграм-контактов у ноги может быть несколько.
     phones: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)

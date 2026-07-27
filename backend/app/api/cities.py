@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Optional, Sequence
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -182,7 +182,7 @@ async def create_city(
     await session.flush()
     await cities_service.replace_razgruzy(session, city.id, razgruz_ids)
     if noga_ids:
-        await nogas_service.attach_to_city(session, city.id, noga_ids)
+        await nogas_service.attach_to_city(session, city, noga_ids)
     await write_audit(
         session,
         action="city.created",
@@ -246,6 +246,7 @@ async def update_city(
     changes: dict = {}
     if new_name is not None and new_name != city.name:
         changes["name"] = {"from": city.name, "to": new_name}
+        await nogas_service.rename_city_snapshots(session, city.name, new_name)
         city.name = new_name
     if body.status is not None and body.status != city.status:
         changes["status"] = {"from": city.status.value, "to": body.status.value}
@@ -266,7 +267,7 @@ async def update_city(
             changes["razgruz_ids"] = {"from": before, "to": after}
             await cities_service.replace_razgruzy(session, city.id, razgruz_ids)
     if noga_ids is not None:
-        attached, detached = await nogas_service.attach_to_city(session, city.id, noga_ids)
+        attached, detached = await nogas_service.attach_to_city(session, city, noga_ids)
         if attached or detached:
             changes["nogas"] = {"attached": attached, "detached": detached}
 
@@ -288,23 +289,36 @@ async def delete_city(
     city_id: int,
     session: Annotated[AsyncSession, Depends(get_session)],
     actor: Annotated[User, Depends(require_permission(CITIES_MANAGE))],
+    detach_nogas: bool = Query(
+        default=False,
+        description="Снять прикреплённые ноги с города и всё-таки удалить его",
+    ),
 ) -> None:
     city = await get_city_or_404(session, city_id)
 
-    nogas_left = await session.scalar(
-        select(func.count()).select_from(Noga).where(Noga.city_id == city.id)
-    )
-    if nogas_left:
+    # Ноги не удаляем вместе с городом никогда: сначала спрашиваем пользователя,
+    # он присылает detach_nogas=true, и только тогда снимаем привязку.
+    attached = await nogas_service.names_in_city(session, city.id)
+    if attached and not detach_nogas:
+        lead = (
+            "К городу прикреплена нога: "
+            if len(attached) == 1
+            else "К городу прикреплены ноги: "
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                "code": "CONFLICT",
+                "code": "CITY_HAS_NOGAS",
                 "message": (
-                    f"В городе ещё {nogas_left} ног(и) — открепите их в форме города "
-                    "или удалите перед удалением города"
+                    lead
+                    + ", ".join(attached)
+                    + ". При удалении города они автоматически с него снимутся"
                 ),
+                "nogas": attached,
             },
         )
+
+    detached = await nogas_service.detach_from_city(session, city) if attached else []
 
     await write_audit(
         session,
@@ -316,6 +330,7 @@ async def delete_city(
             "name": city.name,
             "status": city.status.value,
             "razgruz_ids": sorted(r.id for r in city.razgruzy),
+            "detached_nogas": detached,
         },
     )
     # Связи с разгрузами снимает сам ORM: коллекция загружена через selectinload,

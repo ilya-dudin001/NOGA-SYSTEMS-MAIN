@@ -5,12 +5,12 @@ import uuid
 from pathlib import Path
 from typing import Optional, Sequence
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
-from app.db.models import Noga, NogaFile, NogaFileKind
+from app.db.models import City, Noga, NogaFile, NogaFileKind
 from app.schemas import NogaDetailOut, NogaFileOut, NogaOut
 
 LOAD_OPTIONS = (
@@ -123,27 +123,69 @@ async def find_clash(
     return result.scalars().first()
 
 
+def remember_city(noga: Noga, city_name: str) -> None:
+    """Запоминает город прикрепления: первый — навсегда, последний — перезаписывается."""
+    if not noga.initial_city_name:
+        noga.initial_city_name = city_name
+    noga.last_city_name = city_name
+
+
 async def attach_to_city(
-    session: AsyncSession, city_id: int, noga_ids: Sequence[int]
+    session: AsyncSession, city: City, noga_ids: Sequence[int]
 ) -> tuple[list[int], list[int]]:
     """Приводит состав города к списку: возвращает (прикреплённые, откреплённые)."""
     wanted = set(noga_ids)
-    current = set(
-        (await session.execute(select(Noga.id).where(Noga.city_id == city_id))).scalars().all()
+    conditions = [Noga.city_id == city.id]
+    if wanted:
+        conditions.append(Noga.id.in_(wanted))
+    result = await session.execute(select(Noga).where(or_(*conditions)))
+
+    attached: list[int] = []
+    detached: list[int] = []
+    for noga in result.scalars().all():
+        in_city = noga.city_id == city.id
+        if noga.id in wanted and not in_city:
+            noga.city_id = city.id
+            remember_city(noga, city.name)
+            attached.append(noga.id)
+        elif in_city and noga.id not in wanted:
+            noga.city_id = None
+            detached.append(noga.id)
+    return sorted(attached), sorted(detached)
+
+
+async def names_in_city(session: AsyncSession, city_id: int) -> list[str]:
+    result = await session.execute(
+        select(Noga.name).where(Noga.city_id == city_id).order_by(Noga.name.asc())
     )
+    return list(result.scalars().all())
 
-    to_attach = sorted(wanted - current)
-    to_detach = sorted(current - wanted)
 
-    if to_attach:
-        await session.execute(
-            update(Noga).where(Noga.id.in_(to_attach)).values(city_id=city_id)
-        )
-    if to_detach:
-        await session.execute(
-            update(Noga).where(Noga.id.in_(to_detach)).values(city_id=None)
-        )
-    return to_attach, to_detach
+async def detach_from_city(session: AsyncSession, city: City) -> list[str]:
+    """Снимает все ноги с города перед его удалением. Возвращает имена ног."""
+    result = await session.execute(
+        select(Noga).where(Noga.city_id == city.id).order_by(Noga.name.asc())
+    )
+    names: list[str] = []
+    for noga in result.scalars().all():
+        # Ноги, заведённые до появления снимков, получают их здесь: иначе
+        # после удаления города от истории не останется ничего.
+        remember_city(noga, city.name)
+        noga.city_id = None
+        names.append(noga.name)
+    return names
+
+
+async def rename_city_snapshots(session: AsyncSession, old_name: str, new_name: str) -> None:
+    """Город переименовали — подтягиваем снимки в истории ног."""
+    await session.execute(
+        update(Noga)
+        .where(Noga.initial_city_name == old_name)
+        .values(initial_city_name=new_name)
+    )
+    await session.execute(
+        update(Noga).where(Noga.last_city_name == old_name).values(last_city_name=new_name)
+    )
 
 
 def to_out(noga: Noga) -> NogaOut:
@@ -152,6 +194,8 @@ def to_out(noga: Noga) -> NogaOut:
         name=noga.name,
         city_id=noga.city_id,
         city_name=noga.city.name if noga.city else None,
+        initial_city_name=noga.initial_city_name,
+        last_city_name=noga.last_city_name,
         is_test=noga.is_test,
         is_active=noga.is_active,
         created_at=noga.created_at,

@@ -119,7 +119,8 @@ if 'nogas' in t:
 | нет таблицы `cities` | `sudo .venv/bin/python -m alembic stamp 001_initial` |
 | в `cities` колонка `is_active` | `sudo .venv/bin/python -m alembic stamp 002_cities_nogas` |
 | в `cities` колонка `status`, в `nogas` нет `address` | `sudo .venv/bin/python -m alembic stamp 003_city_status_razgruzy` |
-| в `nogas` есть `address` и таблица `noga_files` | `sudo .venv/bin/python -m alembic stamp 004_noga_personal` |
+| в `nogas` есть `address`, но нет `initial_city_name` | `sudo .venv/bin/python -m alembic stamp 004_noga_personal` |
+| в `nogas` есть `initial_city_name` | `sudo .venv/bin/python -m alembic stamp 005_noga_city_history` |
 
 Ревизию указываем точную, а не `head`: `stamp head` отметит базу как полностью
 свежую и все недостающие миграции будут пропущены.
@@ -167,6 +168,10 @@ print('файлов ног:', c.execute('SELECT count(*) FROM noga_files').fetch
 sudo .venv/bin/python -m alembic stamp 004_noga_personal
 sudo systemctl restart noga-api
 ```
+
+С `005_noga_city_history` такой ловушки нет: новые колонки в существующую таблицу
+`create_all` не добавляет. Но если сервис стартовал на новом коде без миграции, экран ног
+отвалится с `no such column: nogas.initial_city_name` — лечится обычным `alembic upgrade head`.
 
 ## Если сломалось: откат
 

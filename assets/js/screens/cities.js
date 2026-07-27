@@ -26,13 +26,37 @@
     return node;
   }
 
-  function makeBtn(label, onClick, extraClass) {
+  /* Иконки в стиле остальных: контурные, 24×24, цвет наследуется от кнопки. */
+  var ICONS = {
+    detail: '<path d="m6 9 6 6 6-6"/>',
+    edit: '<path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    remove:
+      '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/>' +
+      '<path d="M10 11v6M14 11v6"/>',
+  };
+
+  function makeIconBtn(icon, label, onClick, extraClass) {
     var b = document.createElement("button");
     b.type = "button";
-    b.className = "btn-ghost" + (extraClass ? " " + extraClass : "");
-    b.textContent = label;
+    b.className = "btn-icon" + (extraClass ? " " + extraClass : "");
+    b.title = label;
+    b.setAttribute("aria-label", label);
+    b.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      ICONS[icon] +
+      "</svg>";
     b.addEventListener("click", onClick);
     return b;
+  }
+
+  function setDetailBtnState(button, open) {
+    if (!button) return;
+    var label = open ? "Свернуть" : "Подробнее";
+    button.classList.toggle("is-open", open);
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-expanded", open ? "true" : "false");
   }
 
   /* ---------- список ---------- */
@@ -98,23 +122,24 @@
     var detailWrap = el("div", "city-card__detail");
     detailWrap.hidden = true;
 
-    var detailBtn = makeBtn("Подробнее", function () {
+    var detailBtn = makeIconBtn("detail", "Подробнее", function () {
       toggleDetail(city, detailWrap, detailBtn);
     });
     actions.appendChild(detailBtn);
     if (canManage()) {
       actions.appendChild(
-        makeBtn("Изменить", function () {
+        makeIconBtn("edit", "Изменить", function () {
           openForm(city);
         })
       );
       actions.appendChild(
-        makeBtn(
+        makeIconBtn(
+          "remove",
           "Удалить",
           function () {
             removeCity(city);
           },
-          "btn-ghost--danger"
+          "btn-icon--danger"
         )
       );
     }
@@ -156,7 +181,7 @@
       container.hidden = true;
       container.innerHTML = "";
       openDetailId = null;
-      if (button) button.textContent = "Подробнее";
+      setDetailBtnState(button, false);
       return;
     }
 
@@ -164,7 +189,7 @@
     container.hidden = false;
     container.innerHTML = "";
     container.appendChild(el("p", "empty-hint", "Загрузка…"));
-    if (button) button.textContent = "Свернуть";
+    setDetailBtnState(button, true);
 
     try {
       var detail = await global.NogaApi.getCity(city.id);
@@ -279,17 +304,65 @@
     }
   }
 
-  function removeCity(city) {
-    global.NogaTelegram.confirmAction("Удалить город " + city.name + "?", async function () {
-      try {
-        await global.NogaApi.deleteCity(city.id);
-        if (openDetailId === city.id) openDetailId = null;
-        await loadAndRender();
-        await refreshDashboard();
-      } catch (err) {
-        global.NogaTelegram.notify(err.message || "Ошибка удаления");
-      }
+  /** Имена ног города: нужны, чтобы спросить про открепление до удаления. */
+  async function attachedNogaNames(city) {
+    if (!city.nogas_count) return [];
+    try {
+      var detail = await global.NogaApi.getCity(city.id);
+      return (detail.nogas || []).map(function (noga) {
+        return noga.name;
+      });
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function nogasQuestion(city, names) {
+    var shown = names.slice(0, 5).join(", ");
+    if (names.length > 5) shown += " и ещё " + (names.length - 5);
+    var head =
+      names.length === 1
+        ? "К городу " + city.name + " прикреплена нога: "
+        : "К городу " + city.name + " прикреплены ноги: ";
+    return (
+      head +
+      shown +
+      ". В случае удаления города ноги автоматически с него снимутся. Удалить город?"
+    );
+  }
+
+  async function removeCity(city) {
+    var names = await attachedNogaNames(city);
+    var question = names.length
+      ? nogasQuestion(city, names)
+      : "Удалить город " + city.name + "?";
+    global.NogaTelegram.confirmAction(question, function () {
+      performDelete(city, names.length > 0);
     });
+  }
+
+  async function performDelete(city, detachNogas) {
+    try {
+      await global.NogaApi.deleteCity(city.id, { detachNogas: detachNogas });
+      if (openDetailId === city.id) openDetailId = null;
+      // Ноги города стали неприкреплёнными — чек-лист в форме должен это знать.
+      await loadNogas();
+      await loadAndRender();
+      await refreshDashboard();
+    } catch (err) {
+      // Ногу могли прикрепить, пока мы спрашивали — тогда сервер просит подтверждение.
+      if (err.code === "CITY_HAS_NOGAS" && !detachNogas) {
+        var names = (err.body && err.body.detail && err.body.detail.nogas) || [];
+        global.NogaTelegram.confirmAction(
+          names.length ? nogasQuestion(city, names) : err.message + ". Удалить город?",
+          function () {
+            performDelete(city, true);
+          }
+        );
+        return;
+      }
+      global.NogaTelegram.notify(err.message || "Ошибка удаления");
+    }
   }
 
   async function refreshDashboard() {

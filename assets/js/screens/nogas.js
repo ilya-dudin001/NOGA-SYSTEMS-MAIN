@@ -96,6 +96,17 @@
     var head = el("div");
     head.appendChild(el("p", "user-card__name", noga.name));
     head.appendChild(el("p", "user-card__meta", noga.city_name || "Без города"));
+    if (!noga.city_id) {
+      var history = cityHistory(noga);
+      if (history.length) {
+        var hint = history
+          .map(function (item) {
+            return item.label.toLowerCase() + ": " + item.value;
+          })
+          .join(" · ");
+        head.appendChild(el("p", "user-card__meta user-card__meta--history", hint));
+      }
+    }
     top.appendChild(head);
 
     var badges = el("div", "user-card__badges");
@@ -233,17 +244,38 @@
     }
   }
 
+  /** История привязки: показываем только то, что не совпадает с текущим городом. */
+  function cityHistory(noga) {
+    var initial = noga.initial_city_name || null;
+    var last = noga.last_city_name || null;
+    if (noga.city_name) {
+      if (initial === noga.city_name) initial = null;
+      if (last === noga.city_name) last = null;
+    }
+    if (initial && last && initial !== last) {
+      return [
+        { label: "Город при добавлении", value: initial },
+        { label: "Последний город", value: last },
+      ];
+    }
+    var single = initial || last;
+    return single ? [{ label: "Была прикреплена к городу", value: single }] : [];
+  }
+
   function renderMainTab(noga, host) {
     var list = el("ul", "detail-list");
 
-    function row(name, value) {
-      var line = el("li", "detail-list__item");
+    function row(name, value, history) {
+      var line = el("li", "detail-list__item" + (history ? " detail-list__item--history" : ""));
       line.appendChild(el("span", "detail-list__name", name));
       line.appendChild(el("span", "detail-list__meta", value));
       list.appendChild(line);
     }
 
     row("Город", noga.city_name || "не прикреплена");
+    cityHistory(noga).forEach(function (item) {
+      row(item.label, item.value, true);
+    });
     row("Тип", noga.is_test ? "тестовая" : "рабочая");
     row("Статус", noga.is_active ? "включена" : "выключена");
     row("Добавил", noga.created_by_name || "—");

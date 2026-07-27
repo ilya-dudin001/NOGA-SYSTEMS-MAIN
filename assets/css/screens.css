@@ -154,6 +154,12 @@
   font-size:11.5px;
   color:var(--text-dim);
 }
+/* История городов у неприкреплённой ноги — справочная, поэтому глуше остального */
+.user-card__meta--history{
+  margin-top:2px;
+  font-size:10.5px;
+  color:#565656;
+}
 .user-card__badge{
   flex:0 0 auto;
   padding:3px 8px;
@@ -231,6 +237,41 @@
   color:var(--gold);
 }
 .btn-ghost--danger:hover{
+  border-color:rgba(239,68,68,.4);
+  color:var(--red);
+}
+
+/* Кнопка-иконка: то же оформление, что у .btn-ghost, но без подписи */
+.btn-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:38px;
+  height:38px;
+  padding:0;
+  border-radius:11px;
+  border:1px solid var(--hairline);
+  background:linear-gradient(180deg, #171717 0%, #101010 100%);
+  color:var(--text-muted);
+  cursor:pointer;
+  transition:border-color .2s var(--ease), color .2s var(--ease);
+}
+.btn-icon svg{
+  width:18px;
+  height:18px;
+  transition:transform .2s var(--ease);
+}
+.btn-icon:hover{
+  border-color:var(--gold-line);
+  color:var(--gold);
+}
+.btn-icon.is-open{
+  border-color:var(--gold-line);
+  color:var(--gold);
+  background:var(--gold-soft);
+}
+.btn-icon.is-open svg{ transform:rotate(180deg); }
+.btn-icon--danger:hover{
   border-color:rgba(239,68,68,.4);
   color:var(--red);
 }
@@ -456,6 +497,10 @@
 .detail-list__meta{
   font-size:11px;
   color:var(--text-dim);
+}
+.detail-list__item--history .detail-list__name,
+.detail-list__item--history .detail-list__meta{
+  color:#565656;
 }
 
 /* Плашка городов на дашборде */

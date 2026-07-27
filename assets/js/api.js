@@ -150,8 +150,10 @@
     updateCity: function (id, payload) {
       return request("/api/cities/" + id, { method: "PATCH", body: payload });
     },
-    deleteCity: function (id) {
-      return request("/api/cities/" + id, { method: "DELETE" });
+    /** detachNogas=true снимает прикреплённые ноги и всё-таки удаляет город. */
+    deleteCity: function (id, options) {
+      var query = options && options.detachNogas ? "?detach_nogas=true" : "";
+      return request("/api/cities/" + id + query, { method: "DELETE" });
     },
     listRazgruzy: function () {
       return request("/api/razgruzy");

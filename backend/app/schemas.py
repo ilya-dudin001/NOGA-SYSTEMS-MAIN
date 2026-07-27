@@ -135,6 +135,9 @@ class NogaOut(BaseModel):
     name: str
     city_id: Optional[int] = None
     city_name: Optional[str] = None
+    # История привязки: остаётся, даже если город удалили.
+    initial_city_name: Optional[str] = None
+    last_city_name: Optional[str] = None
     is_test: bool
     is_active: bool
     created_at: datetime

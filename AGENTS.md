@@ -87,6 +87,7 @@ Dev-вход `POST /api/auth/dev` работает только при `DEV_AUTH
 users         telegram_id UNIQUE, display_name, role, status, created_by_id, last_seen_at
 cities        name UNIQUE, status, min_amount, min_amount_currency, created_by_id
 nogas         name, city_id → cities (NULLABLE), is_test, is_active,
+              initial_city_name, last_city_name,
               address, phones JSON, telegrams JSON            UNIQUE (name, city_id)
 noga_files    noga_id → nogas ON DELETE CASCADE, kind, stored_path, original_name,
               content_type, size_bytes, uploaded_by_id
@@ -109,6 +110,11 @@ Enum'ы (`user_role`, `user_status`, `city_status`, `currency`, `noga_file_kind`
   и открепление идут через `noga_ids` в форме города либо `city_id` в PATCH ноги. Из-за
   UNIQUE (`name`, `city_id`) и того, что SQLite считает NULL'ы различными, тёзок среди
   неприкреплённых ног ловим отдельным запросом (`nogas_service.find_clash`).
+- `initial_city_name` / `last_city_name` — история привязки **строками**, а не FK: город могут
+  удалить, а история должна остаться. Первый город запоминается один раз навсегда, последний
+  перезаписывается при каждом прикреплении (`nogas_service.remember_city`). При переименовании
+  города снимки подтягиваются (`rename_city_snapshots`), при откреплении — не трогаются,
+  поэтому у прикреплённой ноги `last_city_name` всегда равен текущему городу.
 - `noga_file_kind`: `passport` (фото паспорта), `passport_selfie` (паспорт вместе с лицом),
   `face_video` (короткое видео). Файлов на каждый вид может быть несколько.
 - `phones` и `telegrams` — JSON-массивы строк: их всегда **переприсваивают** новым списком,
@@ -130,7 +136,8 @@ backend/app/
   api/               auth, me, users, cities, nogas, razgruzy, dashboard — все под /api
   services/          users, cities, nogas (привязка к городу + файлы на диске), razgruzy, audit
   bot/               create_bot/create_dispatcher/run_polling, middlewares, handlers/{start,users_cmd}
-alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 004_noga_personal
+alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 004_noga_personal,
+                     005_noga_city_history
 ```
 
 Файлы ног лежат не в БД, а на диске: `UPLOADS_DIR` (по умолчанию `./data/uploads`),
@@ -179,8 +186,13 @@ alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 00
 `GET /api/cities` отдаёт список без ног, `GET /api/cities/{id}` — детали с `nogas`
 (включая `created_by_name`) и `recent_orders`. `POST/PATCH /api/cities` принимают
 `razgruz_ids` и `noga_ids` — полный новый состав, а не дельту: ноги из списка получают
-`city_id` города, снятые становятся неприкреплёнными. Удаление города блокируется
-(409), пока в нём есть ноги; удаление разгруза — пока он привязан хоть к одному городу.
+`city_id` города, снятые становятся неприкреплёнными. Удаление разгруза блокируется (409),
+пока он привязан хоть к одному городу.
+
+`DELETE /api/cities/{id}` с ногами внутри отдаёт 409 с `code: "CITY_HAS_NOGAS"` и списком
+имён в `detail.nogas` — из него фронт собирает вопрос пользователю. Повторный запрос с
+`?detach_nogas=true` снимает ноги с города (они остаются в системе, город уходит в историю)
+и только потом удаляет город. Сами ноги не удаляются никогда.
 
 Сброс порога запуска делается явными `null` в обоих полях сразу: PATCH различает
 «не передано» и «передано null» через `model_fields_set`.
@@ -310,7 +322,13 @@ origin фронта.
 `refreshDashboard()` перезапрашивает сводку без анимации счётчиков.
 
 На карточке города: порог запуска, число ног, чипы разгрузов с комиссиями, переключатель
-трёх статусов, кнопки «Подробнее» / «Изменить» / «Удалить». «Подробнее» подгружает
+трёх статусов и три кнопки-иконки (`.btn-icon`, инлайн-SVG в `ICONS` внутри `cities.js`):
+шеврон «Подробнее» (поворачивается на 180° в состоянии `is-open`), карандаш «Изменить»,
+корзина «Удалить» (`btn-icon--danger`). Подписи только в `title` и `aria-label`.
+Удаление города с ногами сначала спрашивает подтверждение с именами ног (список берётся
+из `GET /api/cities/{id}`, больше пяти имён сворачиваются в «и ещё N»), и лишь потом
+уходит `DELETE ?detach_nogas=true`; ответ 409 `CITY_HAS_NOGAS` — запасная ветка на случай,
+когда ногу прикрепили, пока пользователь думал. «Подробнее» подгружает
 `GET /api/cities/{id}`: ноги с автором и датой, разгрузы с комиссией, автором и счётчиком
 успешных заказов, блок последних заказов (пока заглушка). В форме города два чек-листа:
 разгрузы и ноги; у ног в подписи видно, где нога сейчас («без города» / «сейчас в Самаре»).
@@ -320,7 +338,11 @@ origin фронта.
 и на редактирование (`openForm(noga)`), город выбирается селектом, где есть «Без города»
 и «+ Новый город». «Подробнее» открывает `GET /api/nogas/{id}` с двумя вкладками:
 
-- **Основное** — город, тип, статус, автор, дата.
+- **Основное** — город, тип, статус, автор, дата. Ниже города — серые строки истории
+  (`detail-list__item--history`): город при добавлении и последний. Совпадающие значения
+  сворачиваются в одну строку, а равные текущему городу не показываются вовсе
+  (`cityHistory` в `nogas.js`). У неприкреплённой ноги та же история дублируется
+  подписью на карточке списка.
 - **Личные данные** (только с `nogas:personal`) — адрес, клонируемые поля телефонов и
   Telegram (`buildRepeatable`), три блока файлов из `NogaDict.NOGA_FILE_KINDS` с загрузкой,
   предпросмотром, скачиванием и удалением.
