@@ -22,13 +22,21 @@
     if (tabbar) tabbar.hidden = false;
     if (splash) splash.classList.add("is-hidden");
 
-    // Show users entry on profile tab for managers
-    var usersTabHint = document.getElementById("usersEntry");
-    if (usersTabHint) {
-      usersTabHint.hidden = !(
+    var usersEntry = document.getElementById("usersEntry");
+    if (usersEntry) {
+      usersEntry.hidden = !(
         global.NogaRoles.can("users:manage") || global.NogaRoles.can("users:read")
       );
     }
+
+    var nogasEntry = document.getElementById("nogasEntry");
+    if (nogasEntry) {
+      nogasEntry.hidden = !(
+        global.NogaRoles.can("nogas:manage") || global.NogaRoles.can("nogas:read")
+      );
+    }
+
+    global.NogaViews.show("viewHome");
 
     try {
       var summary = await global.NogaApi.dashboardSummary();
@@ -101,7 +109,7 @@
       tab.addEventListener("click", function () {
         var name = tab.getAttribute("data-tab");
         if (name === "home") {
-          global.NogaUsers.hide();
+          global.NogaViews.show("viewHome");
           return;
         }
         if (name === "profile") {
@@ -112,14 +120,30 @@
       });
     });
 
-    var entry = document.getElementById("usersEntry");
-    if (entry) {
-      entry.addEventListener("click", function () {
-        global.NogaUsers.show();
-        var profileTab = document.querySelector('.tab[data-tab="profile"]');
-        if (profileTab) profileTab.click();
-      });
-    }
+    bindEntry("usersEntry", function () {
+      global.NogaUsers.show();
+    });
+    bindEntry("nogasEntry", function () {
+      global.NogaNogas.show();
+    });
+  }
+
+  function bindEntry(id, open) {
+    var entry = document.getElementById(id);
+    if (!entry) return;
+    entry.addEventListener("click", function () {
+      open();
+      var profileTab = document.querySelector('.tab[data-tab="profile"]');
+      if (profileTab) {
+        var tabs = document.querySelectorAll(".tab[data-tab]");
+        Array.prototype.forEach.call(tabs, function (t) {
+          t.classList.remove("is-active");
+          t.removeAttribute("aria-current");
+        });
+        profileTab.classList.add("is-active");
+        profileTab.setAttribute("aria-current", "page");
+      }
+    });
   }
 
   function bindDevForm() {

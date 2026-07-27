@@ -9,8 +9,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import auth as auth_api
+from app.api import cities as cities_api
 from app.api import dashboard as dashboard_api
 from app.api import me as me_api
+from app.api import nogas as nogas_api
 from app.api import users as users_api
 from app.bot import create_bot, create_dispatcher, ensure_data_dir, run_polling
 from app.config import get_settings
@@ -90,6 +92,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_api.router)
     app.include_router(me_api.router)
     app.include_router(users_api.router)
+    app.include_router(cities_api.router)
+    app.include_router(nogas_api.router)
     app.include_router(dashboard_api.router)
 
     @app.get("/api/health")

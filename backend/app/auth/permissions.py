@@ -13,6 +13,9 @@ OPERATIONS_CONFIRM = "operations:confirm"
 OPERATIONS_PAYOUT = "operations:payout"
 SETTINGS_MANAGE = "settings:manage"
 CITIES_MANAGE = "cities:manage"
+CITIES_READ = "cities:read"
+NOGAS_MANAGE = "nogas:manage"
+NOGAS_READ = "nogas:read"
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
     UserRole.owner: frozenset(
@@ -27,6 +30,9 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             OPERATIONS_PAYOUT,
             SETTINGS_MANAGE,
             CITIES_MANAGE,
+            CITIES_READ,
+            NOGAS_MANAGE,
+            NOGAS_READ,
         }
     ),
     UserRole.right_hand: frozenset(
@@ -39,6 +45,9 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             OPERATIONS_CONFIRM,
             OPERATIONS_PAYOUT,
             CITIES_MANAGE,
+            CITIES_READ,
+            NOGAS_MANAGE,
+            NOGAS_READ,
         }
     ),
     UserRole.admin: frozenset(
@@ -49,11 +58,14 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             OPERATIONS_OWN,
             OPERATIONS_CONFIRM,
             OPERATIONS_PAYOUT,
+            CITIES_READ,
+            NOGAS_READ,
         }
     ),
     UserRole.noga: frozenset(
         {
             OPERATIONS_OWN,
+            CITIES_READ,
         }
     ),
 }

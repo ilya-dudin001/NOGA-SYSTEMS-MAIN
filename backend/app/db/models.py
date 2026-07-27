@@ -10,7 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -61,6 +61,49 @@ class User(Base):
     last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_by: Mapped[Optional["User"]] = relationship(remote_side=[id], foreign_keys=[created_by_id])
+
+
+class City(Base):
+    __tablename__ = "cities"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class Noga(Base):
+    """Нога — исполнитель, привязанный к городу. Тестовые ноги не идут в реальный оборот."""
+
+    __tablename__ = "nogas"
+    __table_args__ = (UniqueConstraint("name", "city_id", name="uq_noga_name_city"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    city_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("cities.id"), nullable=False, index=True
+    )
+    is_test: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    city: Mapped["City"] = relationship(lazy="raise")
 
 
 class AuditLog(Base):

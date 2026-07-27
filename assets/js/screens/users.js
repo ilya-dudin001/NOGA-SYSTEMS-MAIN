@@ -187,19 +187,13 @@
   }
 
   function show() {
-    var view = document.getElementById("viewUsers");
-    var home = document.getElementById("viewHome");
-    if (home) home.hidden = true;
-    if (view) view.hidden = false;
+    global.NogaViews.show("viewUsers");
     bindForm();
     loadAndRender();
   }
 
   function hide() {
-    var view = document.getElementById("viewUsers");
-    var home = document.getElementById("viewHome");
-    if (view) view.hidden = true;
-    if (home) home.hidden = false;
+    global.NogaViews.show("viewHome");
   }
 
   global.NogaUsers = { show: show, hide: hide, reload: loadAndRender };

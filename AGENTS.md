@@ -69,6 +69,25 @@ Dev-вход (`POST /api/auth/dev`) только при `DEV_AUTH_ENABLED=true`.
   (`backend/app/services/users.py`), её используют и API, и бот
 - Диалоги в Mini App — через `NogaTelegram.confirmAction/notify`, а не `window.confirm/alert`
 
+## Ноги и города
+
+- Таблица `nogas`: `name`, `city_id`, `is_test`, `is_active`; UNIQUE (`name`, `city_id`)
+- Таблица `cities`: `name` (UNIQUE), `is_active`
+- Нога из справочника — не то же самое, что пользователь с ролью `noga` (аккаунт не нужен)
+- Права: `nogas:manage` / `cities:manage` — owner, right_hand; `nogas:read` — + admin;
+  `cities:read` — все роли (нужно для форм операций)
+- API: `/api/nogas` (GET с фильтрами `city_id`, `include_test`, `only_active`; POST, PATCH, DELETE),
+  `/api/cities` (GET, POST, PATCH)
+- При создании ноги город передаётся как `city_id` **или** `city_name`
+  (создаётся при отсутствии; сравнение без учёта регистра идёт в Python,
+  потому что `lower()` в SQLite не знает кириллицы)
+- В `PATCH /api/nogas/{id}` дубликат проверяется **до** мутации объекта,
+  иначе autoflush перед SELECT упирается в UNIQUE и отдаёт 500 вместо 409
+- `Noga.city` объявлена `lazy="raise"`: грузите через `selectinload`,
+  а после смены города — с `populate_existing=True`, иначе вернётся старый город
+- Фронтенд: `assets/js/views.js` переключает `viewHome` / `viewUsers` / `viewNogas`,
+  экран ног — `assets/js/screens/nogas.js`
+
 ## Что ещё не сделано
 
-Операции, города, кошельки, фото, уведомления — следующие этапы. `GET /api/dashboard/summary` пока возвращает нули со скоупом по роли.
+Операции, кошельки, фото, уведомления — следующие этапы. `GET /api/dashboard/summary` пока возвращает нули со скоупом по роли. Отдельного экрана управления городами нет: города создаются из формы добавления ноги. Команд бота для ног тоже пока нет — только Mini App.

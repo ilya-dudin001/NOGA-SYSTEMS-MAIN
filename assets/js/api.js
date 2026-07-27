@@ -107,5 +107,23 @@
     deleteUser: function (id) {
       return request("/api/users/" + id, { method: "DELETE" });
     },
+    listCities: function () {
+      return request("/api/cities");
+    },
+    createCity: function (name) {
+      return request("/api/cities", { method: "POST", body: { name: name } });
+    },
+    listNogas: function () {
+      return request("/api/nogas");
+    },
+    createNoga: function (payload) {
+      return request("/api/nogas", { method: "POST", body: payload });
+    },
+    updateNoga: function (id, payload) {
+      return request("/api/nogas/" + id, { method: "PATCH", body: payload });
+    },
+    deleteNoga: function (id) {
+      return request("/api/nogas/" + id, { method: "DELETE" });
+    },
   };
 })(window);

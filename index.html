@@ -142,6 +142,7 @@
       </section>
 
       <button class="btn-all" id="usersEntry" type="button" hidden style="margin-top:16px">Пользователи</button>
+      <button class="btn-all" id="nogasEntry" type="button" hidden style="margin-top:10px">Ноги</button>
     </div>
 
     <!-- ===== USERS ===== -->
@@ -177,6 +178,44 @@
       </form>
 
       <div id="usersList"></div>
+    </div>
+
+    <!-- ===== NOGAS ===== -->
+    <div class="view" id="viewNogas" hidden>
+      <div class="users-toolbar">
+        <h2 class="users-toolbar__title">Ноги</h2>
+        <button class="btn-gold" id="btnAddNoga" type="button">+ Добавить</button>
+      </div>
+
+      <form class="form-card" id="nogaCreateForm" hidden>
+        <p class="form-card__title">Новая нога</p>
+        <div class="field">
+          <label for="newNogaName">Имя</label>
+          <input id="newNogaName" type="text" required placeholder="Иван">
+        </div>
+        <div class="field">
+          <label for="newNogaCity">Город</label>
+          <select id="newNogaCity"></select>
+        </div>
+        <div class="field" id="newCityWrap" hidden>
+          <label for="newNogaCityName">Название нового города</label>
+          <input id="newNogaCityName" type="text" placeholder="Тула">
+        </div>
+        <div class="field">
+          <label>Тип</label>
+          <div class="segmented" id="nogaTestSwitch" role="group" aria-label="Тип ноги">
+            <button class="segmented__btn is-active" type="button" data-value="false" aria-pressed="true">Не тест</button>
+            <button class="segmented__btn" type="button" data-value="true" aria-pressed="false">Тест</button>
+          </div>
+          <input id="newNogaIsTest" type="hidden" value="false">
+        </div>
+        <div class="form-actions">
+          <button class="btn-all" id="btnCancelNoga" type="button">Отмена</button>
+          <button class="btn-gold" type="submit" style="flex:1">Создать</button>
+        </div>
+      </form>
+
+      <div id="nogasList"></div>
     </div>
 
   </main>
@@ -226,9 +265,11 @@
 <script src="assets/js/telegram.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/roles.js"></script>
+<script src="assets/js/views.js"></script>
 <script src="assets/js/screens/dashboard.js"></script>
 <script src="assets/js/screens/no-access.js"></script>
 <script src="assets/js/screens/users.js"></script>
+<script src="assets/js/screens/nogas.js"></script>
 <script src="assets/js/auth.js"></script>
 </body>
 </html>

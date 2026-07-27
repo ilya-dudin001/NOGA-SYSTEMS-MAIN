@@ -6,10 +6,13 @@
   var params = new URLSearchParams(global.location.search);
   var fromQuery = params.get("api");
   var defaults = {
-    apiBase: fromQuery || "http://127.0.0.1:8000",
+    apiBase: "http://127.0.0.1:8000",
     // Dev login form when Telegram.WebApp.initData is missing
     allowDevLogin: true,
   };
 
-  global.NOGA_CONFIG = Object.assign({}, defaults, global.__NOGA_CONFIG__ || {});
+  var config = Object.assign({}, defaults, global.__NOGA_CONFIG__ || {});
+  if (fromQuery) config.apiBase = fromQuery;
+
+  global.NOGA_CONFIG = config;
 })(window);

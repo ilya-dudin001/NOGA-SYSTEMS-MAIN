@@ -58,6 +58,47 @@ class UserUpdateIn(BaseModel):
     first_name: Optional[str] = None
 
 
+class CityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    is_active: bool
+
+
+class CityCreateIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+
+
+class CityUpdateIn(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    is_active: Optional[bool] = None
+
+
+class NogaOut(BaseModel):
+    id: int
+    name: str
+    city_id: int
+    city_name: str
+    is_test: bool
+    is_active: bool
+    created_at: datetime
+
+
+class NogaCreateIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=160)
+    city_id: Optional[int] = None
+    city_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    is_test: bool = False
+
+
+class NogaUpdateIn(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=160)
+    city_id: Optional[int] = None
+    is_test: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
 class DashboardSummaryOut(BaseModel):
     turnover_rub: int = 0
     turnover_usd: int = 0
