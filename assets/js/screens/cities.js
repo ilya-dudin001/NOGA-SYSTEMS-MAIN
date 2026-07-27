@@ -2,6 +2,7 @@
   "use strict";
 
   var razgruzy = [];
+  var nogas = [];
   var editingId = null;
   var openDetailId = null;
   var formBound = false;
@@ -12,6 +13,10 @@
 
   function canSeeRazgruzy() {
     return global.NogaRoles.can("razgruz:read");
+  }
+
+  function canManageNogas() {
+    return global.NogaRoles.can("nogas:manage");
   }
 
   function el(tag, className, text) {
@@ -372,13 +377,70 @@
   }
 
   function selectedRazgruzIds() {
-    var box = document.getElementById("cityRazgruzy");
+    return checkedIds("cityRazgruzy");
+  }
+
+  function checkedIds(boxId) {
+    var box = document.getElementById(boxId);
     if (!box) return [];
     var ids = [];
     Array.prototype.forEach.call(box.querySelectorAll("input[type=checkbox]"), function (input) {
       if (input.checked) ids.push(Number(input.value));
     });
     return ids;
+  }
+
+  async function loadNogas() {
+    if (!canManageNogas()) {
+      nogas = [];
+      return;
+    }
+    try {
+      nogas = await global.NogaApi.listNogas();
+    } catch (err) {
+      nogas = [];
+    }
+  }
+
+  /** Отмеченные ноги работают в этом городе, снятые — открепляются. */
+  function fillNogaChecklist(cityId) {
+    var field = document.getElementById("cityNogasField");
+    var box = document.getElementById("cityNogas");
+    if (!field || !box) return;
+    field.hidden = !canManageNogas();
+    box.innerHTML = "";
+
+    if (!nogas.length) {
+      box.appendChild(el("p", "detail__empty", "Ног пока нет — добавьте их на экране «Ноги»"));
+      return;
+    }
+
+    nogas.forEach(function (noga) {
+      var row = el("label", "checklist__row");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = String(noga.id);
+      input.checked = cityId !== null && noga.city_id === cityId;
+      row.appendChild(input);
+
+      var notes = [];
+      if (noga.city_id === null || noga.city_id === undefined) {
+        notes.push("без города");
+      } else if (noga.city_id !== cityId) {
+        notes.push("сейчас в " + noga.city_name);
+      }
+      if (noga.is_test) notes.push("тестовая");
+      if (!noga.is_active) notes.push("выключена");
+
+      row.appendChild(
+        el(
+          "span",
+          "checklist__label",
+          noga.name + (notes.length ? " · " + notes.join(", ") : "")
+        )
+      );
+      box.appendChild(row);
+    });
   }
 
   function openForm(city) {
@@ -405,6 +467,7 @@
           })
         : []
     );
+    fillNogaChecklist(city ? city.id : null);
 
     form.hidden = false;
     form.scrollIntoView({ block: "nearest" });
@@ -437,6 +500,7 @@
       min_amount_currency: rawAmount ? currency : null,
     };
     if (canSeeRazgruzy()) payload.razgruz_ids = selectedRazgruzIds();
+    if (canManageNogas()) payload.noga_ids = checkedIds("cityNogas");
     return payload;
   }
 
@@ -467,6 +531,9 @@
           await global.NogaApi.updateCity(editingId, payload);
         }
         closeForm();
+        // Состав города мог поменяться — перечитываем ноги, чтобы чек-лист
+        // в следующий раз показал актуальную привязку.
+        await loadNogas();
         await loadAndRender();
         await refreshDashboard();
       } catch (err) {
@@ -480,6 +547,7 @@
     bindForm();
     closeForm();
     await loadRazgruzy();
+    await loadNogas();
     await loadAndRender();
   }
 

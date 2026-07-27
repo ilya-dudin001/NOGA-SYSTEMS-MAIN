@@ -40,6 +40,14 @@ class CityStatus(str, enum.Enum):
     stopped = "stopped"
 
 
+class NogaFileKind(str, enum.Enum):
+    """Что за файл в личных данных ноги."""
+
+    passport = "passport"  # фото паспорта
+    passport_selfie = "passport_selfie"  # паспорт вместе с лицом
+    face_video = "face_video"  # короткое видео с лицом
+
+
 class Currency(str, enum.Enum):
     RUB = "RUB"  # рубли
     USD = "USD"  # доллары
@@ -173,11 +181,16 @@ class Noga(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
-    city_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("cities.id"), nullable=False, index=True
+    # NULL — нога заведена, но пока не прикреплена ни к одному городу.
+    city_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("cities.id"), nullable=True, index=True
     )
     is_test: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # Списки строк: телефонов и телеграм-контактов у ноги может быть несколько.
+    phones: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    telegrams: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     created_by_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
@@ -188,9 +201,45 @@ class Noga(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    city: Mapped["City"] = relationship(lazy="raise")
+    city: Mapped[Optional["City"]] = relationship(lazy="raise")
     created_by: Mapped[Optional["User"]] = relationship(
         foreign_keys=[created_by_id], lazy="raise"
+    )
+    files: Mapped[list["NogaFile"]] = relationship(
+        back_populates="noga",
+        lazy="raise",
+        cascade="all, delete-orphan",
+        order_by="NogaFile.created_at",
+    )
+
+
+class NogaFile(Base):
+    """Скан паспорта, селфи с паспортом или видео — лежит на диске, в БД только метаданные."""
+
+    __tablename__ = "noga_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    noga_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("nogas.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[NogaFileKind] = mapped_column(
+        Enum(NogaFileKind, name="noga_file_kind", native_enum=False), nullable=False
+    )
+    # Путь относительно uploads_dir, чтобы каталог можно было переносить.
+    stored_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    uploaded_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    noga: Mapped["Noga"] = relationship(back_populates="files", lazy="raise")
+    uploaded_by: Mapped[Optional["User"]] = relationship(
+        foreign_keys=[uploaded_by_id], lazy="raise"
     )
 
 

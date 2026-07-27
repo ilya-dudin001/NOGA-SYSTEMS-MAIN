@@ -53,12 +53,18 @@ NOGA Systems (EM 3.5 — Operations) — закрытая система учё�
 | `settings:manage` | + | − | − | − |
 | `cities:read` / `cities:manage` | + / + | + / + | + / − | + / − |
 | `nogas:read` / `nogas:manage` | + / + | + / + | + / − | − / − |
+| `nogas:personal` | + | + | − | − |
 | `razgruz:read` / `razgruz:manage` | + / + | + / + | + / − | − / − |
 
 `cities:read` есть у всех ролей — он нужен для форм операций. Именно поэтому состав
 ответа города режется по правам: без `razgruz:read` список `razgruzy` приходит пустым,
 без `nogas:read` — пустой список `nogas` (счётчик `nogas_count` остаётся). Иначе роль
 `noga` видела бы комиссии разгрузов.
+
+`nogas:personal` — отдельное право на паспорта, адрес и телефоны ног: `nogas:read` есть
+и у админа, а персональные данные ему не положены. `GET /api/nogas/{id}` без этого права
+отдаёт `has_personal_access: false`, пустые `address`/`phones`/`telegrams`/`files`; правка
+этих полей и любые операции с файлами — 403.
 
 `can_assign_role` / `can_modify_user`: owner может всё; right_hand — всё, кроме действий над owner.
 
@@ -80,14 +86,17 @@ Dev-вход `POST /api/auth/dev` работает только при `DEV_AUTH
 ```
 users         telegram_id UNIQUE, display_name, role, status, created_by_id, last_seen_at
 cities        name UNIQUE, status, min_amount, min_amount_currency, created_by_id
-nogas         name, city_id → cities, is_test, is_active     UNIQUE (name, city_id)
+nogas         name, city_id → cities (NULLABLE), is_test, is_active,
+              address, phones JSON, telegrams JSON            UNIQUE (name, city_id)
+noga_files    noga_id → nogas ON DELETE CASCADE, kind, stored_path, original_name,
+              content_type, size_bytes, uploaded_by_id
 razgruzy      name UNIQUE, commission_percent, contact, is_active, created_by_id
 city_razgruzy city_id → cities, razgruz_id → razgruzy        UNIQUE (city_id, razgruz_id)
 audit_log     actor_user_id (nullable), action, target_type, target_id, payload JSON
 auth_attempts telegram_id, success, reason
 ```
 
-Enum'ы (`user_role`, `user_status`, `city_status`, `currency`) объявлены
+Enum'ы (`user_role`, `user_status`, `city_status`, `currency`, `noga_file_kind`) объявлены
 `native_enum=False` — хранятся строками.
 
 - `city_status`: `working` (в работе), `paused` (стоп временно), `stopped` (стоп полностью).
@@ -96,6 +105,14 @@ Enum'ы (`user_role`, `user_status`, `city_status`, `currency`) объявлен
   кода ISO у него нет). `min_amount` и `min_amount_currency` заполняются только парой:
   API отдаёт 400, если задано одно без другого.
 - Город ↔ разгруз — многие-ко-многим через `city_razgruzy`.
+- `nogas.city_id` может быть `NULL` — нога заведена, но не прикреплена к городу. Прикрепление
+  и открепление идут через `noga_ids` в форме города либо `city_id` в PATCH ноги. Из-за
+  UNIQUE (`name`, `city_id`) и того, что SQLite считает NULL'ы различными, тёзок среди
+  неприкреплённых ног ловим отдельным запросом (`nogas_service.find_clash`).
+- `noga_file_kind`: `passport` (фото паспорта), `passport_selfie` (паспорт вместе с лицом),
+  `face_video` (короткое видео). Файлов на каждый вид может быть несколько.
+- `phones` и `telegrams` — JSON-массивы строк: их всегда **переприсваивают** новым списком,
+  а не мутируют, иначе SQLAlchemy не заметит изменения.
 - Счётчики заказов (`completed_orders` у разгруза, `recent_orders` у города) — заглушки
   на нуле и пустом списке, пока нет таблицы операций.
 
@@ -111,10 +128,16 @@ backend/app/
   db/                Base, engine, SessionLocal (expire_on_commit=False), get_session, models, bootstrap
   auth/              initdata (HMAC), jwt, deps (get_current_user, require_permission), permissions
   api/               auth, me, users, cities, nogas, razgruzy, dashboard — все под /api
-  services/          users, cities (загрузка/сериализация/связи), razgruzy, audit
+  services/          users, cities, nogas (привязка к городу + файлы на диске), razgruzy, audit
   bot/               create_bot/create_dispatcher/run_polling, middlewares, handlers/{start,users_cmd}
-alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy
+alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 004_noga_personal
 ```
+
+Файлы ног лежат не в БД, а на диске: `UPLOADS_DIR` (по умолчанию `./data/uploads`),
+раскладка `nogas/{noga_id}/{uuid}{ext}`, в `noga_files.stored_path` — путь относительно
+корня загрузок, чтобы каталог можно было переносить. Каталог создаётся в lifespan
+(`nogas_service.ensure_uploads_dir`). Лимиты и списки расширений — в `services/nogas.py`
+(картинки 25 МБ, видео 200 МБ; тело читается чанками, при превышении файл удаляется).
 
 Конвенции:
 
@@ -136,17 +159,27 @@ alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy
 | GET/POST | `/api/users`, PATCH `/api/users/{id}` | `users:read` / `users:manage` |
 | DELETE | `/api/users/{id}` | `users:delete` (только owner) |
 | GET/POST | `/api/cities`, GET/PATCH/DELETE `/api/cities/{id}` | `cities:read` / `cities:manage` |
-| GET/POST | `/api/nogas`, PATCH/DELETE `/api/nogas/{id}` | `nogas:read` / `nogas:manage` |
+| GET/POST | `/api/nogas`, GET/PATCH/DELETE `/api/nogas/{id}` | `nogas:read` / `nogas:manage` |
+| POST/DELETE | `/api/nogas/{id}/files`, `/api/nogas/{id}/files/{file_id}` | `nogas:manage` + `nogas:personal` |
+| GET | `/api/nogas/{id}/files/{file_id}` | `nogas:read` + `nogas:personal` |
 | GET/POST | `/api/razgruzy`, PATCH/DELETE `/api/razgruzy/{id}` | `razgruz:read` / `razgruz:manage` |
 | GET | `/api/dashboard/summary` | авторизация; операции — нули, блок `cities` живой |
 | GET | `/api/health` | — |
 
 `GET /api/nogas` принимает `city_id`, `include_test` (по умолчанию true), `only_active` (false).
-`POST /api/nogas` принимает город как `city_id` **или** `city_name` (создастся при отсутствии).
+`POST/PATCH /api/nogas` принимают город как `city_id` **или** `city_name` (создастся при
+отсутствии); город необязателен, а `city_id: null` в PATCH открепляет ногу. `city_name`
+приоритетнее `city_id`. Личные данные правятся тем же PATCH (`address`, `phones`,
+`telegrams`) — значения в аудит не пишем, только факт правки и количество контактов.
+
+Загрузка файла — `multipart/form-data` с полями `kind` и `file`. Отдача файла — обычный
+`FileResponse` с `inline`, но под JWT: фронт тянет его `fetch`'ем в blob, потому что в
+`<img src>` заголовок Authorization не подставить.
 
 `GET /api/cities` отдаёт список без ног, `GET /api/cities/{id}` — детали с `nogas`
 (включая `created_by_name`) и `recent_orders`. `POST/PATCH /api/cities` принимают
-`razgruz_ids` — полный новый список связей, а не дельту. Удаление города блокируется
+`razgruz_ids` и `noga_ids` — полный новый состав, а не дельту: ноги из списка получают
+`city_id` города, снятые становятся неприкреплёнными. Удаление города блокируется
 (409), пока в нём есть ноги; удаление разгруза — пока он привязан хоть к одному городу.
 
 Сброс порога запуска делается явными `null` в обоих полях сразу: PATCH различает
@@ -185,6 +218,9 @@ polling логируется, но API продолжает работать. К
 - Диалоги — `NogaTelegram.confirmAction/notify`, **не** `window.confirm/alert`: внутри
   Telegram WebView нативные диалоги браузера игнорируются.
 - Видимость по правам — `NogaRoles.can("perm")`; сервер всё равно проверяет повторно.
+- Файлы: `NogaApi.uploadNogaFile` (FormData, Content-Type ставит браузер сам) и
+  `NogaApi.nogaFileBlob` (blob под токеном). Каждый `URL.createObjectURL` надо отзывать —
+  экран ног складывает ссылки в массив и чистит их при перерисовке списка (`releaseBlobs`).
 - Токен хранится только в памяти (`api.js`), в localStorage не кладётся — перезагрузка
   означает повторную авторизацию через initData. 401 → `setUnauthorizedHandler` → экран gate.
 - `apiBase`: дефолт из `config.js` (`http://127.0.0.1:8000`), в проде переопределён инлайн-скриптом
@@ -215,7 +251,15 @@ CSS: три файла — `tokens.css` (переменные), `app.css` (да�
 - Схема создаётся дважды: `Base.metadata.create_all` в lifespan **и** миграции Alembic.
   Новую таблицу нужно добавлять и в модели, и в `alembic/versions/`, иначе прод разъедется с dev.
 - `expire_on_commit=False` — после `commit()` объекты остаются пригодны, но для полей с
-  `server_default` (`created_at`) нужен `refresh()`.
+  `server_default` (`created_at`) нужен `refresh()`. В async-сессии обращение к неподгруженному
+  полю без `await` падает не «пустым значением», а `MissingGreenlet`, поэтому после вставки
+  либо `refresh()`, либо перечитывание объекта запросом.
+- Ноги удаляем с загруженной коллекцией `files` (тот же `lazy="raise"`), а сам каталог с
+  файлами убираем **после** `commit()`: упавшая транзакция не должна оставить БД со ссылками
+  на удалённые файлы.
+- HEIC/HEIF с iPhone приходят как `application/octet-stream`, поэтому тип определяем по
+  расширению, а не по заголовку. Chrome такие картинки не рисует — в предпросмотре
+  вешаем `onerror` и подменяем на подсказку «скачайте файл».
 
 ## Запуск и тесты
 
@@ -225,6 +269,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 python tests/test_delete_user.py
 python tests/test_nogas.py
 python tests/test_cities.py
+python tests/test_noga_personal.py
 ```
 
 Тесты — самостоятельные скрипты на `TestClient` (не pytest), каждый со своей БД в `data/`;
@@ -233,8 +278,10 @@ python tests/test_cities.py
 
 Фронтенд можно прогонять в `jsdom` (Node): загрузить `index.html`, выполнить скрипты в
 порядке из `index.html`, подменить `window.fetch` фейковым API и кликать по кнопкам.
-В jsdom нужно доопределить `matchMedia` и `Element.prototype.scrollIntoView` — в браузере
-и Telegram WebView они есть.
+В jsdom нужно доопределить `matchMedia`, `Element.prototype.scrollIntoView` и
+`URL.createObjectURL` / `revokeObjectURL` — в браузере и Telegram WebView они есть.
+Выбор файла имитируется через `Object.defineProperty(input, "files", { value: [file] })`
+и `dispatchEvent(new Event("change"))`: `DataTransfer` в jsdom нет.
 
 Прод: VPS + Docker (`backend/docker-compose.yml`, `Dockerfile`, том `./data`) или systemd
 (`backend/deploy/noga-api.service`, репозиторий в `/opt/noga`, сервис `noga-api` от юзера
@@ -265,14 +312,29 @@ origin фронта.
 На карточке города: порог запуска, число ног, чипы разгрузов с комиссиями, переключатель
 трёх статусов, кнопки «Подробнее» / «Изменить» / «Удалить». «Подробнее» подгружает
 `GET /api/cities/{id}`: ноги с автором и датой, разгрузы с комиссией, автором и счётчиком
-успешных заказов, блок последних заказов (пока заглушка).
+успешных заказов, блок последних заказов (пока заглушка). В форме города два чек-листа:
+разгрузы и ноги; у ног в подписи видно, где нога сейчас («без города» / «сейчас в Самаре»).
+
+Экран ног: карточка с именем, городом (или «Без города») и кнопками «Подробнее» /
+«Изменить» / «Сделать тестовой» / «Выключить» / «Удалить». Одна форма и на создание,
+и на редактирование (`openForm(noga)`), город выбирается селектом, где есть «Без города»
+и «+ Новый город». «Подробнее» открывает `GET /api/nogas/{id}` с двумя вкладками:
+
+- **Основное** — город, тип, статус, автор, дата.
+- **Личные данные** (только с `nogas:personal`) — адрес, клонируемые поля телефонов и
+  Telegram (`buildRepeatable`), три блока файлов из `NogaDict.NOGA_FILE_KINDS` с загрузкой,
+  предпросмотром, скачиванием и удалением.
+
+Раскрытым держится один блок деталей (`openContainer`), правки личных данных и файлов
+перерисовывают только его (`reloadDetail`), а не весь список.
 
 ## Состояние на сейчас
 
-Готово: авторизация, роли и права, пользователи (API + бот + экран), ноги, города,
-разгрузы (API + экраны), аудит, сводка по городам на дашборде.
+Готово: авторизация, роли и права, пользователи (API + бот + экран), ноги (включая личные
+данные, паспорта и видео), города, разгрузы (API + экраны), аудит, сводка по городам
+на дашборде.
 
-Не сделано: **операции/заказы**, кошельки, фото, уведомления. Из-за отсутствия таблицы
+Не сделано: **операции/заказы**, кошельки, уведомления. Из-за отсутствия таблицы
 операций в дашборде нули по обороту, `completed_orders` у разгруза всегда 0, а
 `recent_orders` у города — пустой список; когда появятся операции, заполнять именно эти
 поля. Команд бота для городов, ног и разгрузов нет — только Mini App. Вкладки таббара

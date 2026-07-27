@@ -16,6 +16,8 @@ CITIES_MANAGE = "cities:manage"
 CITIES_READ = "cities:read"
 NOGAS_MANAGE = "nogas:manage"
 NOGAS_READ = "nogas:read"
+# Паспорта, адрес и телефоны ног — отдельное право: nogas:read есть и у админа.
+NOGAS_PERSONAL = "nogas:personal"
 RAZGRUZ_MANAGE = "razgruz:manage"
 RAZGRUZ_READ = "razgruz:read"
 
@@ -35,6 +37,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             CITIES_READ,
             NOGAS_MANAGE,
             NOGAS_READ,
+            NOGAS_PERSONAL,
             RAZGRUZ_MANAGE,
             RAZGRUZ_READ,
         }
@@ -52,6 +55,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             CITIES_READ,
             NOGAS_MANAGE,
             NOGAS_READ,
+            NOGAS_PERSONAL,
             RAZGRUZ_MANAGE,
             RAZGRUZ_READ,
         }

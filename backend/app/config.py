@@ -27,6 +27,8 @@ class Settings(BaseSettings):
         default="sqlite+aiosqlite:///./data/noga.db",
         alias="DATABASE_URL",
     )
+    # Паспорта и видео ног лежат на диске рядом с базой, в git не попадают.
+    uploads_dir: str = Field(default="./data/uploads", alias="UPLOADS_DIR")
     jwt_expire_hours: int = Field(default=12, alias="JWT_EXPIRE_HOURS")
     initdata_max_age_seconds: int = Field(default=86400, alias="INITDATA_MAX_AGE_SECONDS")
     dev_auth_enabled: bool = Field(default=False, alias="DEV_AUTH_ENABLED")

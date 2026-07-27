@@ -20,6 +20,7 @@ from app.config import get_settings
 from app.db import SessionLocal, engine
 from app.db import Base
 from app.db.bootstrap import bootstrap_owners
+from app.services import nogas as nogas_service
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,6 +33,7 @@ logger = logging.getLogger("noga")
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     ensure_data_dir(settings.database_url)
+    nogas_service.ensure_uploads_dir()
 
     # Create tables (Alembic preferred in prod; create_all is fine for SQLite bootstrap)
     async with engine.begin() as conn:

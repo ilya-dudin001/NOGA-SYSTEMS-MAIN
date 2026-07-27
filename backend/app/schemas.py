@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.db.models import CityStatus, Currency, UserRole, UserStatus
+from app.db.models import CityStatus, Currency, NogaFileKind, UserRole, UserStatus
 
 
 class UserOut(BaseModel):
@@ -117,6 +117,8 @@ class CityCreateIn(BaseModel):
     min_amount: Optional[int] = Field(default=None, ge=0)
     min_amount_currency: Optional[Currency] = None
     razgruz_ids: Optional[list[int]] = None
+    # Ноги, которые должны работать в этом городе; остальные от него открепляются.
+    noga_ids: Optional[list[int]] = None
 
 
 class CityUpdateIn(BaseModel):
@@ -125,16 +127,38 @@ class CityUpdateIn(BaseModel):
     min_amount: Optional[int] = Field(default=None, ge=0)
     min_amount_currency: Optional[Currency] = None
     razgruz_ids: Optional[list[int]] = None
+    noga_ids: Optional[list[int]] = None
 
 
 class NogaOut(BaseModel):
     id: int
     name: str
-    city_id: int
-    city_name: str
+    city_id: Optional[int] = None
+    city_name: Optional[str] = None
     is_test: bool
     is_active: bool
     created_at: datetime
+    created_by_name: Optional[str] = None
+
+
+class NogaFileOut(BaseModel):
+    id: int
+    kind: NogaFileKind
+    original_name: str
+    content_type: str
+    size_bytes: int
+    created_at: datetime
+    uploaded_by_name: Optional[str] = None
+
+
+class NogaDetailOut(NogaOut):
+    """Личные данные отдаём только с правом nogas:personal — иначе поля пустые."""
+
+    address: Optional[str] = None
+    phones: list[str] = Field(default_factory=list)
+    telegrams: list[str] = Field(default_factory=list)
+    files: list[NogaFileOut] = Field(default_factory=list)
+    has_personal_access: bool = False
 
 
 class NogaCreateIn(BaseModel):
@@ -146,9 +170,15 @@ class NogaCreateIn(BaseModel):
 
 class NogaUpdateIn(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=160)
+    # Явный null открепляет ногу от города; отсутствие поля город не меняет.
     city_id: Optional[int] = None
+    # Новый город прямо из формы ноги; если указан, city_id игнорируется.
+    city_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     is_test: Optional[bool] = None
     is_active: Optional[bool] = None
+    address: Optional[str] = Field(default=None, max_length=500)
+    phones: Optional[list[str]] = Field(default=None, max_length=20)
+    telegrams: Optional[list[str]] = Field(default=None, max_length=20)
 
 
 class CitiesSummaryOut(BaseModel):

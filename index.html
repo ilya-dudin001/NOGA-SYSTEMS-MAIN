@@ -211,22 +211,22 @@
     <div class="view" id="viewNogas" hidden>
       <div class="users-toolbar">
         <h2 class="users-toolbar__title">Ноги</h2>
-        <button class="btn-gold" id="btnAddNoga" type="button">+ Добавить</button>
+        <button class="btn-gold" id="btnAddNoga" type="button" hidden>+ Добавить</button>
       </div>
 
-      <form class="form-card" id="nogaCreateForm" hidden>
-        <p class="form-card__title">Новая нога</p>
+      <form class="form-card" id="nogaForm" hidden>
+        <p class="form-card__title" id="nogaFormTitle">Новая нога</p>
         <div class="field">
-          <label for="newNogaName">Имя</label>
-          <input id="newNogaName" type="text" required placeholder="Иван">
+          <label for="nogaName">Имя</label>
+          <input id="nogaName" type="text" required placeholder="Иван">
         </div>
         <div class="field">
-          <label for="newNogaCity">Город</label>
-          <select id="newNogaCity"></select>
+          <label for="nogaCity">Город</label>
+          <select id="nogaCity"></select>
         </div>
-        <div class="field" id="newCityWrap" hidden>
-          <label for="newNogaCityName">Название нового города</label>
-          <input id="newNogaCityName" type="text" placeholder="Тула">
+        <div class="field" id="nogaCityWrap" hidden>
+          <label for="nogaCityName">Название нового города</label>
+          <input id="nogaCityName" type="text" placeholder="Тула">
         </div>
         <div class="field">
           <label>Тип</label>
@@ -234,11 +234,11 @@
             <button class="segmented__btn is-active" type="button" data-value="false" aria-pressed="true">Не тест</button>
             <button class="segmented__btn" type="button" data-value="true" aria-pressed="false">Тест</button>
           </div>
-          <input id="newNogaIsTest" type="hidden" value="false">
+          <input id="nogaIsTest" type="hidden" value="false">
         </div>
         <div class="form-actions">
           <button class="btn-all" id="btnCancelNoga" type="button">Отмена</button>
-          <button class="btn-gold" type="submit" style="flex:1">Создать</button>
+          <button class="btn-gold" type="submit" style="flex:1">Сохранить</button>
         </div>
       </form>
 
@@ -275,6 +275,10 @@
         <div class="field" id="cityRazgruzyField">
           <label>Разгрузы</label>
           <div class="checklist" id="cityRazgruzy"></div>
+        </div>
+        <div class="field" id="cityNogasField">
+          <label>Ноги в городе</label>
+          <div class="checklist" id="cityNogas"></div>
         </div>
         <div class="form-actions">
           <button class="btn-all" id="btnCancelCity" type="button">Отмена</button>

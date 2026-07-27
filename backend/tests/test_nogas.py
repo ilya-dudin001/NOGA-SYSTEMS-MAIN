@@ -93,10 +93,11 @@ def main() -> None:
         assert r.status_code == 201, r.text
         print("same name in another city ok")
 
-        # Город обязателен
+        # Без города нога тоже создаётся — её прикрепят из формы города
         r = client.post("/api/nogas", headers=owner, json={"name": "Безгорода"})
-        assert r.status_code == 400, r.text
-        print("city required -> 400 ok")
+        assert r.status_code == 201, r.text
+        assert r.json()["city_id"] is None and r.json()["city_name"] is None, r.text
+        print("noga without city ok")
 
         # Переключение теста и активности
         r = client.patch(f"/api/nogas/{ivan_id}", headers=owner, json={"is_test": True})

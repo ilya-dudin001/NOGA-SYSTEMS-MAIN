@@ -10,6 +10,7 @@ from app.auth.deps import require_permission
 from app.auth.permissions import (
     CITIES_MANAGE,
     CITIES_READ,
+    NOGAS_MANAGE,
     NOGAS_READ,
     RAZGRUZ_READ,
     has_permission,
@@ -18,6 +19,7 @@ from app.db import get_session
 from app.db.models import City, Noga, Razgruz, User
 from app.schemas import CityCreateIn, CityDetailOut, CityOut, CityUpdateIn
 from app.services import cities as cities_service
+from app.services import nogas as nogas_service
 from app.services import razgruzy as razgruzy_service
 from app.services.audit import write_audit
 
@@ -71,6 +73,42 @@ async def check_razgruz_ids(session: AsyncSession, razgruz_ids: Sequence[int]) -
         )
 
 
+async def check_noga_ids(session: AsyncSession, actor: User, noga_ids: Sequence[int]) -> None:
+    """Ноги существуют, актор вправе их двигать, тёзок в новом составе города нет."""
+    if not has_permission(actor.role, NOGAS_MANAGE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "Нет прав менять состав ног"},
+        )
+    wanted = set(noga_ids)
+    if not wanted:
+        return
+
+    result = await session.execute(select(Noga).where(Noga.id.in_(wanted)))
+    found = {noga.id: noga for noga in result.scalars().all()}
+    missing = wanted - set(found)
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "NOT_FOUND",
+                "message": "Нога не найдена: " + ", ".join(str(i) for i in sorted(missing)),
+            },
+        )
+
+    seen: set[str] = set()
+    for noga in found.values():
+        if noga.name in seen:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "CONFLICT",
+                    "message": f"В городе не может быть двух ног с именем «{noga.name}»",
+                },
+            )
+        seen.add(noga.name)
+
+
 def check_amount(amount: Optional[int], currency) -> None:
     if (amount is None) != (currency is None):
         raise HTTPException(
@@ -122,6 +160,11 @@ async def create_city(
     razgruz_ids = body.razgruz_ids or []
     await check_razgruz_ids(session, razgruz_ids)
 
+    noga_ids: Optional[list[int]] = None
+    if body.noga_ids is not None:
+        noga_ids = list(dict.fromkeys(body.noga_ids))
+        await check_noga_ids(session, actor, noga_ids)
+
     if await cities_service.find_by_name(session, body.name) is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -138,6 +181,8 @@ async def create_city(
     session.add(city)
     await session.flush()
     await cities_service.replace_razgruzy(session, city.id, razgruz_ids)
+    if noga_ids:
+        await nogas_service.attach_to_city(session, city.id, noga_ids)
     await write_audit(
         session,
         action="city.created",
@@ -150,6 +195,7 @@ async def create_city(
             "min_amount": city.min_amount,
             "currency": city.min_amount_currency.value if city.min_amount_currency else None,
             "razgruz_ids": razgruz_ids,
+            "noga_ids": noga_ids or [],
         },
     )
     await session.commit()
@@ -180,6 +226,11 @@ async def update_city(
     if "razgruz_ids" in provided:
         razgruz_ids = body.razgruz_ids or []
         await check_razgruz_ids(session, razgruz_ids)
+
+    noga_ids: Optional[list[int]] = None
+    if "noga_ids" in provided:
+        noga_ids = list(dict.fromkeys(body.noga_ids or []))
+        await check_noga_ids(session, actor, noga_ids)
 
     new_name: Optional[str] = None
     if body.name is not None:
@@ -214,6 +265,10 @@ async def update_city(
         if before != after:
             changes["razgruz_ids"] = {"from": before, "to": after}
             await cities_service.replace_razgruzy(session, city.id, razgruz_ids)
+    if noga_ids is not None:
+        attached, detached = await nogas_service.attach_to_city(session, city.id, noga_ids)
+        if attached or detached:
+            changes["nogas"] = {"attached": attached, "detached": detached}
 
     if changes:
         await write_audit(
@@ -245,7 +300,8 @@ async def delete_city(
             detail={
                 "code": "CONFLICT",
                 "message": (
-                    f"В городе ещё {nogas_left} ног(и) — перенесите или удалите их перед удалением города"
+                    f"В городе ещё {nogas_left} ног(и) — открепите их в форме города "
+                    "или удалите перед удалением города"
                 ),
             },
         )

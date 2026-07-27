@@ -14,9 +14,13 @@
     .env                    # секреты, в git не лежит и pull его не трогает
     .venv/                  # виртуальное окружение, в git не лежит
     data/noga.db            # база, в git не лежит
-    data/backups/           # бэкапы, кладёт скрипт деплоя
+    data/uploads/           # паспорта и видео ног, в git не лежат
+    data/backups/           # бэкапы базы, кладёт скрипт деплоя
 systemd-сервис: noga-api    # запускает uvicorn от пользователя noga
 ```
+
+Скрипт деплоя бэкапит только `noga.db`. Файлы ног в `data/uploads/` он не трогает и не
+копирует — если они важны, заведите отдельный бэкап каталога (`rsync`, `tar`).
 
 ## Быстрый путь
 
@@ -102,17 +106,23 @@ t = sorted(r[0] for r in c.execute(\"SELECT name FROM sqlite_master WHERE type='
 print('таблицы:', t)
 if 'cities' in t:
     print('колонки cities:', [r[1] for r in c.execute('PRAGMA table_info(cities)')])
+if 'nogas' in t:
+    print('колонки nogas:', [r[1] for r in c.execute('PRAGMA table_info(nogas)')])
 "
 ```
 
-Дальше по ситуации:
+Дальше по ситуации (проверяйте сверху вниз, берите первое подходящее):
 
 | Что в базе | Команда |
 |------------|---------|
-| нет таблицы `cities` | `sudo .venv/bin/python -m alembic stamp 001_initial` |
-| есть `cities` с колонкой `is_active` | `sudo .venv/bin/python -m alembic stamp 002_cities_nogas` |
-| есть `cities` с колонкой `status` | `sudo .venv/bin/python -m alembic stamp head` |
 | есть `alembic_version` | ничего, stamp не нужен |
+| нет таблицы `cities` | `sudo .venv/bin/python -m alembic stamp 001_initial` |
+| в `cities` колонка `is_active` | `sudo .venv/bin/python -m alembic stamp 002_cities_nogas` |
+| в `cities` колонка `status`, в `nogas` нет `address` | `sudo .venv/bin/python -m alembic stamp 003_city_status_razgruzy` |
+| в `nogas` есть `address` и таблица `noga_files` | `sudo .venv/bin/python -m alembic stamp 004_noga_personal` |
+
+Ревизию указываем точную, а не `head`: `stamp head` отметит базу как полностью
+свежую и все недостающие миграции будут пропущены.
 
 После stamp запускайте обычный деплой — `alembic upgrade head` доедет до конца сам.
 
@@ -140,6 +150,23 @@ sudo systemctl start noga-api
 
 Если счётчик разгрузов не ноль — их успели завести через API; выпишите строки перед
 удалением и заведите заново после миграции.
+
+То же бывает и с `004_noga_personal`: симптом — `table noga_files already exists`.
+Здесь чинить проще, потому что колонки в `nogas` миграция успевает добавить до падения,
+а `noga_files` создаётся точно такой же. Проверьте и просто отметьте ревизию:
+
+```bash
+cd /opt/noga/backend
+sudo .venv/bin/python -c "
+import sqlite3
+c = sqlite3.connect('data/noga.db')
+print('колонки nogas:', [r[1] for r in c.execute('PRAGMA table_info(nogas)')])
+print('файлов ног:', c.execute('SELECT count(*) FROM noga_files').fetchone()[0])
+"
+# если в списке есть address, phones, telegrams — схема уже нужная:
+sudo .venv/bin/python -m alembic stamp 004_noga_personal
+sudo systemctl restart noga-api
+```
 
 ## Если сломалось: откат
 

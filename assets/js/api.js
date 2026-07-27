@@ -29,6 +29,22 @@
   }
   ApiError.prototype = Object.create(Error.prototype);
 
+  function parseBody(text) {
+    if (!text) return null;
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      return { raw: text };
+    }
+  }
+
+  function toApiError(res, data) {
+    var detail = (data && data.detail) || data || {};
+    var code = detail.code || "HTTP_" + res.status;
+    var message = detail.message || (typeof detail === "string" ? detail : res.statusText);
+    return new ApiError(res.status, code, message, data);
+  }
+
   async function request(path, options) {
     options = options || {};
     var headers = Object.assign({ Accept: "application/json" }, options.headers || {});
@@ -45,28 +61,43 @@
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
 
-    var data = null;
-    var text = await res.text();
-    if (text) {
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        data = { raw: text };
-      }
-    }
+    var data = parseBody(await res.text());
 
     if (res.status === 401 && onUnauthorized && !options.skipAuth) {
       onUnauthorized();
     }
 
-    if (!res.ok) {
-      var detail = (data && data.detail) || data || {};
-      var code = detail.code || "HTTP_" + res.status;
-      var message = detail.message || (typeof detail === "string" ? detail : res.statusText);
-      throw new ApiError(res.status, code, message, data);
-    }
+    if (!res.ok) throw toApiError(res, data);
 
     return data;
+  }
+
+  /** Загрузка файла: Content-Type для multipart проставляет сам браузер. */
+  async function upload(path, formData) {
+    var headers = { Accept: "application/json" };
+    if (token) headers.Authorization = "Bearer " + token;
+
+    var res = await fetch(apiBase() + path, {
+      method: "POST",
+      headers: headers,
+      body: formData,
+    });
+
+    var data = parseBody(await res.text());
+    if (res.status === 401 && onUnauthorized) onUnauthorized();
+    if (!res.ok) throw toApiError(res, data);
+    return data;
+  }
+
+  /** Картинки и видео нельзя вставить в <img src>: токен уходит только в заголовке. */
+  async function fetchBlob(path) {
+    var headers = {};
+    if (token) headers.Authorization = "Bearer " + token;
+
+    var res = await fetch(apiBase() + path, { headers: headers });
+    if (res.status === 401 && onUnauthorized) onUnauthorized();
+    if (!res.ok) throw toApiError(res, parseBody(await res.text()));
+    return await res.blob();
   }
 
   global.NogaApi = {
@@ -137,6 +168,9 @@
     listNogas: function () {
       return request("/api/nogas");
     },
+    getNoga: function (id) {
+      return request("/api/nogas/" + id);
+    },
     createNoga: function (payload) {
       return request("/api/nogas", { method: "POST", body: payload });
     },
@@ -145,6 +179,18 @@
     },
     deleteNoga: function (id) {
       return request("/api/nogas/" + id, { method: "DELETE" });
+    },
+    uploadNogaFile: function (nogaId, kind, file) {
+      var form = new FormData();
+      form.append("kind", kind);
+      form.append("file", file, file.name);
+      return upload("/api/nogas/" + nogaId + "/files", form);
+    },
+    nogaFileBlob: function (nogaId, fileId) {
+      return fetchBlob("/api/nogas/" + nogaId + "/files/" + fileId);
+    },
+    deleteNogaFile: function (nogaId, fileId) {
+      return request("/api/nogas/" + nogaId + "/files/" + fileId, { method: "DELETE" });
     },
   };
 })(window);
