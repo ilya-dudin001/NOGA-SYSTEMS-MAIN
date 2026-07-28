@@ -1,0 +1,102 @@
+:root {
+  color-scheme: light;
+  --paper: #f2eee4;
+  --ink: #1b1b17;
+  --muted: #746f64;
+  --line: #c9c2b3;
+  --red: #ed5538;
+  --green: #297b56;
+  --lime: #6f8c2c;
+  --blue: #356e9c;
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+button { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+body { margin: 0; background: #d9d3c7; }
+.app { width: min(100%, 480px); min-height: 100vh; margin: 0 auto; padding: env(safe-area-inset-top) 20px calc(88px + env(safe-area-inset-bottom)); background: var(--paper); }
+.masthead { display: grid; height: 70px; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; border-bottom: 3px double var(--ink); }
+.masthead a { color: var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 23px; font-weight: 900; letter-spacing: -.04em; text-decoration: none; }
+.masthead > span { padding-left: 14px; border-left: 1px solid var(--line); color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.masthead button { width: 36px; height: 36px; border: 1px solid var(--ink); border-radius: 50%; background: var(--red); color: #fff7ec; font-size: 11px; font-weight: 800; }
+main { padding-top: 13px; }
+.edition { display: flex; justify-content: space-between; padding: 6px 0 9px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.hero { position: relative; padding: 26px 0 28px; }
+.hero p, .page-title p { margin: 0 0 7px; color: var(--red); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 54px; font-weight: 500; line-height: .84; letter-spacing: -.055em; }
+.hero__role { position: absolute; right: 0; bottom: 31px; padding: 7px 10px; border: 1px solid var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 13px; font-style: italic; }
+.notice { display: grid; grid-template-columns: 1fr auto; padding: 17px 0 18px; border-top: 5px solid var(--red); border-bottom: 1px solid var(--ink); }
+.notice__label { grid-column: 1 / -1; margin-bottom: 13px; color: var(--red); font-size: 9px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.notice strong { font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 500; line-height: 1.15; }
+.notice button, .section-title button { align-self: end; padding: 0 0 2px; border: 0; border-bottom: 1px solid var(--ink); background: none; color: var(--ink); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.ledger { padding-top: 29px; }
+.section-title { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: end; padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
+.section-title p { grid-column: 1 / -1; margin: 0 0 4px; color: var(--red); font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.section-title h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 27px; font-weight: 500; letter-spacing: -.035em; }
+.section-title button { margin-bottom: 3px; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--ink); }
+.metrics button { padding: 15px 7px 13px; border: 0; border-right: 1px solid var(--line); background: transparent; color: inherit; text-align: left; }
+.metrics button:last-child { border-right: 0; }
+.metrics b { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 29px; font-weight: 500; line-height: 1; }
+.metrics span { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.order { display: grid; width: 100%; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: inherit; text-align: left; }
+.order__index { color: var(--muted); font-family: Georgia, "Times New Roman", serif; font-size: 11px; font-style: italic; }
+.order > span:nth-child(2) { display: grid; min-width: 0; grid-template-columns: auto 1fr; gap: 5px 7px; align-items: center; }
+.pill { padding: 3px 5px; color: #fff; font-size: 8px; font-style: normal; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.pill--green { background: var(--green); }
+.pill--lime { background: var(--lime); }
+.pill--blue { background: var(--blue); }
+.order strong { overflow: hidden; font-family: Georgia, "Times New Roman", serif; font-size: 15px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.order small { grid-column: 1 / -1; color: var(--muted); font-size: 10px; }
+.order > b { padding-top: 3px; font-size: 12px; white-space: nowrap; }
+.cities-preview { padding-top: 34px; }
+.city-numbers { display: grid; width: 100%; grid-template-columns: repeat(4, 1fr); padding: 0; border: 0; border-bottom: 1px solid var(--ink); background: transparent; color: inherit; text-align: left; }
+.city-numbers span { padding: 16px 7px 14px; border-right: 1px solid var(--line); }
+.city-numbers span:last-child { border: 0; }
+.city-numbers b { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 27px; font-weight: 500; }
+.city-numbers small { color: var(--muted); font-size: 9px; }
+.caption { margin: 9px 0 0; color: var(--muted); font-size: 9px; font-style: italic; }
+.page-title { position: relative; padding: 26px 0 24px; border-bottom: 1px solid var(--ink); }
+.page-title h1 { font-size: 58px; }
+.page-title button { position: absolute; right: 0; bottom: 25px; width: 42px; height: 42px; border: 1px solid var(--ink); border-radius: 50%; background: none; color: var(--ink); font-size: 24px; }
+.filters { display: flex; border-bottom: 1px solid var(--ink); }
+.filters button { flex: 1; padding: 13px 5px 11px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.filters button:last-child { border-right: 0; }
+.filters button.is-active { background: var(--ink); color: var(--paper); }
+.filters sup { margin-left: 3px; font-family: Georgia, "Times New Roman", serif; font-size: 9px; font-style: italic; }
+.registry article { display: grid; grid-template-columns: 24px 1fr 86px; gap: 10px; padding: 17px 0; border-bottom: 1px solid var(--line); }
+.registry__num { color: var(--muted); font-family: Georgia, "Times New Roman", serif; font-size: 11px; font-style: italic; }
+.registry article > div:nth-child(2) { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.registry strong { font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 500; letter-spacing: -.025em; }
+.registry small { color: var(--muted); font-size: 9px; text-transform: uppercase; }
+.registry em, .registry i { margin-top: 3px; color: var(--red); font-size: 9px; font-style: normal; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.registry i { color: var(--green); }
+.registry article > div:last-child { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; align-content: start; padding-left: 10px; border-left: 1px solid var(--line); }
+.registry article > div:last-child span { color: var(--muted); font-size: 8px; text-transform: uppercase; }
+.registry article > div:last-child b { font-family: Georgia, "Times New Roman", serif; font-size: 15px; font-weight: 500; }
+.bottom-nav { position: fixed; z-index: 20; right: 0; bottom: 0; left: 0; display: grid; width: min(100%, 480px); height: calc(68px + env(safe-area-inset-bottom)); grid-template-columns: repeat(5, 1fr); margin: auto; padding-bottom: env(safe-area-inset-bottom); border-top: 1px solid var(--ink); background: rgba(242, 238, 228, .96); backdrop-filter: blur(12px); }
+.bottom-nav button { position: relative; display: flex; min-width: 0; flex-direction: column; gap: 2px; align-items: center; justify-content: center; border: 0; border-right: 1px solid var(--line); background: none; color: var(--muted); }
+.bottom-nav button:last-child { border-right: 0; }
+.bottom-nav button b { font-family: Georgia, "Times New Roman", serif; font-size: 9px; font-style: italic; font-weight: 500; }
+.bottom-nav button span { font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.bottom-nav button.is-active { background: var(--ink); color: var(--paper); }
+.bottom-nav .create { width: 50px; height: 50px; align-self: center; justify-self: center; border: 0; border-radius: 50%; background: var(--red); color: #fff; font-size: 26px; }
+.sheet { position: fixed; z-index: 40; inset: 0; }
+.sheet__backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(27, 27, 23, .6); opacity: 0; transition: opacity .22s; }
+.sheet__body { position: absolute; right: 0; bottom: 0; left: 0; width: min(100%, 480px); margin: auto; padding: 20px 20px calc(26px + env(safe-area-inset-bottom)); background: var(--paper); color: var(--ink); transform: translateY(100%); transition: transform .22s; }
+.sheet.is-open .sheet__backdrop { opacity: 1; }
+.sheet.is-open .sheet__body { transform: translateY(0); }
+.sheet__body header { display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 3px double var(--ink); color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.sheet__body header button { border: 0; background: none; color: inherit; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.sheet__body h2 { margin: 19px 0 17px; font-family: Georgia, "Times New Roman", serif; font-size: 27px; font-weight: 500; }
+.sheet__body > button { display: grid; width: 100%; grid-template-columns: 32px 1fr auto; padding: 14px 0; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; text-align: left; }
+.sheet__body > button span { color: var(--muted); font-family: Georgia, "Times New Roman", serif; font-size: 10px; font-style: italic; }
+.sheet__body > button strong { font-family: Georgia, "Times New Roman", serif; font-size: 18px; font-weight: 500; }
+.sheet__body > button b { color: var(--red); }
+.toast { position: fixed; z-index: 60; bottom: 90px; left: 50%; max-width: calc(100% - 40px); padding: 11px 15px; background: var(--ink); color: var(--paper); font-size: 11px; font-weight: 800; opacity: 0; pointer-events: none; transform: translate(-50%, 12px); transition: .2s; }
+.toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+@media (min-width: 481px) {
+  .app { border-right: 1px solid #aaa397; border-left: 1px solid #aaa397; }
+}

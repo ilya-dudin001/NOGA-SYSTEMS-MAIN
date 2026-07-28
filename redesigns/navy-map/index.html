@@ -3,28 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<meta name="theme-color" content="#0B0B0B">
-<title>NOGA — Дашборд</title>
-<link rel="stylesheet" href="assets/css/tokens.css">
-<link rel="stylesheet" href="assets/css/app.css">
-<link rel="stylesheet" href="assets/css/screens.css">
+<meta name="theme-color" content="#061523">
+<title>NOGA — Navy Map</title>
+<link rel="stylesheet" href="../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../assets/css/app.css">
+<link rel="stylesheet" href="../../assets/css/screens.css">
+<link rel="stylesheet" href="assets/css/navy-map.css?v=4">
 <script>window.__NOGA_CONFIG__ = { apiBase: "https://noga-api.duckdns.org" };</script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-<body>
+<body class="theme-navy-map">
 
 <div class="app" id="app">
 
   <!-- Splash -->
   <div class="splash" id="splash" aria-live="polite">
-    <img class="splash__logo" src="assets/img/logo.png" alt="NOGA" width="64" height="64">
+    <div class="navy-splash-mark" aria-hidden="true">N</div>
     <div class="splash__spinner" aria-hidden="true"></div>
     <p class="splash__text">Авторизация…</p>
   </div>
 
   <!-- No access -->
   <div class="gate" id="gate" hidden>
-    <img class="splash__logo" src="assets/img/logo.png" alt="" width="56" height="56">
+    <div class="navy-splash-mark navy-splash-mark--small" aria-hidden="true">N</div>
     <h1 class="gate__title" id="gateTitle">Доступ закрыт</h1>
     <p class="gate__text" id="gateText"></p>
     <p class="gate__code" id="gateCode"></p>
@@ -51,20 +52,15 @@
     <!-- ===== HOME ===== -->
     <div class="view" id="viewHome">
       <header class="topbar reveal" style="animation-delay:.02s">
-        <button class="design-switch" id="designSwitch" type="button"
-          data-theme-href="redesigns/navy-map/index.html"
-          title="Переключить дизайн" aria-label="Переключить дизайн">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="5" width="12" height="12" rx="3"/>
-            <rect x="9" y="7" width="12" height="12" rx="3"/>
-          </svg>
-        </button>
+        <a class="navy-logo" href="../" aria-label="К выбору дизайна">
+          <span>N</span>
+          <b>NOGA</b>
+        </a>
         <div class="topbar__brand">
           <span class="topbar__name" id="greetingName">…</span>
-          <img class="logo" src="assets/img/logo.png" alt="NOGA Systems" width="42" height="42">
           <span class="topbar__role" id="greetingRole"></span>
         </div>
+        <span class="navy-live"><i aria-hidden="true"></i>Онлайн</span>
         <button class="bell has-alert" id="bell" type="button" aria-label="Уведомления">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -74,19 +70,65 @@
         </button>
       </header>
 
+      <section class="navy-hero reveal" style="animation-delay:.06s">
+        <p class="navy-eyebrow" id="navyDate">Оперативная сводка</p>
+        <h1>Всё под<br>контролем</h1>
+        <button class="design-switch design-switch--hero" id="designSwitch" type="button"
+          data-theme-href="../../index.html"
+          title="Переключить дизайн" aria-label="Переключить дизайн">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="12" height="12" rx="3"/>
+            <rect x="9" y="7" width="12" height="12" rx="3"/>
+          </svg>
+        </button>
+      </section>
+
+      <section class="navy-attention reveal" id="navyAttention" style="animation-delay:.08s" hidden>
+        <span class="navy-attention__radar" aria-hidden="true"><i></i></span>
+        <div>
+          <span class="navy-eyebrow">Фокус внимания</span>
+          <strong id="navyAttentionTitle">Города требуют проверки</strong>
+          <p id="navyAttentionText"></p>
+        </div>
+        <button id="navyAttentionOpen" type="button" aria-label="Открыть города">↗</button>
+      </section>
+
       <section class="trubki-card reveal" id="trubkiCard" style="animation-delay:.1s" aria-label="Трубки">
         <div class="trubki-card__head">
-          <h2 class="trubki-card__title">Трубки</h2>
-          <span class="trubki-card__total" id="trubkiTotal">0</span>
+          <div>
+            <span class="navy-eyebrow">Поток операций</span>
+            <h2 class="trubki-card__title">Трубки</h2>
+          </div>
+          <span class="trubki-card__total"><b id="trubkiTotal">0</b> всего</span>
         </div>
+        <div class="navy-pipeline" aria-label="Трубки по стадиям">
+          <div class="navy-pipeline__center"><b id="navyPipelineTotal">0</b><span>всего</span></div>
+          <div class="navy-pipeline__item navy-pipeline__item--zacep"><b id="navyZacep">0</b><span>Зацеп</span></div>
+          <div class="navy-pipeline__item navy-pipeline__item--vedut"><b id="navyVedut">0</b><span>Ведут</span></div>
+          <div class="navy-pipeline__item navy-pipeline__item--zabrali"><b id="navyZabrali">0</b><span>Забрали</span></div>
+          <div class="navy-pipeline__item navy-pipeline__item--done"><b id="navyDone">0</b><span>Готово</span></div>
+        </div>
+        <div class="navy-cut"><span><i aria-hidden="true"></i>Срез</span><b id="navySrez">0</b></div>
+        <p class="navy-subtitle">Последние обновления</p>
         <div id="dashTrubki"></div>
-        <button class="btn-all" id="trubkiEntry" type="button">Все трубки</button>
+        <button class="btn-all" id="trubkiEntry" type="button">Все трубки <span aria-hidden="true">↗</span></button>
       </section>
 
       <section class="cities-card reveal" id="citiesCard" style="animation-delay:.26s" hidden aria-label="Города">
         <div class="cities-card__head">
-          <h2 class="cities-card__title">Города</h2>
-          <span class="cities-card__total" id="citiesTotal">0</span>
+          <div>
+            <span class="navy-eyebrow">География</span>
+            <h2 class="cities-card__title">Сеть городов</h2>
+          </div>
+          <span class="cities-card__total"><b id="citiesTotal">0</b> точек</span>
+        </div>
+        <div class="navy-map-preview" aria-hidden="true">
+          <span class="navy-map-preview__shape"></span>
+          <i class="navy-map-preview__pin navy-map-preview__pin--one"></i>
+          <i class="navy-map-preview__pin navy-map-preview__pin--two"></i>
+          <i class="navy-map-preview__pin navy-map-preview__pin--three"></i>
+          <i class="navy-map-preview__pin navy-map-preview__pin--alert"></i>
         </div>
         <div class="cities-card__row">
           <div class="cities-card__stat">
@@ -108,7 +150,7 @@
         <p class="cities-card__foot" id="citiesFoot">Ног: 0 · Разгрузов: 0</p>
       </section>
 
-      <button class="btn-all" id="razgruzyEntry" type="button" hidden style="margin-top:16px">Разгрузы</button>
+      <button class="btn-all navy-directory-entry" id="razgruzyEntry" type="button" hidden>Открыть разгрузы <span aria-hidden="true">↗</span></button>
     </div>
 
     <!-- ===== USERS ===== -->
@@ -479,23 +521,25 @@
   </div>
 </div>
 
-<script src="assets/js/config.js"></script>
-<script src="assets/js/telegram.js"></script>
-<script src="assets/js/api.js"></script>
-<script src="assets/js/roles.js"></script>
-<script src="assets/js/dict.js"></script>
-<script src="assets/js/views.js"></script>
-<script src="assets/js/screens/dashboard.js"></script>
-<script src="assets/js/screens/no-access.js"></script>
-<script src="assets/js/screens/users.js"></script>
-<script src="assets/js/screens/nogas.js"></script>
-<script src="assets/js/screens/cities.js"></script>
-<script src="assets/js/screens/razgruzy.js"></script>
-<script src="assets/js/screens/trubki.js"></script>
-<script src="assets/js/screens/stats.js"></script>
-<script src="assets/js/screens/profile.js"></script>
-<script src="assets/js/screens/create-menu.js"></script>
-<script src="assets/js/theme-switch.js?v=1"></script>
-<script src="assets/js/auth.js"></script>
+<script src="../../assets/js/config.js"></script>
+<script src="../../assets/js/telegram.js"></script>
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/roles.js"></script>
+<script src="../../assets/js/dict.js"></script>
+<script src="../../assets/js/views.js"></script>
+<script src="../../assets/js/screens/dashboard.js"></script>
+<script src="../../assets/js/screens/no-access.js"></script>
+<script src="../../assets/js/screens/users.js"></script>
+<script src="../../assets/js/screens/nogas.js"></script>
+<script src="../../assets/js/screens/cities.js"></script>
+<script src="../../assets/js/screens/razgruzy.js"></script>
+<script src="../../assets/js/screens/trubki.js"></script>
+<script src="../../assets/js/screens/stats.js"></script>
+<script src="../../assets/js/screens/profile.js"></script>
+<script src="../../assets/js/screens/create-menu.js"></script>
+<script src="../../assets/js/theme-switch.js?v=1"></script>
+<script src="assets/js/navy-map.js?v=4"></script>
+<script src="assets/js/navy-preview.js?v=4"></script>
+<script src="../../assets/js/auth.js"></script>
 </body>
 </html>
