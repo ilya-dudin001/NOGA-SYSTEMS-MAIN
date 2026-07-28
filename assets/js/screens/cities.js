@@ -45,7 +45,26 @@
     remove:
       '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/>' +
       '<path d="M10 11v6M14 11v6"/>',
+    /* Статусы города на карточке списка — без текста, подпись в title/aria-label. */
+    status_working:
+      '<circle cx="12" cy="12" r="9"/>' +
+      '<path d="m10 8.5 6 3.5-6 3.5V8.5z"/>',
+    status_paused:
+      '<circle cx="12" cy="12" r="9"/>' +
+      '<path d="M10 9v6M14 9v6"/>',
+    status_stopped:
+      '<circle cx="12" cy="12" r="9"/>' +
+      '<rect x="9" y="9" width="6" height="6" rx="1"/>',
   };
+
+  function svgIcon(icon) {
+    return (
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      ICONS[icon] +
+      "</svg>"
+    );
+  }
 
   function makeIconBtn(icon, label, onClick, extraClass) {
     var b = document.createElement("button");
@@ -53,13 +72,21 @@
     b.className = "btn-icon" + (extraClass ? " " + extraClass : "");
     b.title = label;
     b.setAttribute("aria-label", label);
-    b.innerHTML =
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
-      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      ICONS[icon] +
-      "</svg>";
+    b.innerHTML = svgIcon(icon);
     b.addEventListener("click", onClick);
     return b;
+  }
+
+  function buildStatusPill(city, orphan) {
+    var status = global.NogaDict.cityStatus(city.status);
+    var pill = el(
+      "span",
+      "status-pill status-pill--icon " + (orphan ? "status-pill--alert" : status.cls)
+    );
+    pill.title = status.label;
+    pill.setAttribute("aria-label", status.label);
+    pill.innerHTML = svgIcon("status_" + status.value);
+    return pill;
   }
 
   function setDetailBtnState(button, open) {
@@ -152,10 +179,10 @@
     if (city.status !== "working") return [];
     var problems = [];
     if (!city.nogas_count) {
-      problems.push("!! ВНИМАНИЕ !! К городу «" + city.name + "» не прикреплена нога");
+      problems.push("Нет ноги");
     }
     if (canSeeRazgruzy() && !(city.razgruzy || []).length) {
-      problems.push("!! ГОРОД БЕЗ РАЗГРУЗА !! К «" + city.name + "» не привязан разгруз");
+      problems.push("Нет разгруза");
     }
     return problems;
   }
@@ -171,7 +198,6 @@
   }
 
   function buildCard(city) {
-    var status = global.NogaDict.cityStatus(city.status);
     var problems = cityProblems(city);
     var orphan = problems.length > 0;
     var card = el("article", "user-card city-card" + (orphan ? " city-card--alert" : ""));
@@ -180,19 +206,22 @@
     var head = el("div");
     head.appendChild(el("p", "user-card__name", city.name));
 
-    var meta = "Запуск от: " + global.NogaDict.formatAmount(city.min_amount, city.min_amount_currency);
-    meta += " · Ног: " + city.nogas_count;
-    if (canSeeRazgruzy()) meta += " · Разгрузов: " + city.razgruzy.length;
-    head.appendChild(el("p", "user-card__meta", meta));
+    var parts = [];
+    if (city.min_amount !== null && city.min_amount !== undefined) {
+      parts.push(
+        "От " + global.NogaDict.formatCompactAmount(city.min_amount, city.min_amount_currency)
+      );
+    }
+    parts.push("Ног: " + city.nogas_count);
+    if (canSeeRazgruzy()) parts.push("Разгрузов: " + city.razgruzy.length);
+    head.appendChild(el("p", "user-card__meta", parts.join(" · ")));
     if (!canManageCity(city)) {
       head.appendChild(
         el("p", "user-card__meta user-card__meta--history", "Ведёт " + (city.created_by_name || "другой пользователь"))
       );
     }
     top.appendChild(head);
-    top.appendChild(
-      el("span", "status-pill " + (orphan ? "status-pill--alert" : status.cls), status.label)
-    );
+    top.appendChild(buildStatusPill(city, orphan));
     card.appendChild(top);
 
     appendWarnings(card, problems);
