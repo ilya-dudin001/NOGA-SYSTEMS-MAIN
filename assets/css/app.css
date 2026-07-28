@@ -57,25 +57,21 @@ body{
    ============================================================ */
 .topbar{
   position:relative;
-  display:flex;
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr);
   align-items:center;
-  justify-content:center;
-  padding-top:14px;
+  gap:10px;
+  padding:14px 46px 0;
   min-height:52px;
 }
 
 .topbar__brand{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  max-width:calc(100% - 92px);
-  min-width:0;
+  display:contents;
 }
 
 .logo{
   display:block;
-  flex:0 0 auto;
+  grid-column:2;
   width:42px;
   height:42px;
   object-fit:contain;
@@ -83,8 +79,10 @@ body{
 }
 
 .topbar__name{
+  grid-column:1;
+  justify-self:end;
   min-width:0;
-  flex:0 1 auto;
+  max-width:100%;
   text-align:right;
   font-size:var(--fs-strong);
   font-weight:700;
@@ -100,8 +98,10 @@ body{
 }
 
 .topbar__role{
+  grid-column:3;
+  justify-self:start;
   min-width:0;
-  flex:0 1 auto;
+  max-width:100%;
   display:inline-flex;
   align-items:center;
   padding:5px 10px;
