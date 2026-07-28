@@ -51,9 +51,11 @@
     <!-- ===== HOME ===== -->
     <div class="view" id="viewHome">
       <header class="topbar reveal" style="animation-delay:.02s">
-        <span class="topbar__name" id="greetingName">…</span>
-        <img class="logo" src="assets/img/logo.png" alt="NOGA Systems" width="42" height="42">
-        <span class="topbar__role" id="greetingRole"></span>
+        <div class="topbar__brand">
+          <span class="topbar__name" id="greetingName">…</span>
+          <img class="logo" src="assets/img/logo.png" alt="NOGA Systems" width="42" height="42">
+          <span class="topbar__role" id="greetingRole"></span>
+        </div>
         <button class="bell has-alert" id="bell" type="button" aria-label="Уведомления">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -63,20 +65,7 @@
         </button>
       </header>
 
-      <section class="turnover reveal" id="turnoverCard" style="animation-delay:.1s" aria-label="Оборот за сегодня">
-        <div class="turnover__photo" aria-hidden="true"></div>
-        <div class="turnover__overlay" aria-hidden="true"></div>
-        <div class="turnover__col">
-          <p class="turnover__label">Общий оборот сегодня</p>
-          <p class="turnover__value"><span id="turn-rub" data-count="0">0</span> <span class="cur">₽</span></p>
-        </div>
-        <div class="turnover__col turnover__col--right">
-          <p class="turnover__label">USD эквивалент</p>
-          <p class="turnover__value"><span id="turn-usd" data-count="0">0</span> <span class="cur">$</span></p>
-        </div>
-      </section>
-
-      <section class="trubki-card reveal" id="trubkiCard" style="animation-delay:.18s" aria-label="Трубки">
+      <section class="trubki-card reveal" id="trubkiCard" style="animation-delay:.1s" aria-label="Трубки">
         <div class="trubki-card__head">
           <h2 class="trubki-card__title">Трубки</h2>
           <span class="trubki-card__total" id="trubkiTotal">0</span>

@@ -1,31 +1,8 @@
 (function (global) {
   "use strict";
 
-  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
   function format(n) {
     return global.NogaDict.formatNumber(n);
-  }
-
-  function countUp(el, target, duration) {
-    var start = performance.now();
-    function frame(now) {
-      var p = Math.min((now - start) / duration, 1);
-      var eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = format(Math.round(target * eased));
-      if (p < 1) requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-  }
-
-  function setCount(el, value, animate) {
-    var target = Number(value) || 0;
-    if (reduceMotion || animate === false) {
-      el.textContent = format(target);
-      return;
-    }
-    el.textContent = format(0);
-    countUp(el, target, 900);
   }
 
   function applyCities(cities) {
@@ -55,31 +32,11 @@
     }
   }
 
-  function applySummary(summary, options) {
+  function applySummary(summary) {
     summary = summary || {};
-    var animate = !options || options.animate !== false;
-    var map = {
-      "turn-rub": summary.turnover_rub,
-      "turn-usd": summary.turnover_usd,
-    };
-    Object.keys(map).forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) setCount(el, map[id] || 0, animate);
-    });
-
     applyCities(summary.cities || {});
     global.NogaTrubki.applyTotal((summary.trubki || {}).total);
     global.NogaTrubki.renderDashboard();
-
-    var turnover = document.getElementById("turnoverCard");
-    if (turnover) {
-      if (summary.scope === "own" || !global.NogaRoles.can("dashboard:global")) {
-        turnover.classList.add("is-hidden-by-role");
-      } else {
-        turnover.classList.remove("is-hidden-by-role");
-      }
-    }
-
   }
 
   function applyUser(user) {

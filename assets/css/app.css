@@ -57,18 +57,25 @@ body{
    ============================================================ */
 .topbar{
   position:relative;
-  display:grid;
-  grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr);
+  display:flex;
   align-items:center;
-  gap:10px;
+  justify-content:center;
   padding-top:14px;
-  padding-right:46px;
   min-height:52px;
+}
+
+.topbar__brand{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  max-width:calc(100% - 92px);
+  min-width:0;
 }
 
 .logo{
   display:block;
-  grid-column:2;
+  flex:0 0 auto;
   width:42px;
   height:42px;
   object-fit:contain;
@@ -76,10 +83,8 @@ body{
 }
 
 .topbar__name{
-  grid-column:1;
-  justify-self:end;
   min-width:0;
-  max-width:100%;
+  flex:0 1 auto;
   text-align:right;
   font-size:var(--fs-strong);
   font-weight:700;
@@ -95,10 +100,8 @@ body{
 }
 
 .topbar__role{
-  grid-column:3;
-  justify-self:start;
   min-width:0;
-  max-width:100%;
+  flex:0 1 auto;
   display:inline-flex;
   align-items:center;
   padding:5px 10px;
@@ -146,119 +149,6 @@ body{
   transition:opacity .25s var(--ease), transform .25s var(--ease);
 }
 .bell.has-alert .badge{ opacity:1; transform:scale(1); }
-
-/* Оборот сразу под шапкой — место приветствия занял topbar */
-
-/* ============================================================
-   КАРТОЧКА ОБОРОТА
-   ============================================================ */
-.turnover{
-  position:relative;
-  isolation:isolate;
-  min-height:132px;
-  margin-top:18px;
-  padding:20px;
-  border-radius:var(--radius-lg);
-  overflow:hidden;
-  box-shadow:var(--shadow-hero);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  transition:transform .3s var(--ease), box-shadow .3s var(--ease);
-}
-.turnover:hover{
-  transform:translateY(-2px);
-  box-shadow:0 24px 50px rgba(0,0,0,.7), 0 0 0 1px rgba(212,175,55,.3);
-}
-
-/*
-  Фон-«фотография»: стопки денег, кошелёк и бокал виски в тёплом
-  приглушённом свете, собранные из CSS-градиентов (без внешних файлов).
-  Чтобы подставить реальный снимок — достаточно одной строки:
-  .turnover__photo{ background-image:url("money.jpg"); background-size:cover; }
-*/
-.turnover__photo{
-  position:absolute;
-  inset:0;
-  z-index:-2;
-  background-color:#0C0904;
-  background-image:
-    /* тёплый источник света сверху справа */
-    radial-gradient(80% 110% at 78% -15%, rgba(206,156,68,.34), transparent 66%),
-    /* янтарный блик бокала виски */
-    radial-gradient(20% 34% at 74% 58%, rgba(255,178,84,.24), transparent 72%),
-    /* мягкая подсветка кошелька слева */
-    radial-gradient(38% 56% at 14% 74%, rgba(138,96,40,.26), transparent 74%),
-    /* объём сцены */
-    linear-gradient(158deg, #201709 0%, #130D06 46%, #080603 100%);
-  background-repeat:no-repeat;
-}
-
-/* Расфокусированные корешки банкнот в стопках */
-.turnover__photo::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background-image:
-    repeating-linear-gradient(94deg,
-      rgba(232,196,128,.24) 0 2px,
-      rgba(26,18,9,.30) 2px 8px),
-    repeating-linear-gradient(-6deg,
-      rgba(212,174,110,.17) 0 2px,
-      rgba(18,12,6,.26) 2px 9px);
-  background-size:78% 46%, 46% 52%;
-  background-position:left bottom, 92% 88%;
-  background-repeat:no-repeat;
-  filter:blur(1.1px);
-  -webkit-mask-image:linear-gradient(to top, #000 0%, rgba(0,0,0,.35) 62%, transparent 100%);
-          mask-image:linear-gradient(to top, #000 0%, rgba(0,0,0,.35) 62%, transparent 100%);
-}
-
-/* Виньетка + зерно, чтобы «фото» не выглядело плоским */
-.turnover__photo::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:
-    radial-gradient(130% 110% at 46% 34%, transparent 26%, rgba(0,0,0,.7) 100%),
-    repeating-radial-gradient(circle at 30% 60%, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
-}
-
-/* Затемняющий оверлей под текст */
-.turnover__overlay{
-  position:absolute;
-  inset:0;
-  z-index:-1;
-  background:
-    linear-gradient(100deg, rgba(6,6,6,.86) 0%, rgba(8,8,8,.56) 44%, rgba(10,8,4,.42) 100%);
-}
-
-.turnover__col{ min-width:0; }
-.turnover__col--right{ text-align:right; }
-
-.turnover__label{
-  margin:0 0 8px;
-  font-size:var(--fs-meta);
-  font-weight:400;
-  color:#B9B4AB;
-  letter-spacing:.1px;
-  white-space:nowrap;
-}
-.turnover__value{
-  margin:0;
-  font-size:24px;
-  font-weight:700;
-  letter-spacing:.2px;
-  white-space:nowrap;
-  color:#FFFFFF;
-  text-shadow:0 2px 14px rgba(0,0,0,.7);
-  font-variant-numeric:tabular-nums;
-}
-.turnover__value .cur{
-  font-weight:600;
-  color:rgba(255,255,255,.9);
-}
 
 /* ============================================================
    ПЛИТКИ СТАТИСТИКИ — сетка 2 × N: в три колонки подписи не читались
