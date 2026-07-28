@@ -116,6 +116,8 @@
     Array.prototype.forEach.call(tabs, function (tabNode) {
       tabNode.addEventListener("click", function () {
         var name = tabNode.getAttribute("data-tab");
+        // Заход не из профиля — возвращаться в него незачем.
+        global.NogaProfile.hideBack();
         if (name === "home") {
           global.NogaViews.show("viewHome");
           return;
@@ -153,6 +155,7 @@
     var entry = document.getElementById(id);
     if (!entry) return;
     entry.addEventListener("click", function () {
+      global.NogaProfile.hideBack();
       open();
       global.NogaRoles.activateTab(tabName || "profile");
     });

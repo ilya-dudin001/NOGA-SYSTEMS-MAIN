@@ -99,7 +99,7 @@
       items.push({
         icon: "users",
         label: "Пользователи",
-        hint: "Кому открыт доступ к боту и Mini App",
+        view: "viewUsers",
         open: function () {
           global.NogaUsers.show();
         },
@@ -112,7 +112,7 @@
       items.push({
         icon: "cities",
         label: can("cities:all") ? "Города" : "Мои города",
-        hint: can("cities:all") ? "Все города системы" : "Города, которые ведёте вы",
+        view: "viewCities",
         open: function () {
           global.NogaCities.show({ mode: "own" });
         },
@@ -123,7 +123,7 @@
       items.push({
         icon: "nogas",
         label: can("nogas:all") ? "Ноги" : "Мои ноги",
-        hint: can("nogas:all") ? "Все ноги системы" : "Ноги, которые завели вы",
+        view: "viewNogas",
         open: function () {
           global.NogaNogas.show();
         },
@@ -134,7 +134,7 @@
       items.push({
         icon: "razgruzy",
         label: can("razgruz:all") ? "Разгрузы" : "Мои разгрузы",
-        hint: can("razgruz:all") ? "Все разгрузы системы" : "Разгрузы, которые завели вы",
+        view: "viewRazgruzy",
         open: function () {
           global.NogaRazgruzy.show({ mine: true });
         },
@@ -144,13 +144,41 @@
     items.push({
       icon: "stats",
       label: "Статистика",
-      hint: "Общие цифры по системе",
+      view: "viewStats",
       open: function () {
         global.NogaStats.show();
       },
     });
 
     return items;
+  }
+
+  /**
+   * Кнопка возврата живёт в шапке каждого раздела и показывается только тогда,
+   * когда в раздел пришли из профиля: с дашборда и из таббара возвращаться некуда.
+   */
+  function backButtons() {
+    return document.querySelectorAll(".btn-back");
+  }
+
+  function showBack(viewId) {
+    Array.prototype.forEach.call(backButtons(), function (btn) {
+      btn.hidden = btn.getAttribute("data-back") !== viewId;
+    });
+  }
+
+  function hideBack() {
+    showBack(null);
+  }
+
+  var backBound = false;
+
+  function bindBack() {
+    if (backBound) return;
+    backBound = true;
+    Array.prototype.forEach.call(backButtons(), function (btn) {
+      btn.addEventListener("click", show);
+    });
   }
 
   function buildMenuItem(item) {
@@ -161,16 +189,16 @@
     icon.innerHTML = svgIcon(item.icon);
     btn.appendChild(icon);
 
-    var text = el("span", "profile-menu__text");
-    text.appendChild(el("span", "profile-menu__label", item.label));
-    text.appendChild(el("span", "profile-menu__hint", item.hint));
-    btn.appendChild(text);
+    btn.appendChild(el("span", "profile-menu__label", item.label));
 
     var chevron = el("span", "profile-menu__chevron");
     chevron.innerHTML = svgIcon("chevron");
     btn.appendChild(chevron);
 
-    btn.addEventListener("click", item.open);
+    btn.addEventListener("click", function () {
+      item.open();
+      showBack(item.view);
+    });
     return btn;
   }
 
@@ -194,10 +222,12 @@
     if (!user) return;
     // Уходим с экрана ног — их предпросмотры держат blob-ссылки.
     global.NogaNogas.release();
+    bindBack();
+    hideBack();
     global.NogaViews.show("viewProfile");
     renderCard(user);
     renderMenu(user);
   }
 
-  global.NogaProfile = { show: show };
+  global.NogaProfile = { show: show, hideBack: hideBack };
 })(window);

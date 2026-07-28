@@ -101,11 +101,19 @@
   margin:8px 0 14px;
 }
 .users-toolbar__title{
-  margin:0;
+  margin:0 auto 0 0;
   font-size:18px;
   font-weight:700;
   color:#E8E4DC;
 }
+/* Возврат в профиль: есть в шапке каждого раздела, но виден только при заходе оттуда */
+.btn-back{
+  flex:0 0 auto;
+  width:34px;
+  height:34px;
+}
+.btn-back svg{ width:17px; height:17px; }
+.btn-back[hidden]{ display:none !important; }
 .btn-gold{
   display:inline-flex;
   align-items:center;
@@ -866,21 +874,12 @@
   width:19px;
   height:19px;
 }
-.profile-menu__text{
+.profile-menu__label{
   flex:1;
   min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-}
-.profile-menu__label{
   font-size:13.5px;
   font-weight:600;
   color:#EDE9E1;
-}
-.profile-menu__hint{
-  font-size:11px;
-  color:var(--text-dim);
 }
 .profile-menu__chevron{
   flex:0 0 auto;
