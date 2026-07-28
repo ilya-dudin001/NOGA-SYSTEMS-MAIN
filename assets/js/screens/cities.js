@@ -45,16 +45,6 @@
     remove:
       '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/>' +
       '<path d="M10 11v6M14 11v6"/>',
-    /* Статусы города на карточке списка — без текста, подпись в title/aria-label. */
-    status_working:
-      '<circle cx="12" cy="12" r="9"/>' +
-      '<path d="m10 8.5 6 3.5-6 3.5V8.5z"/>',
-    status_paused:
-      '<circle cx="12" cy="12" r="9"/>' +
-      '<path d="M10 9v6M14 9v6"/>',
-    status_stopped:
-      '<circle cx="12" cy="12" r="9"/>' +
-      '<rect x="9" y="9" width="6" height="6" rx="1"/>',
   };
 
   function svgIcon(icon) {
@@ -75,18 +65,6 @@
     b.innerHTML = svgIcon(icon);
     b.addEventListener("click", onClick);
     return b;
-  }
-
-  function buildStatusPill(city, orphan) {
-    var status = global.NogaDict.cityStatus(city.status);
-    var pill = el(
-      "span",
-      "status-pill status-pill--icon " + (orphan ? "status-pill--alert" : status.cls)
-    );
-    pill.title = status.label;
-    pill.setAttribute("aria-label", status.label);
-    pill.innerHTML = svgIcon("status_" + status.value);
-    return pill;
   }
 
   function setDetailBtnState(button, open) {
@@ -221,7 +199,6 @@
       );
     }
     top.appendChild(head);
-    top.appendChild(buildStatusPill(city, orphan));
     card.appendChild(top);
 
     appendWarnings(card, problems);
@@ -773,16 +750,9 @@
   }
 
   function bindForm() {
-    var openBtn = document.getElementById("btnAddCity");
-    if (openBtn) openBtn.hidden = !canManage();
     if (formBound) return;
     formBound = true;
 
-    if (openBtn) {
-      openBtn.addEventListener("click", function () {
-        openForm(null);
-      });
-    }
     var cancelBtn = document.getElementById("btnCancelCity");
     if (cancelBtn) cancelBtn.addEventListener("click", closeForm);
 

@@ -73,19 +73,6 @@
   font-variant-numeric:tabular-nums;
 }
 
-.greeting__role{
-  display:inline-block;
-  margin-top:10px;
-  padding:5px 12px;
-  border-radius:999px;
-  border:1px solid var(--gold-line);
-  background:var(--gold-soft);
-  color:var(--gold);
-  font-size:var(--fs-hint);
-  font-weight:500;
-  letter-spacing:.2px;
-}
-
 .screen[hidden],
 .tabbar[hidden],
 .view[hidden]{
@@ -575,8 +562,11 @@
     linear-gradient(180deg, rgba(255,255,255,.035) 0%, rgba(255,255,255,0) 45%),
     linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
   box-shadow:var(--shadow-card);
+  transition:transform .15s var(--ease);
 }
 .cities-card[hidden]{ display:none !important; }
+.cities-card.is-clickable{ cursor:pointer; }
+.cities-card.is-clickable:active{ transform:scale(.992); }
 .cities-card__head{
   display:flex;
   align-items:baseline;
@@ -626,7 +616,6 @@
   font-size:var(--fs-meta);
   color:var(--text-dim);
 }
-.cities-card .btn-all{ margin-top:14px; }
 
 /* Вкладки в деталях ноги */
 .tabs{
@@ -793,6 +782,12 @@
   box-shadow:var(--shadow-card);
   text-align:center;
 }
+.profile-card__identity{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+}
 .profile-card__avatar{
   display:grid;
   place-items:center;
@@ -806,11 +801,21 @@
   font-weight:700;
   letter-spacing:.5px;
 }
+.profile-card__name-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  max-width:100%;
+}
 .profile-card__name{
   margin:0;
   font-size:23px;
   font-weight:700;
   color:#F0EDE6;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .profile-card__role{
   padding:6px 14px;
@@ -821,9 +826,16 @@
   font-size:var(--fs-meta);
   font-weight:500;
   letter-spacing:.2px;
+  white-space:nowrap;
 }
-.profile-card__rename{ margin-top:2px; }
+.profile-card__rename{
+  flex:0 0 auto;
+  width:40px;
+  height:40px;
+  color:var(--gold);
+}
 .profile-card__rename[hidden]{ display:none !important; }
+.profile-card__rename svg{ width:18px; height:18px; }
 
 /* Форма смены ника внутри карточки */
 .profile-rename{

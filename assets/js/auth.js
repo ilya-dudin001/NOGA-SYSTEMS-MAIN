@@ -22,25 +22,26 @@
     if (tabbar) tabbar.hidden = false;
     if (splash) splash.classList.add("is-hidden");
 
-    var usersEntry = document.getElementById("usersEntry");
-    if (usersEntry) {
-      usersEntry.hidden = !(
-        global.NogaRoles.can("users:manage") || global.NogaRoles.can("users:read")
-      );
-    }
-
-    var nogasEntry = document.getElementById("nogasEntry");
-    if (nogasEntry) {
-      nogasEntry.hidden = !(
-        global.NogaRoles.can("nogas:manage") || global.NogaRoles.can("nogas:read")
-      );
-    }
-
     var razgruzyEntry = document.getElementById("razgruzyEntry");
     if (razgruzyEntry) {
       razgruzyEntry.hidden = !(
         global.NogaRoles.can("razgruz:manage") || global.NogaRoles.can("razgruz:read")
       );
+    }
+
+    // Плашка городов сама открывает витрину — отдельной кнопки больше нет.
+    var citiesCard = document.getElementById("citiesCard");
+    if (citiesCard) {
+      citiesCard.classList.toggle("is-clickable", global.NogaRoles.can("cities:read"));
+      citiesCard.setAttribute(
+        "role",
+        global.NogaRoles.can("cities:read") ? "button" : "region"
+      );
+      if (global.NogaRoles.can("cities:read")) {
+        citiesCard.tabIndex = 0;
+      } else {
+        citiesCard.removeAttribute("tabindex");
+      }
     }
 
     global.NogaRoles.applyTabbar();
@@ -138,22 +139,34 @@
       });
     });
 
-    bindEntry("usersEntry", function () {
-      global.NogaUsers.show();
-    });
-    bindEntry("nogasEntry", function () {
-      global.NogaNogas.show();
-    }, "nogas");
-    bindEntry("citiesEntry", function () {
-      global.NogaCities.show({ mode: "working" });
-    }, "cities");
     bindEntry("razgruzyEntry", function () {
       global.NogaRazgruzy.show();
     });
+    // Плашка городов на дашборде — витрина «В работе».
+    bindCitiesCard();
     // Трубки — часть дашборда, поэтому подсветка остаётся на «Панели».
     bindEntry("trubkiEntry", function () {
       global.NogaTrubki.show({ status: "" });
     }, "home");
+  }
+
+  function bindCitiesCard() {
+    var card = document.getElementById("citiesCard");
+    if (!card || card.dataset.bound) return;
+    card.dataset.bound = "1";
+    function open() {
+      if (!global.NogaRoles.can("cities:read")) return;
+      global.NogaProfile.hideBack();
+      global.NogaCities.show({ mode: "working" });
+      global.NogaRoles.activateTab("cities");
+    }
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+    });
   }
 
   function bindEntry(id, open, tabName) {

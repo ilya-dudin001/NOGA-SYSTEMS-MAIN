@@ -78,8 +78,6 @@
     // Верхний пункт появляется последним: список «вырастает» из кнопки «+».
     btn.style.transitionDelay = (total - index - 1) * 40 + "ms";
 
-    btn.appendChild(el("span", "fab-menu__label", item.label));
-
     var icon = el("span", "fab-menu__icon");
     icon.innerHTML =
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
@@ -87,6 +85,7 @@
       ICONS[item.icon] +
       "</svg>";
     btn.appendChild(icon);
+    btn.appendChild(el("span", "fab-menu__label", item.label));
 
     btn.addEventListener("click", function () {
       close();

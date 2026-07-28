@@ -756,16 +756,9 @@
   }
 
   function bindForm() {
-    var openBtn = document.getElementById("btnAddNoga");
-    if (openBtn) openBtn.hidden = !canManage();
     if (formBound) return;
     formBound = true;
 
-    if (openBtn) {
-      openBtn.addEventListener("click", function () {
-        openForm(null);
-      });
-    }
     var cancelBtn = document.getElementById("btnCancelNoga");
     if (cancelBtn) cancelBtn.addEventListener("click", closeForm);
 

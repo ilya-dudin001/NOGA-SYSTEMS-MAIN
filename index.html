@@ -51,7 +51,9 @@
     <!-- ===== HOME ===== -->
     <div class="view" id="viewHome">
       <header class="topbar reveal" style="animation-delay:.02s">
+        <span class="topbar__name" id="greetingName">…</span>
         <img class="logo" src="assets/img/logo.png" alt="NOGA Systems" width="42" height="42">
+        <span class="topbar__role" id="greetingRole"></span>
         <button class="bell has-alert" id="bell" type="button" aria-label="Уведомления">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -60,12 +62,6 @@
           <span class="badge" aria-hidden="true"></span>
         </button>
       </header>
-
-      <p class="greeting reveal" style="animation-delay:.06s">
-        <span class="greeting__hello">Добро пожаловать,</span>
-        <span class="greeting__name" id="greetingName">…</span>
-        <span class="greeting__role" id="greetingRole"></span>
-      </p>
 
       <section class="turnover reveal" id="turnoverCard" style="animation-delay:.1s" aria-label="Оборот за сегодня">
         <div class="turnover__photo" aria-hidden="true"></div>
@@ -112,12 +108,9 @@
           </div>
         </div>
         <p class="cities-card__foot" id="citiesFoot">Ног: 0 · Разгрузов: 0</p>
-        <button class="btn-all" id="citiesEntry" type="button">Управление городами</button>
       </section>
 
-      <button class="btn-all" id="usersEntry" type="button" hidden style="margin-top:16px">Пользователи</button>
-      <button class="btn-all" id="nogasEntry" type="button" hidden style="margin-top:10px">Ноги</button>
-      <button class="btn-all" id="razgruzyEntry" type="button" hidden style="margin-top:10px">Разгрузы</button>
+      <button class="btn-all" id="razgruzyEntry" type="button" hidden style="margin-top:16px">Разгрузы</button>
     </div>
 
     <!-- ===== USERS ===== -->
@@ -171,7 +164,6 @@
           </svg>
         </button>
         <h2 class="users-toolbar__title">Ноги</h2>
-        <button class="btn-gold" id="btnAddNoga" type="button" hidden>+ Добавить</button>
       </div>
 
       <form class="form-card" id="nogaForm" hidden>
@@ -215,7 +207,6 @@
           </svg>
         </button>
         <h2 class="users-toolbar__title">Города</h2>
-        <button class="btn-gold" id="btnAddCity" type="button" hidden>+ Добавить</button>
       </div>
 
       <div class="tabs" id="citiesModes" role="tablist"></div>
@@ -384,13 +375,19 @@
       </div>
 
       <article class="profile-card">
-        <div class="profile-card__avatar" id="profileAvatar" aria-hidden="true"></div>
-        <p class="profile-card__name" id="profileName">—</p>
-        <span class="profile-card__role" id="profileRole"></span>
-
-        <button class="btn-ghost profile-card__rename" id="profileRenameBtn" type="button" hidden>
-          Изменить ник
-        </button>
+        <div class="profile-card__identity">
+          <div class="profile-card__avatar" id="profileAvatar" aria-hidden="true"></div>
+          <span class="profile-card__role" id="profileRole"></span>
+        </div>
+        <div class="profile-card__name-row">
+          <p class="profile-card__name" id="profileName">—</p>
+          <button class="btn-icon profile-card__rename" id="profileRenameBtn" type="button" title="Изменить ник" aria-label="Изменить ник" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 20h9"/>
+              <path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+            </svg>
+          </button>
+        </div>
 
         <form class="profile-rename" id="profileRenameForm" hidden>
           <div class="field">
