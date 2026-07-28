@@ -19,15 +19,15 @@
   ];
 
   var CURRENCIES = [
-    { value: "RUB", label: "Рубли", sign: "₽" },
-    { value: "USD", label: "Доллары", sign: "$" },
-    { value: "UZS", label: "Узбекские сумы", sign: "сум" },
-    { value: "KGS", label: "Киргизские сомы", sign: "сом" },
-    { value: "KZT", label: "Казахские тенге", sign: "₸" },
-    { value: "AZN", label: "Азербайджанские манаты", sign: "₼" },
-    { value: "BYN", label: "Белорусские рубли", sign: "Br" },
-    { value: "MDL", label: "Молдавские леи", sign: "lei" },
-    { value: "PRB", label: "Приднестровские рубли", sign: "руб. ПМР" },
+    { value: "RUB", label: "Рубли", sign: "₽", short: "руб" },
+    { value: "USD", label: "Доллары", sign: "$", short: "$" },
+    { value: "UZS", label: "Узбекские сумы", sign: "сум", short: "сум" },
+    { value: "KGS", label: "Киргизские сомы", sign: "сом", short: "сом" },
+    { value: "KZT", label: "Казахские тенге", sign: "₸", short: "₸" },
+    { value: "AZN", label: "Азербайджанские манаты", sign: "₼", short: "₼" },
+    { value: "BYN", label: "Белорусские рубли", sign: "Br", short: "Br" },
+    { value: "MDL", label: "Молдавские леи", sign: "lei", short: "lei" },
+    { value: "PRB", label: "Приднестровские рубли", sign: "руб. ПМР", short: "руб. ПМР" },
   ];
 
   /* Блоки файлов в личных данных ноги. accept дублирует расширениями то, что
@@ -82,6 +82,27 @@
     return formatNumber(amount) + (cur ? " " + cur.sign : "");
   }
 
+  /** 200000 → «200к», 1500000 → «1,5м» — для компактных подписей на карточках. */
+  function formatCompactNumber(value) {
+    var n = Number(value) || 0;
+    var abs = Math.abs(n);
+    function trim(v) {
+      var s = (Math.round(v * 10) / 10).toString().replace(".", ",");
+      return s;
+    }
+    if (abs >= 1000000) return trim(n / 1000000) + "м";
+    if (abs >= 1000) return trim(n / 1000) + "к";
+    return formatNumber(n);
+  }
+
+  /** 200000 + RUB → «200к руб». null → пустая строка (на карточке не показываем). */
+  function formatCompactAmount(amount, currencyCode) {
+    if (amount === null || amount === undefined) return "";
+    var cur = currency(currencyCode);
+    var unit = cur ? cur.short || cur.sign : "";
+    return formatCompactNumber(amount) + (unit ? " " + unit : "");
+  }
+
   function formatDate(iso) {
     if (!iso) return "—";
     var d = new Date(iso);
@@ -120,6 +141,8 @@
     fileKind: fileKind,
     formatNumber: formatNumber,
     formatAmount: formatAmount,
+    formatCompactNumber: formatCompactNumber,
+    formatCompactAmount: formatCompactAmount,
     formatDate: formatDate,
     formatPercent: formatPercent,
     formatSize: formatSize,
