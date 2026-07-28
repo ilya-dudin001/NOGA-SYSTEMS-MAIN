@@ -123,6 +123,10 @@
     me: function () {
       return request("/api/me");
     },
+    /** Своё отображаемое имя; роль и статус этот запрос не меняет. */
+    updateMe: function (payload) {
+      return request("/api/me", { method: "PATCH", body: payload });
+    },
     dashboardSummary: function () {
       return request("/api/dashboard/summary");
     },

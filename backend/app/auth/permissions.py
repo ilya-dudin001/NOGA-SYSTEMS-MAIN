@@ -6,6 +6,8 @@ from app.db.models import UserRole
 USERS_MANAGE = "users:manage"
 USERS_READ = "users:read"
 USERS_DELETE = "users:delete"
+# Своё отображаемое имя. Есть у всех, кроме ноги: ей имя ставит тот, кто её завёл.
+PROFILE_RENAME = "profile:rename"
 DASHBOARD_GLOBAL = "dashboard:global"
 OPERATIONS_ALL = "operations:all"
 OPERATIONS_OWN = "operations:own"
@@ -32,6 +34,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             USERS_MANAGE,
             USERS_READ,
             USERS_DELETE,
+            PROFILE_RENAME,
             DASHBOARD_GLOBAL,
             OPERATIONS_ALL,
             OPERATIONS_OWN,
@@ -54,6 +57,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
         {
             USERS_MANAGE,
             USERS_READ,
+            PROFILE_RENAME,
             DASHBOARD_GLOBAL,
             OPERATIONS_ALL,
             OPERATIONS_OWN,
@@ -76,6 +80,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
     UserRole.admin: frozenset(
         {
             USERS_READ,
+            PROFILE_RENAME,
             DASHBOARD_GLOBAL,
             OPERATIONS_ALL,
             OPERATIONS_OWN,

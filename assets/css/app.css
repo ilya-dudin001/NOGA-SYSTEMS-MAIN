@@ -106,20 +106,20 @@ body{
 .bell.has-alert .badge{ opacity:1; transform:scale(1); }
 
 .greeting{
-  margin:6px 0 18px;
+  margin:10px 0 22px;
   line-height:1.28;
 }
 .greeting__hello{
   display:block;
-  font-size:13px;
+  font-size:var(--fs-body);
   font-weight:400;
   color:var(--text-muted);
   letter-spacing:.1px;
 }
 .greeting__name{
   display:block;
-  margin-top:2px;
-  font-size:22px;
+  margin-top:4px;
+  font-size:var(--fs-hero);
   font-weight:700;
   letter-spacing:.2px;
   background:linear-gradient(180deg, #E7C766 0%, var(--gold) 45%, var(--gold-deep) 100%);
@@ -134,8 +134,8 @@ body{
 .turnover{
   position:relative;
   isolation:isolate;
-  min-height:126px;
-  padding:18px;
+  min-height:132px;
+  padding:20px;
   border-radius:var(--radius-lg);
   overflow:hidden;
   box-shadow:var(--shadow-hero);
@@ -216,8 +216,8 @@ body{
 .turnover__col--right{ text-align:right; }
 
 .turnover__label{
-  margin:0 0 6px;
-  font-size:12px;
+  margin:0 0 8px;
+  font-size:var(--fs-meta);
   font-weight:400;
   color:#B9B4AB;
   letter-spacing:.1px;
@@ -225,7 +225,7 @@ body{
 }
 .turnover__value{
   margin:0;
-  font-size:21px;
+  font-size:24px;
   font-weight:700;
   letter-spacing:.2px;
   white-space:nowrap;
@@ -242,25 +242,25 @@ body{
    ЗАГОЛОВКИ СЕКЦИЙ
    ============================================================ */
 .section-title{
-  margin:22px 0 12px;
-  font-size:14px;
+  margin:30px 0 14px;
+  font-size:var(--fs-strong);
   font-weight:600;
   letter-spacing:.2px;
   color:#E8E4DC;
 }
 
 /* ============================================================
-   СТАТИСТИКА — сетка 3 × 2
+   СТАТИСТИКА — сетка 2 × 3: в три колонки подписи не читались
    ============================================================ */
 .stats{
   display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:10px;
+  grid-template-columns:repeat(2, 1fr);
+  gap:12px;
 }
 
 .stat{
   position:relative;
-  padding:12px 12px 11px;
+  padding:15px 15px 14px;
   border-radius:var(--radius);
   border:1px solid var(--hairline);
   background:
@@ -282,10 +282,10 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:8px;
-  min-height:28px;
+  min-height:30px;
 }
 .stat__num{
-  font-size:19px;
+  font-size:25px;
   font-weight:700;
   line-height:1;
   letter-spacing:.2px;
@@ -293,8 +293,8 @@ body{
 }
 .stat__label{
   display:block;
-  margin-top:9px;
-  font-size:11px;
+  margin-top:10px;
+  font-size:var(--fs-meta);
   font-weight:400;
   color:var(--text-dim);
   letter-spacing:.1px;
@@ -306,16 +306,16 @@ body{
 /* Иконка-документ в тёмном квадрате */
 .stat__icon{
   flex:0 0 auto;
-  width:26px;
-  height:26px;
-  border-radius:8px;
+  width:30px;
+  height:30px;
+  border-radius:9px;
   display:grid;
   place-items:center;
   border:1px solid rgba(255,255,255,.08);
   background:linear-gradient(180deg, #1C1C1C, #131313);
   color:#CFCAC0;
 }
-.stat__icon svg{ width:13px; height:13px; }
+.stat__icon svg{ width:15px; height:15px; }
 
 /* Цветные индикаторы-кружки */
 .dot{
@@ -351,8 +351,8 @@ body{
    ПОСЛЕДНИЕ ОПЕРАЦИИ
    ============================================================ */
 .operations{
-  margin-top:22px;
-  padding:14px 14px 14px;
+  margin-top:26px;
+  padding:18px;
   border-radius:var(--radius-lg);
   border:1px solid var(--hairline);
   background:
@@ -361,8 +361,8 @@ body{
   box-shadow:var(--shadow-card);
 }
 .operations__title{
-  margin:2px 2px 10px;
-  font-size:14px;
+  margin:2px 2px 12px;
+  font-size:var(--fs-strong);
   font-weight:600;
   letter-spacing:.2px;
   color:#E8E4DC;
@@ -379,7 +379,7 @@ body{
   align-items:flex-start;
   justify-content:space-between;
   gap:10px;
-  padding:12px 4px;
+  padding:14px 4px;
   border-top:1px solid var(--hairline);
   cursor:pointer;
   border-radius:10px;
@@ -391,15 +391,15 @@ body{
 
 .op__id{
   margin:0;
-  font-size:14px;
+  font-size:var(--fs-strong);
   font-weight:600;
   letter-spacing:.3px;
   color:#F0EDE6;
   font-variant-numeric:tabular-nums;
 }
 .op__meta{
-  margin:5px 0 0;
-  font-size:11.5px;
+  margin:6px 0 0;
+  font-size:var(--fs-meta);
   color:var(--text-dim);
   letter-spacing:.1px;
 }
@@ -415,7 +415,7 @@ body{
   display:inline-flex;
   align-items:center;
   gap:6px;
-  font-size:11.5px;
+  font-size:var(--fs-meta);
   font-weight:500;
   letter-spacing:.1px;
   white-space:nowrap;
@@ -435,7 +435,7 @@ body{
 .op__status--green::before{ display:none; }
 
 .op__time{
-  font-size:11.5px;
+  font-size:var(--fs-meta);
   color:var(--text-dim);
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
@@ -444,14 +444,14 @@ body{
 .btn-all{
   display:block;
   width:100%;
-  margin-top:14px;
-  padding:13px 16px;
+  margin-top:16px;
+  padding:16px;
   border-radius:var(--radius);
   border:1px solid var(--hairline);
   background:linear-gradient(180deg, #171717 0%, #101010 100%);
   color:#E9E5DC;
   font:inherit;
-  font-size:13px;
+  font-size:var(--fs-body);
   font-weight:500;
   letter-spacing:.2px;
   cursor:pointer;
@@ -493,13 +493,13 @@ body{
   background:transparent;
   color:var(--text-dim);
   font:inherit;
-  font-size:10.5px;
+  font-size:var(--fs-hint);
   letter-spacing:.1px;
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
   transition:color .22s var(--ease);
 }
-.tab svg{ width:20px; height:20px; }
+.tab svg{ width:23px; height:23px; }
 .tab:hover{ color:#B9B4AB; }
 .tab.is-active{ color:var(--gold); font-weight:600; }
 .tab.is-active svg{ filter:drop-shadow(0 0 8px rgba(212,175,55,.45)); }

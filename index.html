@@ -355,7 +355,32 @@
         <div class="profile-card__avatar" id="profileAvatar" aria-hidden="true"></div>
         <p class="profile-card__name" id="profileName">—</p>
         <span class="profile-card__role" id="profileRole"></span>
-        <dl class="profile-card__rows" id="profileRows"></dl>
+
+        <button class="btn-ghost profile-card__rename" id="profileRenameBtn" type="button" hidden>
+          Изменить ник
+        </button>
+
+        <form class="profile-rename" id="profileRenameForm" hidden>
+          <div class="field">
+            <label for="profileNick">Ник</label>
+            <input id="profileNick" type="text" maxlength="32" autocomplete="off" placeholder="Иван">
+          </div>
+          <p class="profile-rename__hint">
+            Русские и английские буквы, цифры, пробел, дефис и подчёркивание. От 2 до 32 символов.
+          </p>
+          <div class="form-actions">
+            <button class="btn-all" id="profileRenameCancel" type="button">Отмена</button>
+            <button class="btn-gold" type="submit" style="flex:1">Сохранить</button>
+          </div>
+        </form>
+
+        <button class="profile-card__toggle" id="profileDetailsToggle" type="button" aria-expanded="false" aria-controls="profileRows">
+          <span class="profile-card__toggle-label">Детали профиля</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </button>
+        <dl class="profile-card__rows" id="profileRows" hidden></dl>
       </article>
 
       <nav class="profile-menu" id="profileMenu" aria-label="Разделы профиля"></nav>

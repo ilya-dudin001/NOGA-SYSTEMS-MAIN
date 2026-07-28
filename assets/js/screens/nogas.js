@@ -44,6 +44,38 @@
     return el("span", "user-card__badge" + (extraClass ? " " + extraClass : ""), text);
   }
 
+  /* Иконки те же, что на карточках городов: подпись живёт в title/aria-label. */
+  var ICONS = {
+    detail: '<path d="m6 9 6 6 6-6"/>',
+    edit: '<path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    remove:
+      '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/>' +
+      '<path d="M10 11v6M14 11v6"/>',
+  };
+
+  function makeIconBtn(icon, label, onClick, extraClass) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn-icon" + (extraClass ? " " + extraClass : "");
+    b.title = label;
+    b.setAttribute("aria-label", label);
+    b.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      ICONS[icon] +
+      "</svg>";
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  function setDetailBtnState(button, open) {
+    if (!button) return;
+    button.classList.toggle("is-open", open);
+    var label = open ? "Свернуть" : "Подробнее";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+  }
+
   function trackBlob(url) {
     blobUrls.push(url);
     return url;
@@ -139,38 +171,27 @@
     var detailWrap = el("div", "city-card__detail");
     detailWrap.hidden = true;
 
-    var detailBtn = makeBtn("Подробнее", function () {
+    var detailBtn = makeIconBtn("detail", "Подробнее", function () {
       toggleDetail(noga, detailWrap, detailBtn);
     });
     actions.appendChild(detailBtn);
 
+    // Тип и статус переключаются в деталях: на карточке остаётся только то,
+    // что нужно с одного взгляда.
     if (canManageNoga(noga)) {
       actions.appendChild(
-        makeBtn("Изменить", function () {
+        makeIconBtn("edit", "Изменить", function () {
           openForm(noga);
         })
       );
       actions.appendChild(
-        makeBtn(noga.is_test ? "Сделать рабочей" : "Сделать тестовой", function () {
-          patch(noga, { is_test: !noga.is_test });
-        })
-      );
-      actions.appendChild(
-        makeBtn(
-          noga.is_active ? "Выключить" : "Включить",
-          function () {
-            patch(noga, { is_active: !noga.is_active });
-          },
-          noga.is_active ? "btn-ghost--danger" : ""
-        )
-      );
-      actions.appendChild(
-        makeBtn(
+        makeIconBtn(
+          "remove",
           "Удалить",
           function () {
             removeNoga(noga);
           },
-          "btn-ghost--danger"
+          "btn-icon--danger"
         )
       );
     }
@@ -193,7 +214,7 @@
       openContainer.hidden = true;
       openContainer.innerHTML = "";
     }
-    if (openButton) openButton.textContent = "Подробнее";
+    setDetailBtnState(openButton, false);
     openContainer = null;
     openButton = null;
     openDetailId = null;
@@ -213,7 +234,7 @@
     container.hidden = false;
     container.innerHTML = "";
     container.appendChild(el("p", "empty-hint", "Загрузка…"));
-    if (button) button.textContent = "Свернуть";
+    setDetailBtnState(button, true);
 
     try {
       var detail = await global.NogaApi.getNoga(noga.id);
@@ -281,7 +302,7 @@
     return single ? [{ label: "Была прикреплена к городу", value: single }] : [];
   }
 
-  function renderMainTab(noga, host) {
+  function renderMainTab(noga, host, forceReadonly) {
     var list = el("ul", "detail-list");
 
     function row(name, value, history) {
@@ -301,6 +322,25 @@
     row("Дата добавления", global.NogaDict.formatDate(noga.created_at));
     host.appendChild(list);
 
+    if (!forceReadonly && canManageNoga(noga)) {
+      var actions = el("div", "user-card__actions");
+      actions.appendChild(
+        makeBtn(noga.is_test ? "Сделать рабочей" : "Сделать тестовой", function () {
+          patch(noga, { is_test: !noga.is_test });
+        })
+      );
+      actions.appendChild(
+        makeBtn(
+          noga.is_active ? "Выключить" : "Включить",
+          function () {
+            patch(noga, { is_active: !noga.is_active });
+          },
+          noga.is_active ? "btn-ghost--danger" : ""
+        )
+      );
+      host.appendChild(actions);
+    }
+
     if (!noga.has_personal_access) {
       host.appendChild(el("p", "detail__empty", "Нет доступа к личным данным ноги"));
     }
@@ -313,7 +353,7 @@
     try {
       var noga = await global.NogaApi.getNoga(nogaId);
       container.innerHTML = "";
-      renderMainTab(noga, container);
+      renderMainTab(noga, container, true);
       if (noga.has_personal_access) {
         container.appendChild(el("p", "detail__title", "Личные данные"));
         renderPersonalTab(noga, container, true);

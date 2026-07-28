@@ -50,6 +50,10 @@ class UserCreateIn(BaseModel):
     first_name: Optional[str] = None
 
 
+class MeUpdateIn(BaseModel):
+    display_name: str
+
+
 class UserUpdateIn(BaseModel):
     role: Optional[UserRole] = None
     status: Optional[UserStatus] = None

@@ -30,8 +30,16 @@
   --radius:        16px;
   --radius-sm:     12px;
 
-  --gutter:        16px;
-  --nav-h:         64px;
+  --gutter:        18px;
+  --nav-h:         72px;
+
+  /* Шкала текста. Минимум — 12.5px: мельче на телефоне уже не читается */
+  --fs-hint:       12.5px;
+  --fs-meta:       13.5px;
+  --fs-body:       15px;
+  --fs-strong:     16.5px;
+  --fs-title:      21px;
+  --fs-hero:       27px;
 
   --ease:          cubic-bezier(.4, 0, .2, 1);
 }

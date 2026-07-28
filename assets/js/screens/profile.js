@@ -76,6 +76,9 @@
     if (name) name.textContent = user.display_name || "—";
     if (role) role.textContent = user.role_label || user.role || "";
 
+    var renameBtn = document.getElementById("profileRenameBtn");
+    if (renameBtn) renameBtn.hidden = !can("profile:rename");
+
     rows.innerHTML = "";
     addRow(rows, "Telegram ID", String(user.telegram_id));
     addRow(rows, "Username", user.username ? "@" + user.username : "");
@@ -83,6 +86,100 @@
     addRow(rows, "В системе с", global.NogaDict.formatDate(user.created_at));
     if (user.last_seen_at) {
       addRow(rows, "Последний вход", global.NogaDict.formatDate(user.last_seen_at));
+    }
+  }
+
+  /* ---------- детали под дропдауном ---------- */
+
+  function setDetails(open) {
+    var toggle = document.getElementById("profileDetailsToggle");
+    var rows = document.getElementById("profileRows");
+    if (!toggle || !rows) return;
+    rows.hidden = !open;
+    toggle.classList.toggle("is-open", open);
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  /* ---------- свой ник ---------- */
+
+  // Те же правила, что и на сервере (services/users.normalize_display_name):
+  // кириллица, латиница и цифры, между ними пробел, дефис или подчёркивание.
+  var NICK_RE = /^[А-Яа-яЁёA-Za-z0-9]+([ _-][А-Яа-яЁёA-Za-z0-9]+)*$/;
+  var NICK_HINT =
+    "Ник может состоять из русских и английских букв, цифр, пробела, дефиса и подчёркивания";
+
+  function openRename(user) {
+    var form = document.getElementById("profileRenameForm");
+    var input = document.getElementById("profileNick");
+    var btn = document.getElementById("profileRenameBtn");
+    if (!form || !input) return;
+    input.value = user.display_name || "";
+    form.hidden = false;
+    if (btn) btn.hidden = true;
+    input.focus();
+  }
+
+  function closeRename() {
+    var form = document.getElementById("profileRenameForm");
+    var btn = document.getElementById("profileRenameBtn");
+    if (form) form.hidden = true;
+    if (btn) btn.hidden = !can("profile:rename");
+  }
+
+  async function saveNick() {
+    var input = document.getElementById("profileNick");
+    if (!input) return;
+    var value = input.value.replace(/\s+/g, " ").trim();
+    if (value.length < 2 || value.length > 32) {
+      global.NogaTelegram.notify("Ник должен быть от 2 до 32 символов");
+      return;
+    }
+    if (!NICK_RE.test(value)) {
+      global.NogaTelegram.notify(NICK_HINT);
+      return;
+    }
+    try {
+      var updated = await global.NogaApi.updateMe({ display_name: value });
+      // Права и роль перечитываются с сервера — приветствие на дашборде тоже обновляем.
+      global.NogaRoles.setUser(updated);
+      global.NogaDashboard.applyUser(updated);
+      closeRename();
+      renderCard(updated);
+    } catch (err) {
+      global.NogaTelegram.notify(err.message || "Не удалось сохранить ник");
+    }
+  }
+
+  var cardBound = false;
+
+  function bindCard() {
+    if (cardBound) return;
+    cardBound = true;
+
+    var toggle = document.getElementById("profileDetailsToggle");
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        setDetails(document.getElementById("profileRows").hidden);
+      });
+    }
+
+    var renameBtn = document.getElementById("profileRenameBtn");
+    if (renameBtn) {
+      renameBtn.addEventListener("click", function () {
+        var user = global.NogaRoles.getUser();
+        if (user) openRename(user);
+      });
+    }
+
+    var cancel = document.getElementById("profileRenameCancel");
+    if (cancel) cancel.addEventListener("click", closeRename);
+
+    var form = document.getElementById("profileRenameForm");
+    if (form) {
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        saveNick();
+      });
     }
   }
 
@@ -224,6 +321,9 @@
     global.NogaNogas.release();
     bindBack();
     hideBack();
+    bindCard();
+    closeRename();
+    setDetails(false);
     global.NogaViews.show("viewProfile");
     renderCard(user);
     renderMenu(user);

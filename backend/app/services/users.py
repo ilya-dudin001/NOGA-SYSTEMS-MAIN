@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -74,6 +75,51 @@ class UserActionError(Exception):
         self.code = code
         self.message = message
         super().__init__(message)
+
+
+DISPLAY_NAME_MIN = 2
+DISPLAY_NAME_MAX = 32
+# Ник — кириллица, латиница и цифры; пробел, дефис и подчёркивание разрешены как
+# разделители, чтобы не ломать уже заведённые имена вида «Иван Петров».
+DISPLAY_NAME_RE = re.compile(r"^[А-Яа-яЁёA-Za-z0-9]+([ _-][А-Яа-яЁёA-Za-z0-9]+)*$")
+DISPLAY_NAME_HINT = (
+    "Ник может состоять из русских и английских букв, цифр, "
+    "пробела, дефиса и подчёркивания"
+)
+
+
+def normalize_display_name(value: Optional[str]) -> str:
+    """Чистит и проверяет ник. Кидает UserActionError, как остальные действия сервиса."""
+    name = " ".join((value or "").split())
+    if len(name) < DISPLAY_NAME_MIN:
+        raise UserActionError(
+            "BAD_REQUEST", f"Ник должен быть не короче {DISPLAY_NAME_MIN} символов"
+        )
+    if len(name) > DISPLAY_NAME_MAX:
+        raise UserActionError(
+            "BAD_REQUEST", f"Ник должен быть не длиннее {DISPLAY_NAME_MAX} символов"
+        )
+    if not DISPLAY_NAME_RE.match(name):
+        raise UserActionError("BAD_REQUEST", DISPLAY_NAME_HINT)
+    return name
+
+
+async def rename_self(session: AsyncSession, *, actor: User, display_name: str) -> User:
+    name = normalize_display_name(display_name)
+    if name == actor.display_name:
+        return actor
+    await write_audit(
+        session,
+        action="user.renamed",
+        actor_user_id=actor.id,
+        target_type="user",
+        target_id=str(actor.id),
+        payload={"from": actor.display_name, "to": name},
+    )
+    actor.display_name = name
+    await session.commit()
+    await session.refresh(actor)
+    return actor
 
 
 async def delete_user_account(
