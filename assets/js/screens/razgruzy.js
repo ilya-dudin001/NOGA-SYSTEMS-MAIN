@@ -3,9 +3,15 @@
 
   var editingId = null;
   var formBound = false;
+  // Вход из профиля — только свои разгрузы; чужие остаются на дашборде.
+  var mineOnly = false;
 
   function canManage() {
     return global.NogaRoles.can("razgruz:manage");
+  }
+
+  function seesAllRazgruzy() {
+    return global.NogaRoles.can("razgruz:all");
   }
 
   /** Свой разгруз правит автор, чужой — только роли со скоупом на всех. */
@@ -29,12 +35,20 @@
     return b;
   }
 
+  /** Справочник общий, поэтому «мои» отбираем на фронте по created_by_me. */
+  function visible(items) {
+    if (!mineOnly || seesAllRazgruzy()) return items;
+    return (items || []).filter(function (r) {
+      return r.created_by_me;
+    });
+  }
+
   async function loadAndRender() {
     var listEl = document.getElementById("razgruzyList");
     if (!listEl) return;
     listEl.innerHTML = '<p class="empty-hint">Загрузка…</p>';
     try {
-      renderList(await global.NogaApi.listRazgruzy());
+      renderList(visible(await global.NogaApi.listRazgruzy()));
     } catch (err) {
       listEl.innerHTML = "";
       listEl.appendChild(
@@ -47,7 +61,13 @@
     var listEl = document.getElementById("razgruzyList");
     listEl.innerHTML = "";
     if (!items || !items.length) {
-      listEl.appendChild(el("p", "empty-hint", "Разгрузов пока нет"));
+      listEl.appendChild(
+        el(
+          "p",
+          "empty-hint",
+          mineOnly && !seesAllRazgruzy() ? "Вы ещё не завели разгрузов" : "Разгрузов пока нет"
+        )
+      );
       return;
     }
 
@@ -250,8 +270,16 @@
     });
   }
 
-  function show() {
+  function applyTitle() {
+    var title = document.getElementById("razgruzyTitle");
+    if (!title) return;
+    title.textContent = mineOnly && !seesAllRazgruzy() ? "Мои разгрузы" : "Разгрузы";
+  }
+
+  function show(options) {
     global.NogaViews.show("viewRazgruzy");
+    mineOnly = Boolean(options && options.mine);
+    applyTitle();
     bindForm();
     closeForm();
     loadAndRender();

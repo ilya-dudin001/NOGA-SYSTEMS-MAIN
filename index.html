@@ -294,7 +294,7 @@
     <!-- ===== RAZGRUZY ===== -->
     <div class="view" id="viewRazgruzy" hidden>
       <div class="users-toolbar">
-        <h2 class="users-toolbar__title">Разгрузы</h2>
+        <h2 class="users-toolbar__title" id="razgruzyTitle">Разгрузы</h2>
         <button class="btn-gold" id="btnAddRazgruz" type="button" hidden>+ Добавить</button>
       </div>
 
@@ -319,6 +319,31 @@
       </form>
 
       <div id="razgruzyList"></div>
+    </div>
+
+    <!-- ===== PROFILE ===== -->
+    <div class="view" id="viewProfile" hidden>
+      <div class="users-toolbar">
+        <h2 class="users-toolbar__title">Профиль</h2>
+      </div>
+
+      <article class="profile-card">
+        <div class="profile-card__avatar" id="profileAvatar" aria-hidden="true"></div>
+        <p class="profile-card__name" id="profileName">—</p>
+        <span class="profile-card__role" id="profileRole"></span>
+        <dl class="profile-card__rows" id="profileRows"></dl>
+      </article>
+
+      <nav class="profile-menu" id="profileMenu" aria-label="Разделы профиля"></nav>
+    </div>
+
+    <!-- ===== STATS ===== -->
+    <div class="view" id="viewStats" hidden>
+      <div class="users-toolbar">
+        <h2 class="users-toolbar__title">Статистика</h2>
+      </div>
+
+      <div id="statsBody"></div>
     </div>
 
   </main>
@@ -378,6 +403,8 @@
 <script src="assets/js/screens/nogas.js"></script>
 <script src="assets/js/screens/cities.js"></script>
 <script src="assets/js/screens/razgruzy.js"></script>
+<script src="assets/js/screens/stats.js"></script>
+<script src="assets/js/screens/profile.js"></script>
 <script src="assets/js/auth.js"></script>
 </body>
 </html>

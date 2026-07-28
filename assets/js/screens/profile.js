@@ -1,0 +1,203 @@
+/* Профиль: карточка текущего пользователя и вход в его разделы. */
+(function (global) {
+  "use strict";
+
+  var ICONS = {
+    users:
+      '<circle cx="9" cy="8" r="3.2"/>' +
+      '<path d="M3 20v-1.6A4.4 4.4 0 0 1 7.4 14h3.2a4.4 4.4 0 0 1 4.4 4.4V20"/>' +
+      '<path d="M16.4 5.3a3.2 3.2 0 0 1 0 5.4"/>' +
+      '<path d="M18.2 14.3A4.4 4.4 0 0 1 21 18.4V20"/>',
+    cities:
+      '<path d="M3 21h18"/>' +
+      '<path d="M5 21V9l5-3.5V21"/>' +
+      '<path d="M14 21V11h5v10"/>' +
+      '<path d="M7.6 12h.01M7.6 15.5h.01M16.4 14.5h.01M16.4 17.5h.01"/>',
+    nogas:
+      '<circle cx="12" cy="7" r="3.2"/>' +
+      '<path d="M6 21v-2.2A4.8 4.8 0 0 1 10.8 14h2.4A4.8 4.8 0 0 1 18 18.8V21"/>',
+    razgruzy:
+      '<path d="M4 8.5h13"/><path d="m14 5.5 3 3-3 3"/>' +
+      '<path d="M20 15.5H7"/><path d="m10 12.5-3 3 3 3"/>',
+    stats:
+      '<path d="M3.5 20.5h17"/>' +
+      '<path d="M6.5 17.5v-5"/><path d="M12 17.5v-10"/><path d="M17.5 17.5v-7"/>',
+    chevron: '<path d="m9 6 6 6-6 6"/>',
+  };
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+  }
+
+  function svgIcon(icon) {
+    return (
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      ICONS[icon] +
+      "</svg>"
+    );
+  }
+
+  function can(permission) {
+    return global.NogaRoles.can(permission);
+  }
+
+  /** Инициалы для аватара: «Иван Петров» → «ИП». */
+  function initials(name) {
+    var parts = String(name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!parts.length) return "?";
+    var first = parts[0].charAt(0);
+    var second = parts.length > 1 ? parts[1].charAt(0) : "";
+    return (first + second).toUpperCase();
+  }
+
+  function addRow(list, key, value) {
+    if (!value) return;
+    var row = el("div", "profile-card__row");
+    row.appendChild(el("dt", "profile-card__key", key));
+    row.appendChild(el("dd", "profile-card__value", value));
+    list.appendChild(row);
+  }
+
+  function renderCard(user) {
+    var avatar = document.getElementById("profileAvatar");
+    var name = document.getElementById("profileName");
+    var role = document.getElementById("profileRole");
+    var rows = document.getElementById("profileRows");
+    if (!rows) return;
+
+    if (avatar) avatar.textContent = initials(user.display_name);
+    if (name) name.textContent = user.display_name || "—";
+    if (role) role.textContent = user.role_label || user.role || "";
+
+    rows.innerHTML = "";
+    addRow(rows, "Telegram ID", String(user.telegram_id));
+    addRow(rows, "Username", user.username ? "@" + user.username : "");
+    addRow(rows, "Статус", user.status === "blocked" ? "Заблокирован" : "Активен");
+    addRow(rows, "В системе с", global.NogaDict.formatDate(user.created_at));
+    if (user.last_seen_at) {
+      addRow(rows, "Последний вход", global.NogaDict.formatDate(user.last_seen_at));
+    }
+  }
+
+  /**
+   * Разделы профиля. У роли noga их нет — ей остаётся только карточка:
+   * ни ног, ни разгрузов, ни общей статистики она не видит.
+   * Пользователи здесь у тех, кто ими управляет; админу список доступен
+   * только с дашборда — править он его всё равно не может.
+   */
+  function menuItems(user) {
+    var items = [];
+
+    if (can("users:manage")) {
+      items.push({
+        icon: "users",
+        label: "Пользователи",
+        hint: "Кому открыт доступ к боту и Mini App",
+        open: function () {
+          global.NogaUsers.show();
+        },
+      });
+    }
+
+    if (user.role === "noga") return items;
+
+    if (can("cities:read")) {
+      items.push({
+        icon: "cities",
+        label: can("cities:all") ? "Города" : "Мои города",
+        hint: can("cities:all") ? "Все города системы" : "Города, которые ведёте вы",
+        open: function () {
+          global.NogaCities.show({ mode: "own" });
+        },
+      });
+    }
+
+    if (can("nogas:read")) {
+      items.push({
+        icon: "nogas",
+        label: can("nogas:all") ? "Ноги" : "Мои ноги",
+        hint: can("nogas:all") ? "Все ноги системы" : "Ноги, которые завели вы",
+        open: function () {
+          global.NogaNogas.show();
+        },
+      });
+    }
+
+    if (can("razgruz:read")) {
+      items.push({
+        icon: "razgruzy",
+        label: can("razgruz:all") ? "Разгрузы" : "Мои разгрузы",
+        hint: can("razgruz:all") ? "Все разгрузы системы" : "Разгрузы, которые завели вы",
+        open: function () {
+          global.NogaRazgruzy.show({ mine: true });
+        },
+      });
+    }
+
+    items.push({
+      icon: "stats",
+      label: "Статистика",
+      hint: "Общие цифры по системе",
+      open: function () {
+        global.NogaStats.show();
+      },
+    });
+
+    return items;
+  }
+
+  function buildMenuItem(item) {
+    var btn = el("button", "profile-menu__item");
+    btn.type = "button";
+
+    var icon = el("span", "profile-menu__icon");
+    icon.innerHTML = svgIcon(item.icon);
+    btn.appendChild(icon);
+
+    var text = el("span", "profile-menu__text");
+    text.appendChild(el("span", "profile-menu__label", item.label));
+    text.appendChild(el("span", "profile-menu__hint", item.hint));
+    btn.appendChild(text);
+
+    var chevron = el("span", "profile-menu__chevron");
+    chevron.innerHTML = svgIcon("chevron");
+    btn.appendChild(chevron);
+
+    btn.addEventListener("click", item.open);
+    return btn;
+  }
+
+  function renderMenu(user) {
+    var menu = document.getElementById("profileMenu");
+    if (!menu) return;
+    menu.innerHTML = "";
+
+    var items = menuItems(user);
+    if (!items.length) {
+      menu.appendChild(el("p", "empty-hint", "Дополнительных разделов у вашей роли нет"));
+      return;
+    }
+    items.forEach(function (item) {
+      menu.appendChild(buildMenuItem(item));
+    });
+  }
+
+  function show() {
+    var user = global.NogaRoles.getUser();
+    if (!user) return;
+    // Уходим с экрана ног — их предпросмотры держат blob-ссылки.
+    global.NogaNogas.release();
+    global.NogaViews.show("viewProfile");
+    renderCard(user);
+    renderMenu(user);
+  }
+
+  global.NogaProfile = { show: show };
+})(window);

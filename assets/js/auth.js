@@ -130,9 +130,7 @@
           return;
         }
         if (name === "profile") {
-          if (global.NogaRoles.can("users:manage") || global.NogaRoles.can("users:read")) {
-            global.NogaUsers.show();
-          }
+          global.NogaProfile.show();
         }
       });
     });

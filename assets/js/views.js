@@ -1,7 +1,15 @@
 (function (global) {
   "use strict";
 
-  var VIEW_IDS = ["viewHome", "viewUsers", "viewNogas", "viewCities", "viewRazgruzy"];
+  var VIEW_IDS = [
+    "viewHome",
+    "viewUsers",
+    "viewNogas",
+    "viewCities",
+    "viewRazgruzy",
+    "viewProfile",
+    "viewStats",
+  ];
 
   function show(id) {
     VIEW_IDS.forEach(function (viewId) {

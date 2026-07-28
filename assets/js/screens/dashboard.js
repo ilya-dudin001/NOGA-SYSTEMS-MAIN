@@ -105,10 +105,6 @@
     var tabs = document.querySelectorAll(".tab[data-tab]");
     Array.prototype.forEach.call(tabs, function (tab) {
       tab.addEventListener("click", function () {
-        var name = tab.getAttribute("data-tab");
-        if (name === "profile" && (global.NogaRoles.can("users:manage") || global.NogaRoles.can("users:read"))) {
-          /* profile tab can open users for managers — handled in app.js */
-        }
         Array.prototype.forEach.call(tabs, function (t) {
           t.classList.remove("is-active");
           t.removeAttribute("aria-current");
