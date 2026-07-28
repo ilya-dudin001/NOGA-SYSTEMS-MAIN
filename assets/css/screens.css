@@ -645,6 +645,16 @@
   cursor:pointer;
   transition:border-color .2s var(--ease), color .2s var(--ease);
 }
+/* Фильтр по стадиям трубки: шесть кнопок в строку не влезают */
+.tabs--scroll{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  padding-bottom:2px;
+}
+.tabs--scroll::-webkit-scrollbar{ display:none; }
+.tabs--scroll .tabs__btn{ flex:0 0 auto; padding:10px 13px; }
+
 .tabs__btn:hover{ color:#D8D3C9; }
 .tabs__btn.is-active{
   color:var(--gold);
@@ -959,4 +969,46 @@
   font-size:var(--fs-hint);
   line-height:1.45;
   color:var(--text-dim);
+}
+
+/* ============================================================
+   Детали трубки
+   ============================================================ */
+.trubka-head{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  margin-bottom:22px;
+  padding:22px 18px;
+  border-radius:var(--radius-lg);
+  border:1px solid var(--hairline);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035) 0%, rgba(255,255,255,0) 45%),
+    linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
+  box-shadow:var(--shadow-card);
+  text-align:center;
+}
+.trubka-head__amount{
+  margin:0;
+  font-size:var(--fs-hero);
+  font-weight:700;
+  letter-spacing:.2px;
+  font-variant-numeric:tabular-nums;
+  color:#F3EFE6;
+}
+.trubka-head__city{
+  margin:0;
+  font-size:var(--fs-body);
+  color:var(--text-muted);
+}
+
+.map-block{ margin:22px 0; }
+.map-block__frame{
+  display:block;
+  width:100%;
+  height:230px;
+  border:1px solid var(--hairline);
+  border-radius:var(--radius);
+  background:#0E0E0E;
 }

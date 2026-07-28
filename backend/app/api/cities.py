@@ -23,6 +23,7 @@ from app.schemas import CityCreateIn, CityDetailOut, CityOut, CityUpdateIn
 from app.services import cities as cities_service
 from app.services import nogas as nogas_service
 from app.services import razgruzy as razgruzy_service
+from app.services import trubki as trubki_service
 from app.services.audit import write_audit
 
 router = APIRouter(prefix="/api/cities", tags=["cities"])
@@ -374,6 +375,21 @@ async def delete_city(
 ) -> None:
     city = await get_city_or_404(session, city_id)
     require_own_city(actor, city)
+
+    # Трубки ссылаются на город, а история заказов важнее удобства уборки справочника.
+    trubki_count = await trubki_service.count_for(session, city_id=city.id)
+    if trubki_count:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "CITY_HAS_TRUBKI",
+                "message": (
+                    f"По городу заведено трубок: {trubki_count}. "
+                    "Сначала удалите их или перенесите в другой город"
+                ),
+                "trubki": trubki_count,
+            },
+        )
 
     # Ноги не удаляем вместе с городом никогда: сначала спрашиваем пользователя,
     # он присылает detach_nogas=true, и только тогда снимаем привязку.

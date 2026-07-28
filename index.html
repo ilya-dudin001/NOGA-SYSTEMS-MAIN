@@ -80,65 +80,13 @@
         </div>
       </section>
 
-      <h2 class="section-title reveal" style="animation-delay:.14s">Статистика на сегодня</h2>
-
-      <section class="stats reveal" style="animation-delay:.18s" aria-label="Статистика на сегодня">
-        <article class="stat" tabindex="0">
-          <div class="stat__top">
-            <span class="stat__num" id="stat-created">0</span>
-            <span class="stat__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6M8 13h8M8 17h5"/>
-              </svg>
-            </span>
-          </div>
-          <span class="stat__label">Создано</span>
-        </article>
-        <article class="stat" tabindex="0">
-          <div class="stat__top">
-            <span class="stat__num" id="stat-in-progress">0</span>
-            <span class="dot dot--amber" aria-hidden="true"></span>
-          </div>
-          <span class="stat__label">В работе</span>
-        </article>
-        <article class="stat" tabindex="0">
-          <div class="stat__top">
-            <span class="stat__num" id="stat-entries">0</span>
-            <span class="dot dot--blue" aria-hidden="true"></span>
-          </div>
-          <span class="stat__label">Заходов</span>
-        </article>
-        <article class="stat" tabindex="0">
-          <div class="stat__top">
-            <span class="stat__num" id="stat-paid">0</span>
-            <span class="dot dot--check" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 6 9 17l-5-5"/>
-              </svg>
-            </span>
-          </div>
-          <span class="stat__label">Выплачено</span>
-        </article>
-        <article class="stat" tabindex="0">
-          <div class="stat__top">
-            <span class="stat__num" id="stat-remaining">0</span>
-            <span class="dot dot--red" aria-hidden="true"></span>
-          </div>
-          <span class="stat__label">Осталось</span>
-        </article>
-        <article class="stat" tabindex="0">
-          <div class="stat__top">
-            <span class="stat__num" id="stat-total">0</span>
-          </div>
-          <span class="stat__label">Всего операций</span>
-        </article>
-      </section>
-
-      <section class="operations reveal" style="animation-delay:.22s" aria-label="Последние операции">
-        <h2 class="operations__title">Последние операции</h2>
-        <ul class="op-list" id="opList"></ul>
-        <button class="btn-all" id="btnAll" type="button">Все операции</button>
+      <section class="trubki-card reveal" id="trubkiCard" style="animation-delay:.18s" aria-label="Трубки">
+        <div class="trubki-card__head">
+          <h2 class="trubki-card__title">Трубки</h2>
+          <span class="trubki-card__total" id="trubkiTotal">0</span>
+        </div>
+        <div id="dashTrubki"></div>
+        <button class="btn-all" id="trubkiEntry" type="button">Все трубки</button>
       </section>
 
       <section class="cities-card reveal" id="citiesCard" style="animation-delay:.26s" hidden aria-label="Города">
@@ -345,6 +293,90 @@
       <div id="razgruzyList"></div>
     </div>
 
+    <!-- ===== TRUBKI ===== -->
+    <div class="view" id="viewTrubki" hidden>
+      <div class="users-toolbar">
+        <button class="btn-icon btn-back" type="button" data-back="viewTrubki" title="Назад в профиль" aria-label="Назад в профиль" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5"/>
+            <path d="m11 6-6 6 6 6"/>
+          </svg>
+        </button>
+        <h2 class="users-toolbar__title">Трубки</h2>
+        <button class="btn-gold" id="btnAddTrubka" type="button" hidden>+ Добавить</button>
+      </div>
+
+      <div class="tabs tabs--scroll" id="trubkiFilters" role="tablist"></div>
+
+      <form class="form-card" id="trubkaForm" hidden>
+        <p class="form-card__title" id="trubkaFormTitle">Новая трубка</p>
+        <div class="field">
+          <label for="trubkaStatusField">Статус</label>
+          <select id="trubkaStatusField"></select>
+        </div>
+        <div class="field">
+          <label for="trubkaCity">Город</label>
+          <select id="trubkaCity"></select>
+        </div>
+        <div class="field">
+          <label for="trubkaNoga">Нога</label>
+          <select id="trubkaNoga"></select>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="trubkaAmount">Сумма</label>
+            <input id="trubkaAmount" type="number" min="0" step="1" inputmode="numeric" placeholder="250000">
+          </div>
+          <div class="field">
+            <label for="trubkaCurrency">Валюта</label>
+            <select id="trubkaCurrency"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="trubkaRazgruz">Разгруз</label>
+          <select id="trubkaRazgruz"></select>
+        </div>
+        <div class="field">
+          <label for="trubkaCustomer">ФИО заказчика</label>
+          <input id="trubkaCustomer" type="text" placeholder="Иванов Иван Иванович">
+        </div>
+        <div class="field">
+          <label for="trubkaAddress">Адрес заказчика</label>
+          <textarea id="trubkaAddress" rows="2" placeholder="Город, улица, дом, квартира"></textarea>
+        </div>
+        <div class="field">
+          <label>Как забрали посылку</label>
+          <div class="segmented" id="trubkaDeliverySwitch" role="group" aria-label="Способ передачи">
+            <button class="segmented__btn is-active" type="button" data-value="zahod" aria-pressed="true">Заход на адрес</button>
+            <button class="segmented__btn" type="button" data-value="taxi" aria-pressed="false">Такси</button>
+          </div>
+          <input id="trubkaDelivery" type="hidden" value="zahod">
+        </div>
+        <div class="form-actions">
+          <button class="btn-all" id="btnCancelTrubka" type="button">Отмена</button>
+          <button class="btn-gold" type="submit" style="flex:1">Сохранить</button>
+        </div>
+      </form>
+
+      <div id="trubkiList"></div>
+    </div>
+
+    <!-- ===== TRUBKA DETAIL ===== -->
+    <div class="view" id="viewTrubka" hidden>
+      <div class="users-toolbar">
+        <button class="btn-icon" id="trubkaBack" type="button" title="Назад к трубкам" aria-label="Назад к трубкам">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5"/>
+            <path d="m11 6-6 6 6 6"/>
+          </svg>
+        </button>
+        <h2 class="users-toolbar__title">Трубка</h2>
+        <button class="btn-gold" id="btnEditTrubka" type="button" hidden>Изменить</button>
+      </div>
+
+      <div id="trubkaBody"></div>
+    </div>
+
     <!-- ===== PROFILE ===== -->
     <div class="view" id="viewProfile" hidden>
       <div class="users-toolbar">
@@ -420,7 +452,7 @@
       <span>Ноги</span>
     </button>
     <div class="tab tab--fab">
-      <button class="fab" id="fab" type="button" aria-label="Создать операцию">
+      <button class="fab" id="fab" type="button" aria-label="Что создать" aria-expanded="false" aria-controls="fabMenu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
           <path d="M12 5v14M5 12h14"/>
         </svg>
@@ -444,6 +476,12 @@
       <span>Профиль</span>
     </button>
   </nav>
+
+  <!-- Вылетающее меню создания: наполняется по правам в create-menu.js -->
+  <div class="fab-menu" id="fabMenu" hidden>
+    <button class="fab-menu__backdrop" id="fabBackdrop" type="button" aria-label="Закрыть меню"></button>
+    <div class="fab-menu__list" id="fabMenuList" role="menu" aria-label="Что создать"></div>
+  </div>
 </div>
 
 <script src="assets/js/config.js"></script>
@@ -458,8 +496,10 @@
 <script src="assets/js/screens/nogas.js"></script>
 <script src="assets/js/screens/cities.js"></script>
 <script src="assets/js/screens/razgruzy.js"></script>
+<script src="assets/js/screens/trubki.js"></script>
 <script src="assets/js/screens/stats.js"></script>
 <script src="assets/js/screens/profile.js"></script>
+<script src="assets/js/screens/create-menu.js"></script>
 <script src="assets/js/auth.js"></script>
 </body>
 </html>

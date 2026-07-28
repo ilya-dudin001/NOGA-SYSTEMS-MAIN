@@ -3,7 +3,15 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.db.models import CityStatus, Currency, NogaFileKind, UserRole, UserStatus
+from app.db.models import (
+    CityStatus,
+    Currency,
+    NogaFileKind,
+    TrubkaDelivery,
+    TrubkaStatus,
+    UserRole,
+    UserStatus,
+)
 
 
 class UserOut(BaseModel):
@@ -196,6 +204,62 @@ class NogaUpdateIn(BaseModel):
     telegrams: Optional[list[str]] = Field(default=None, max_length=20)
 
 
+class TrubkaOut(BaseModel):
+    id: int
+    status: TrubkaStatus
+    city_id: int
+    city_name: str
+    amount: int
+    amount_currency: Currency
+    noga_id: int
+    noga_name: str
+    # «Чья нога» — тот, кто её завёл; берётся у ноги, отдельным полем не хранится.
+    noga_owner_name: Optional[str] = None
+    razgruz_id: Optional[int] = None
+    razgruz_name: Optional[str] = None
+    customer_name: str
+    customer_address: str
+    delivery: TrubkaDelivery
+    created_at: datetime
+    updated_at: datetime
+    created_by_name: Optional[str] = None
+    can_manage: bool = False
+
+
+class TrubkaCreateIn(BaseModel):
+    status: TrubkaStatus = TrubkaStatus.zacep
+    city_id: int
+    noga_id: int
+    razgruz_id: Optional[int] = None
+    amount: int = Field(..., ge=0)
+    amount_currency: Currency = Currency.RUB
+    customer_name: str = Field(..., min_length=1, max_length=255)
+    customer_address: str = Field(..., min_length=1, max_length=500)
+    delivery: TrubkaDelivery = TrubkaDelivery.zahod
+
+
+class TrubkaUpdateIn(BaseModel):
+    status: Optional[TrubkaStatus] = None
+    city_id: Optional[int] = None
+    noga_id: Optional[int] = None
+    # Явный null снимает разгруз; отсутствие поля его не трогает.
+    razgruz_id: Optional[int] = None
+    amount: Optional[int] = Field(default=None, ge=0)
+    amount_currency: Optional[Currency] = None
+    customer_name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    customer_address: Optional[str] = Field(default=None, min_length=1, max_length=500)
+    delivery: Optional[TrubkaDelivery] = None
+
+
+class TrubkiSummaryOut(BaseModel):
+    total: int = 0
+    zacep: int = 0
+    vedut: int = 0
+    srez: int = 0
+    zabrali: int = 0
+    razgruzheno: int = 0
+
+
 class CitiesSummaryOut(BaseModel):
     total: int = 0
     working: int = 0
@@ -217,6 +281,7 @@ class DashboardSummaryOut(BaseModel):
     recent_operations: list[dict[str, Any]] = Field(default_factory=list)
     scope: str = "global"  # global | own
     cities: CitiesSummaryOut = Field(default_factory=CitiesSummaryOut)
+    trubki: TrubkiSummaryOut = Field(default_factory=TrubkiSummaryOut)
 
 
 class ErrorOut(BaseModel):

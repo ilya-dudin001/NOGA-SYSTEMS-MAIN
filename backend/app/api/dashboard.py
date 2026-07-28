@@ -9,6 +9,7 @@ from app.auth.permissions import CITIES_READ, DASHBOARD_GLOBAL, has_permission
 from app.db import get_session
 from app.db.models import City, CityStatus, Noga, Razgruz, User
 from app.schemas import CitiesSummaryOut, DashboardSummaryOut
+from app.services import trubki as trubki_service
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -35,11 +36,13 @@ async def dashboard_summary(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> DashboardSummaryOut:
-    """Aggregates for the home screen. Operations table not yet implemented — zeros with role scope."""
+    """Сводка для дашборда. Оборот считать пока не из чего — трубки суммы не подтверждают,
+    поэтому денежные поля нули, а живыми приходят блоки `cities` и `trubki`."""
     scope = "global" if has_permission(user.role, DASHBOARD_GLOBAL) else "own"
     cities = (
         await cities_summary(session)
         if has_permission(user.role, CITIES_READ)
         else CitiesSummaryOut()
     )
-    return DashboardSummaryOut(scope=scope, cities=cities)
+    trubki = await trubki_service.summary(session)
+    return DashboardSummaryOut(scope=scope, cities=cities, trubki=trubki)

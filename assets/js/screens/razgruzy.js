@@ -285,9 +285,20 @@
     loadAndRender();
   }
 
+  /** Вход из меню «+»: экран уже с открытой формой нового разгруза. */
+  function openCreate() {
+    show();
+    openForm(null);
+  }
+
   function hide() {
     global.NogaViews.show("viewHome");
   }
 
-  global.NogaRazgruzy = { show: show, hide: hide, reload: loadAndRender };
+  global.NogaRazgruzy = {
+    show: show,
+    hide: hide,
+    reload: loadAndRender,
+    openCreate: openCreate,
+  };
 })(window);

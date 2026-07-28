@@ -56,6 +56,21 @@
     },
   ];
 
+  /* Стадии трубки. Порядок тот же, что в жизни заказа. */
+  var TRUBKA_STATUSES = [
+    { value: "zacep", label: "Зацеп", cls: "trubka-status--zacep" },
+    { value: "vedut", label: "Ведут", cls: "trubka-status--vedut" },
+    { value: "srez", label: "Срез", cls: "trubka-status--srez" },
+    { value: "zabrali", label: "Забрали", cls: "trubka-status--zabrali" },
+    { value: "razgruzheno", label: "Разгружено", cls: "trubka-status--razgruzheno" },
+  ];
+
+  /* Как посылка попала к ноге. */
+  var TRUBKA_DELIVERIES = [
+    { value: "zahod", label: "Заход на адрес", hint: "Нога сама приехала к заказчику" },
+    { value: "taxi", label: "Такси", hint: "Заказчик отправил посылку ноге на такси" },
+  ];
+
   function find(list, value) {
     for (var i = 0; i < list.length; i++) {
       if (list[i].value === value) return list[i];
@@ -69,6 +84,14 @@
 
   function currency(value) {
     return find(CURRENCIES, value);
+  }
+
+  function trubkaStatus(value) {
+    return find(TRUBKA_STATUSES, value) || TRUBKA_STATUSES[0];
+  }
+
+  function trubkaDelivery(value) {
+    return find(TRUBKA_DELIVERIES, value) || TRUBKA_DELIVERIES[0];
   }
 
   /** 200000 → «200 000» (тонкие пробелы, как в дашборде) */
@@ -114,6 +137,18 @@
     });
   }
 
+  /** 28.07.2026, 15:40 — для трубок, где важен и час */
+  function formatDateTime(iso) {
+    if (!iso) return "—";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return (
+      d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }) +
+      ", " +
+      d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+    );
+  }
+
   /** 3.5 → «3,5 %» */
   function formatPercent(value) {
     var n = Number(value) || 0;
@@ -136,14 +171,19 @@
     CITY_STATUSES: CITY_STATUSES,
     CURRENCIES: CURRENCIES,
     NOGA_FILE_KINDS: NOGA_FILE_KINDS,
+    TRUBKA_STATUSES: TRUBKA_STATUSES,
+    TRUBKA_DELIVERIES: TRUBKA_DELIVERIES,
     cityStatus: cityStatus,
     currency: currency,
+    trubkaStatus: trubkaStatus,
+    trubkaDelivery: trubkaDelivery,
     fileKind: fileKind,
     formatNumber: formatNumber,
     formatAmount: formatAmount,
     formatCompactNumber: formatCompactNumber,
     formatCompactAmount: formatCompactAmount,
     formatDate: formatDate,
+    formatDateTime: formatDateTime,
     formatPercent: formatPercent,
     formatSize: formatSize,
   };

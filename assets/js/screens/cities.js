@@ -846,10 +846,21 @@
     await loadAndRender();
   }
 
+  /** Вход из меню «+»: экран уже с открытой формой нового города. */
+  async function openCreate() {
+    await show({ mode: "own" });
+    openForm(null);
+  }
+
   function hide() {
     global.NogaNogas.release();
     global.NogaViews.show("viewHome");
   }
 
-  global.NogaCities = { show: show, hide: hide, reload: loadAndRender };
+  global.NogaCities = {
+    show: show,
+    hide: hide,
+    reload: loadAndRender,
+    openCreate: openCreate,
+  };
 })(window);

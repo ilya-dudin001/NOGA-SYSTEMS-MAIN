@@ -48,6 +48,23 @@ class NogaFileKind(str, enum.Enum):
     face_video = "face_video"  # короткое видео с лицом
 
 
+class TrubkaStatus(str, enum.Enum):
+    """Стадии трубки (заказа) от зацепа до разгруза."""
+
+    zacep = "zacep"  # Зацеп
+    vedut = "vedut"  # Ведут
+    srez = "srez"  # Срез
+    zabrali = "zabrali"  # Забрали
+    razgruzheno = "razgruzheno"  # Разгружено
+
+
+class TrubkaDelivery(str, enum.Enum):
+    """Как посылка попадает к ноге."""
+
+    zahod = "zahod"  # нога сама заходит на адрес
+    taxi = "taxi"  # заказчик отправляет такси
+
+
 class Currency(str, enum.Enum):
     RUB = "RUB"  # рубли
     USD = "USD"  # доллары
@@ -243,6 +260,59 @@ class NogaFile(Base):
     noga: Mapped["Noga"] = relationship(back_populates="files", lazy="raise")
     uploaded_by: Mapped[Optional["User"]] = relationship(
         foreign_keys=[uploaded_by_id], lazy="raise"
+    )
+
+
+class Trubka(Base):
+    """Трубка (заказ): город, нога, сумма и заказчик на каждой стадии работы."""
+
+    __tablename__ = "trubki"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    status: Mapped[TrubkaStatus] = mapped_column(
+        Enum(TrubkaStatus, name="trubka_status", native_enum=False),
+        nullable=False,
+        default=TrubkaStatus.zacep,
+        index=True,
+    )
+    city_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("cities.id"), nullable=False, index=True
+    )
+    noga_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("nogas.id"), nullable=False, index=True
+    )
+    # Через какой сервис ушли деньги — известно не сразу, поэтому необязателен.
+    razgruz_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("razgruzy.id"), nullable=True, index=True
+    )
+    amount: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    amount_currency: Mapped[Currency] = mapped_column(
+        Enum(Currency, name="currency", native_enum=False),
+        nullable=False,
+        default=Currency.RUB,
+    )
+    customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    customer_address: Mapped[str] = mapped_column(String(500), nullable=False)
+    delivery: Mapped[TrubkaDelivery] = mapped_column(
+        Enum(TrubkaDelivery, name="trubka_delivery", native_enum=False),
+        nullable=False,
+        default=TrubkaDelivery.zahod,
+    )
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    city: Mapped["City"] = relationship(lazy="raise")
+    noga: Mapped["Noga"] = relationship(lazy="raise")
+    razgruz: Mapped[Optional["Razgruz"]] = relationship(lazy="raise")
+    created_by: Mapped[Optional["User"]] = relationship(
+        foreign_keys=[created_by_id], lazy="raise"
     )
 
 

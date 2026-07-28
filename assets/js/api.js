@@ -173,6 +173,28 @@
       var query = options && options.detachCities ? "?detach_cities=true" : "";
       return request("/api/razgruzy/" + id + query, { method: "DELETE" });
     },
+    /** params: { status, city_id, limit } — всё необязательно. */
+    listTrubki: function (params) {
+      var query = [];
+      Object.keys(params || {}).forEach(function (key) {
+        var value = params[key];
+        if (value === null || value === undefined || value === "") return;
+        query.push(encodeURIComponent(key) + "=" + encodeURIComponent(value));
+      });
+      return request("/api/trubki" + (query.length ? "?" + query.join("&") : ""));
+    },
+    getTrubka: function (id) {
+      return request("/api/trubki/" + id);
+    },
+    createTrubka: function (payload) {
+      return request("/api/trubki", { method: "POST", body: payload });
+    },
+    updateTrubka: function (id, payload) {
+      return request("/api/trubki/" + id, { method: "PATCH", body: payload });
+    },
+    deleteTrubka: function (id) {
+      return request("/api/trubki/" + id, { method: "DELETE" });
+    },
     listNogas: function () {
       return request("/api/nogas");
     },

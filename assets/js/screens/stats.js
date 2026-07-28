@@ -56,18 +56,19 @@
       );
     }
 
-    var operations = block("Операции за сегодня", [
-      statCard(format(summary.created), "Создано"),
-      statCard(format(summary.in_progress), "В работе"),
-      statCard(format(summary.entries), "Заходов"),
-      statCard(format(summary.paid), "Выплачено"),
-      statCard(format(summary.remaining), "Осталось"),
-      statCard(format(summary.total_operations), "Всего операций"),
+    var trubki = summary.trubki || {};
+    var byStatus = block("Трубки", [
+      statCard(format(trubki.total), "Всего", { gold: true }),
+      statCard(format(trubki.zacep), "Зацеп"),
+      statCard(format(trubki.vedut), "Ведут"),
+      statCard(format(trubki.srez), "Срез"),
+      statCard(format(trubki.zabrali), "Забрали"),
+      statCard(format(trubki.razgruzheno), "Разгружено"),
     ]);
-    operations.appendChild(
-      el("p", "stats-block__hint", "Раздел операций ещё не запущен — цифры появятся вместе с ним")
+    byStatus.appendChild(
+      el("p", "stats-block__hint", "Счётчики общие по системе, за всё время")
     );
-    body.appendChild(operations);
+    body.appendChild(byStatus);
 
     if (global.NogaRoles.can("cities:read")) {
       body.appendChild(

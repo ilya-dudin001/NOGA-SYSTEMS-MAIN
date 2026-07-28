@@ -239,18 +239,7 @@ body{
 }
 
 /* ============================================================
-   ЗАГОЛОВКИ СЕКЦИЙ
-   ============================================================ */
-.section-title{
-  margin:30px 0 14px;
-  font-size:var(--fs-strong);
-  font-weight:600;
-  letter-spacing:.2px;
-  color:#E8E4DC;
-}
-
-/* ============================================================
-   СТАТИСТИКА — сетка 2 × 3: в три колонки подписи не читались
+   ПЛИТКИ СТАТИСТИКИ — сетка 2 × N: в три колонки подписи не читались
    ============================================================ */
 .stats{
   display:grid;
@@ -303,56 +292,12 @@ body{
   text-overflow:ellipsis;
 }
 
-/* Иконка-документ в тёмном квадрате */
-.stat__icon{
-  flex:0 0 auto;
-  width:30px;
-  height:30px;
-  border-radius:9px;
-  display:grid;
-  place-items:center;
-  border:1px solid rgba(255,255,255,.08);
-  background:linear-gradient(180deg, #1C1C1C, #131313);
-  color:#CFCAC0;
-}
-.stat__icon svg{ width:15px; height:15px; }
-
-/* Цветные индикаторы-кружки */
-.dot{
-  flex:0 0 auto;
-  width:16px;
-  height:16px;
-  border-radius:50%;
-  position:relative;
-}
-.dot::after{
-  content:"";
-  position:absolute;
-  inset:-5px;
-  border-radius:50%;
-  background:currentColor;
-  opacity:.14;
-}
-.dot--amber{ color:var(--amber); background:var(--amber); box-shadow:0 0 12px rgba(245,158,11,.5); }
-.dot--blue { color:var(--blue);  background:var(--blue);  box-shadow:0 0 12px rgba(59,130,246,.5); }
-.dot--red  { color:var(--red);   background:var(--red);   box-shadow:0 0 12px rgba(239,68,68,.5); }
-
-.dot--check{
-  width:18px; height:18px;
-  color:var(--green);
-  background:var(--green);
-  display:grid;
-  place-items:center;
-  box-shadow:0 0 12px rgba(34,197,94,.45);
-}
-.dot--check svg{ width:10px; height:10px; color:#07240F; }
-
 /* ============================================================
-   ПОСЛЕДНИЕ ОПЕРАЦИИ
+   ТРУБКИ — блок на дашборде и общая таблица заказов
    ============================================================ */
-.operations{
+.trubki-card{
   margin-top:26px;
-  padding:18px;
+  padding:18px 10px 14px;
   border-radius:var(--radius-lg);
   border:1px solid var(--hairline);
   background:
@@ -360,85 +305,108 @@ body{
     linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
   box-shadow:var(--shadow-card);
 }
-.operations__title{
-  margin:2px 2px 12px;
+.trubki-card__head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+  margin:0 4px 14px;
+}
+.trubki-card__title{
+  margin:0;
   font-size:var(--fs-strong);
   font-weight:600;
   letter-spacing:.2px;
   color:#E8E4DC;
 }
-
-.op-list{
-  list-style:none;
-  margin:0;
-  padding:0;
-}
-
-.op{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:10px;
-  padding:14px 4px;
-  border-top:1px solid var(--hairline);
-  cursor:pointer;
-  border-radius:10px;
-  transition:background .22s var(--ease), padding-left .22s var(--ease);
-}
-.op:first-child{ border-top:0; }
-.op:hover{ background:rgba(255,255,255,.028); padding-left:8px; }
-.op:active{ background:rgba(255,255,255,.05); }
-
-.op__id{
-  margin:0;
-  font-size:var(--fs-strong);
-  font-weight:600;
-  letter-spacing:.3px;
-  color:#F0EDE6;
+.trubki-card__total{
+  font-size:var(--fs-title);
+  font-weight:700;
+  color:var(--gold);
   font-variant-numeric:tabular-nums;
 }
-.op__meta{
-  margin:6px 0 0;
-  font-size:var(--fs-meta);
+
+/* Пять колонок в 390px не помещаются — таблица едет вбок внутри своего блока */
+.table-scroll{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.table-scroll::-webkit-scrollbar{ display:none; }
+
+/* Колонки по содержимому: короткие названия влезают целиком, длинные
+   уезжают под горизонтальную прокрутку, но нигде не обрезаются многоточием */
+.trubki-table{
+  width:max-content;
+  min-width:100%;
+  border-collapse:collapse;
+  font-size:var(--fs-hint);
+}
+.trubki-table th{
+  padding:0 7px 10px;
+  text-align:left;
+  font-size:var(--fs-hint);
+  font-weight:500;
   color:var(--text-dim);
   letter-spacing:.1px;
+  white-space:nowrap;
 }
+.trubki-table td{
+  padding:12px 7px;
+  border-top:1px solid var(--hairline);
+  color:#E4E0D8;
+  white-space:nowrap;
+}
+.trubki-table__row{
+  cursor:pointer;
+  transition:background .2s var(--ease);
+}
+.trubki-table__row:hover{ background:rgba(255,255,255,.03); }
+.trubki-table__row:focus-visible{ background:rgba(255,255,255,.05); outline:none; }
+.trubki-table__amount{ font-weight:600; font-variant-numeric:tabular-nums; }
+.trubki-table__owner{ color:var(--text-dim); }
 
-.op__right{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex:0 0 auto;
-  padding-top:1px;
-}
-.op__status{
+/* Стадии трубки: цвет несёт смысл, поэтому подпись всегда рядом */
+.trubka-status{
   display:inline-flex;
   align-items:center;
-  gap:6px;
-  font-size:var(--fs-meta);
-  font-weight:500;
+  padding:5px 10px;
+  border-radius:999px;
+  border:1px solid transparent;
+  font-size:var(--fs-hint);
+  font-weight:600;
   letter-spacing:.1px;
   white-space:nowrap;
 }
-.op__status::before{
-  content:"";
-  width:6px; height:6px;
-  border-radius:50%;
-  background:currentColor;
-  box-shadow:0 0 8px currentColor;
+.trubka-status--zacep{
+  color:#C8EE96;
+  background:rgba(168,224,99,.16);
+  border-color:rgba(168,224,99,.34);
 }
-.op__status--amber{ color:var(--amber); }
-.op__status--blue { color:var(--blue); }
-.op__status--green{ color:var(--green); }
-/* у синего и зелёного статусов на референсе точка не показана */
-.op__status--blue::before,
-.op__status--green::before{ display:none; }
-
-.op__time{
-  font-size:var(--fs-meta);
-  color:var(--text-dim);
-  font-variant-numeric:tabular-nums;
-  white-space:nowrap;
+.trubka-status--vedut{
+  color:#5DE49A;
+  background:rgba(22,163,74,.22);
+  border-color:rgba(22,163,74,.45);
+}
+.trubka-status--srez{
+  color:#FF9A9D;
+  background:rgba(239,68,68,.18);
+  border-color:rgba(239,68,68,.4);
+}
+.trubka-status--zabrali{
+  color:#9CC5FF;
+  background:rgba(59,130,246,.2);
+  border-color:rgba(59,130,246,.42);
+}
+.trubka-status--razgruzheno{
+  color:#241B05;
+  background:linear-gradient(135deg, #F3DE9C 0%, var(--gold) 48%, #A67C1E 100%);
+  border-color:rgba(233,203,116,.6);
+  box-shadow:0 0 14px rgba(212,175,55,.28);
+}
+.trubka-status--lg{
+  padding:9px 18px;
+  font-size:var(--fs-body);
 }
 
 .btn-all{
@@ -541,6 +509,84 @@ body{
   box-shadow:0 16px 30px rgba(0,0,0,.65), 0 0 30px rgba(212,175,55,.45), inset 0 1px 0 rgba(255,255,255,.4);
 }
 .fab:active{ transform:translateX(-50%) scale(.94); }
+.fab.is-open svg{ transform:rotate(45deg); }
+.fab svg{ transition:transform .25s var(--ease); }
+
+/* ============================================================
+   ВЫЛЕТАЮЩЕЕ МЕНЮ СОЗДАНИЯ
+   ============================================================ */
+.fab-menu{
+  position:absolute;
+  inset:0;
+  z-index:30;
+}
+.fab-menu__backdrop{
+  position:absolute;
+  inset:0;
+  width:100%;
+  border:0;
+  padding:0;
+  background:rgba(4,4,4,.62);
+  backdrop-filter:blur(2px);
+  opacity:0;
+  transition:opacity .22s var(--ease);
+  cursor:pointer;
+}
+.fab-menu.is-open .fab-menu__backdrop{ opacity:1; }
+
+.fab-menu__list{
+  position:absolute;
+  right:var(--gutter);
+  bottom:calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 18px);
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:12px;
+}
+
+.fab-menu__item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:var(--text);
+  font:inherit;
+  cursor:pointer;
+  opacity:0;
+  transform:translateY(14px) scale(.94);
+  transition:opacity .2s var(--ease), transform .2s var(--ease);
+}
+.fab-menu.is-open .fab-menu__item{
+  opacity:1;
+  transform:none;
+}
+
+.fab-menu__label{
+  padding:9px 14px;
+  border-radius:var(--radius-sm);
+  border:1px solid var(--hairline);
+  background:linear-gradient(180deg, #1A1A1A 0%, #111 100%);
+  font-size:var(--fs-body);
+  font-weight:500;
+  letter-spacing:.2px;
+  box-shadow:0 8px 20px rgba(0,0,0,.55);
+  white-space:nowrap;
+}
+.fab-menu__icon{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(233,203,116,.45);
+  background:radial-gradient(120% 120% at 30% 20%, #E9CB74 0%, var(--gold) 45%, #A67C1E 100%);
+  color:#100C03;
+  box-shadow:0 10px 22px rgba(0,0,0,.55), 0 0 18px rgba(212,175,55,.22);
+}
+.fab-menu__icon svg{ width:22px; height:22px; }
+.fab-menu__item:active .fab-menu__icon{ transform:scale(.92); }
 
 /* ============================================================
    АНИМАЦИЯ ПОЯВЛЕНИЯ

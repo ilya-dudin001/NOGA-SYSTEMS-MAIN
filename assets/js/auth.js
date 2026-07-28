@@ -88,6 +88,7 @@
     });
 
     bindNav();
+    global.NogaCreateMenu.bind();
     bindDevForm();
 
     var initData = global.NogaTelegram.getInitData();
@@ -149,6 +150,10 @@
     bindEntry("razgruzyEntry", function () {
       global.NogaRazgruzy.show();
     });
+    // Трубки — часть дашборда, поэтому подсветка остаётся на «Панели».
+    bindEntry("trubkiEntry", function () {
+      global.NogaTrubki.show({ status: "" });
+    }, "home");
   }
 
   function bindEntry(id, open, tabName) {

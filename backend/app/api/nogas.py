@@ -19,6 +19,7 @@ from app.db.models import City, Noga, NogaFile, NogaFileKind, User
 from app.schemas import NogaCreateIn, NogaDetailOut, NogaFileOut, NogaOut, NogaUpdateIn
 from app.services import cities as cities_service
 from app.services import nogas as nogas_service
+from app.services import trubki as trubki_service
 from app.services.audit import write_audit
 
 router = APIRouter(prefix="/api/nogas", tags=["nogas"])
@@ -282,6 +283,21 @@ async def delete_noga(
     # без загруженной коллекции упадёт при удалении.
     noga = await load_noga(session, noga_id, with_files=True)
     require_own(actor, noga)
+
+    trubki_count = await trubki_service.count_for(session, noga_id=noga.id)
+    if trubki_count:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "NOGA_HAS_TRUBKI",
+                "message": (
+                    f"На ноге висят трубки: {trubki_count}. "
+                    "Сначала удалите их или переведите на другую ногу"
+                ),
+                "trubki": trubki_count,
+            },
+        )
+
     await write_audit(
         session,
         action="noga.deleted",

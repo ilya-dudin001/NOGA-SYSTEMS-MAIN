@@ -19,6 +19,10 @@
     razgruzy:
       '<path d="M4 8.5h13"/><path d="m14 5.5 3 3-3 3"/>' +
       '<path d="M20 15.5H7"/><path d="m10 12.5-3 3 3 3"/>',
+    trubki:
+      '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h2.2c.7 0 1.3.5 1.5 1.2l.7 2.6c.1.6-.1 1.2-.6 1.5' +
+      'l-1.4 1a12 12 0 0 0 5.8 5.8l1-1.4c.4-.5 1-.7 1.6-.6l2.6.7c.7.2 1.2.8 1.2 1.5v2.2' +
+      'a1.5 1.5 0 0 1-1.5 1.5A15.5 15.5 0 0 1 4 5.5Z"/>',
     stats:
       '<path d="M3.5 20.5h17"/>' +
       '<path d="M6.5 17.5v-5"/><path d="M12 17.5v-10"/><path d="M17.5 17.5v-7"/>',
@@ -204,6 +208,15 @@
     }
 
     if (user.role === "noga") return items;
+
+    items.push({
+      icon: "trubki",
+      label: "Трубки",
+      view: "viewTrubki",
+      open: function () {
+        global.NogaTrubki.show({ status: "" });
+      },
+    });
 
     if (can("cities:read")) {
       items.push({

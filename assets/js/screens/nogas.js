@@ -808,6 +808,12 @@
     await loadAndRender();
   }
 
+  /** Вход из меню «+»: экран уже с открытой формой новой ноги. */
+  async function openCreate() {
+    await show();
+    openForm(null);
+  }
+
   function hide() {
     releaseBlobs();
     global.NogaViews.show("viewHome");
@@ -817,6 +823,7 @@
     show: show,
     hide: hide,
     reload: loadAndRender,
+    openCreate: openCreate,
     renderCard: renderCard,
     release: releaseBlobs,
   };

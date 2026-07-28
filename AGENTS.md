@@ -26,7 +26,7 @@ NOGA Systems (EM 3.5 — Operations) — закрытая система учё�
 | **Нога** | Исполнитель, привязанный к городу. Не обязан иметь Telegram-аккаунт в системе | `Noga`, `nogas` |
 | **Город** | Ноги, разгрузы, порог запуска и статус работы | `City`, `cities` |
 | **Разгруз** | Сервис международных переводов: комиссия, контакт, привязка к городам | `Razgruz`, `razgruzy` |
-| **Операция / заказ** | Единица учёта поверх ног/городов/разгрузов | ещё не реализовано |
+| **Трубка** | Заказ: город, нога, сумма, заказчик и стадия работы | `Trubka`, `trubki` |
 | **Тестовая нога** | `is_test=True`, помечается бейджем, в реальный оборот не идёт | |
 
 Роль `noga` (доступ к боту) и нога из справочника — **разные сущности**. Нога из справочника
@@ -110,12 +110,15 @@ noga_files    noga_id → nogas ON DELETE CASCADE, kind, stored_path, original_n
               content_type, size_bytes, uploaded_by_id
 razgruzy      name UNIQUE, commission_percent, contact, is_active, created_by_id
 city_razgruzy city_id → cities, razgruz_id → razgruzy        UNIQUE (city_id, razgruz_id)
+trubki        status, city_id → cities, noga_id → nogas, razgruz_id → razgruzy (NULLABLE),
+              amount, amount_currency, customer_name, customer_address, delivery,
+              created_by_id, created_at, updated_at
 audit_log     actor_user_id (nullable), action, target_type, target_id, payload JSON
 auth_attempts telegram_id, success, reason
 ```
 
-Enum'ы (`user_role`, `user_status`, `city_status`, `currency`, `noga_file_kind`) объявлены
-`native_enum=False` — хранятся строками.
+Enum'ы (`user_role`, `user_status`, `city_status`, `currency`, `noga_file_kind`,
+`trubka_status`, `trubka_delivery`) объявлены `native_enum=False` — хранятся строками.
 
 - `city_status`: `working` (в работе), `paused` (стоп временно), `stopped` (стоп полностью).
   У города **нет** `is_active` — миграция 003 заменила флаг на статус.
@@ -136,8 +139,18 @@ Enum'ы (`user_role`, `user_status`, `city_status`, `currency`, `noga_file_kind`
   `face_video` (короткое видео). Файлов на каждый вид может быть несколько.
 - `phones` и `telegrams` — JSON-массивы строк: их всегда **переприсваивают** новым списком,
   а не мутируют, иначе SQLAlchemy не заметит изменения.
+- `trubka_status`: `zacep` (Зацеп), `vedut` (Ведут), `srez` (Срез), `zabrali` (Забрали),
+  `razgruzheno` (Разгружено) — стадии от первого контакта до разгруза; статус по умолчанию
+  `zacep`, поле проиндексировано (по нему фильтруют список).
+- `trubka_delivery`: `zahod` (нога сама заходит на адрес) и `taxi` (заказчик отправляет
+  посылку такси). Ровно один из двух вариантов, поле обязательное.
+- Город и нога у трубки обязательны, разгруз — нет (его выбирают позже). Сумма хранится
+  парой `amount` + `amount_currency` из того же справочника валют, что и порог города.
+- Город, ногу и разгруз нельзя удалить, пока на них висит трубка: `DELETE` отдаёт 409 с
+  `CITY_HAS_TRUBKI` / `NOGA_HAS_TRUBKI` / `RAZGRUZ_HAS_TRUBKI` (`trubki_service.count_for`).
+  Обхода вроде `?detach_nogas=true` здесь нет — заказ без города или ноги бессмыслен.
 - Счётчики заказов (`completed_orders` у разгруза, `recent_orders` у города) — заглушки
-  на нуле и пустом списке, пока нет таблицы операций.
+  на нуле и пустом списке: трубки в карточку города пока не подставляются.
 
 ## Backend
 
@@ -150,11 +163,12 @@ backend/app/
   config.py          Settings (pydantic-settings, .env), get_settings() кэшируется lru_cache
   db/                Base, engine, SessionLocal (expire_on_commit=False), get_session, models, bootstrap
   auth/              initdata (HMAC), jwt, deps (get_current_user, require_permission), permissions
-  api/               auth, me, users, cities, nogas, razgruzy, dashboard — все под /api
-  services/          users, cities, nogas (привязка к городу + файлы на диске), razgruzy, audit
+  api/               auth, me, users, cities, nogas, razgruzy, trubki, dashboard — все под /api
+  services/          users, cities, nogas (привязка к городу + файлы на диске), razgruzy,
+                     trubki, audit
   bot/               create_bot/create_dispatcher/run_polling, middlewares, handlers/{start,users_cmd}
 alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 004_noga_personal,
-                     005_noga_city_history
+                     005_noga_city_history, 006_trubki
 ```
 
 Файлы ног лежат не в БД, а на диске: `UPLOADS_DIR` (по умолчанию `./data/uploads`),
@@ -188,7 +202,9 @@ alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 00
 | POST/DELETE | `/api/nogas/{id}/files`, `/api/nogas/{id}/files/{file_id}` | `nogas:manage` + `nogas:personal` |
 | GET | `/api/nogas/{id}/files/{file_id}` | `nogas:read` + `nogas:personal` |
 | GET/POST | `/api/razgruzy`, PATCH/DELETE `/api/razgruzy/{id}` | `razgruz:read` / `razgruz:manage` |
-| GET | `/api/dashboard/summary` | авторизация; операции — нули, блок `cities` живой |
+| GET | `/api/trubki`, `/api/trubki/{id}` | `operations:own` |
+| POST/PATCH/DELETE | `/api/trubki`, `/api/trubki/{id}` | `operations:all` |
+| GET | `/api/dashboard/summary` | авторизация; оборот — нули, блоки `cities` и `trubki` живые |
 | GET | `/api/health` | — |
 
 `PATCH /api/me` принимает единственное поле `display_name` и чистит его через
@@ -244,6 +260,21 @@ alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 00
 Сброс порога запуска делается явными `null` в обоих полях сразу: PATCH различает
 «не передано» и «передано null» через `model_fields_set`.
 
+`GET /api/trubki` принимает `status`, `city_id` и `limit` (1–200), сортировка — новые
+сверху (`created_at desc, id desc`). Список **общий**: чтение открыто всем с
+`operations:own`, включая роль `noga`, деления по участкам у трубок нет. Заводить, править
+и удалять может любой с `operations:all`, то есть все роли кроме `noga`; на своё/чужое
+разделения тоже нет — заказ ведёт вся команда. `can_manage` в ответе поэтому равен просто
+наличию права.
+
+Ответ трубки собирает поля из связей: `city_name`, `noga_name`, `razgruz_name`, автор
+трубки `created_by_name` и `noga_owner_name` — «чья нога», то есть автор **ноги**, а не
+заказа (`trubki_service.LOAD_OPTIONS` тянет `Trubka.noga → Noga.created_by`). Неизвестные
+`city_id` / `noga_id` / `razgruz_id` — 404 с обычным `NOT_FOUND`. В `PATCH` разгруз
+снимается явным `razgruz_id: null` (та же проверка `model_fields_set`), а все SELECT'ы
+идут до мутаций. ФИО и адрес заказчика в аудит **не пишем** — в `payload` уходит только
+пометка «изменено» / «изменён», остальные поля с парами `from`/`to`.
+
 ## Бот
 
 Long polling запускается фоновой задачей внутри lifespan API (`BOT_POLLING_ENABLED`); падение
@@ -262,8 +293,8 @@ polling логируется, но API продолжает работать. К
 - Каждый файл — IIFE `(function (global) { "use strict"; ... })(window)`, экспорт одним
   объектом в `window`: `NOGA_CONFIG`, `NogaTelegram`, `NogaApi`, `NogaRoles`, `NogaDict`,
   `NogaViews`, `NogaDashboard`, `NogaNoAccess`, `NogaUsers`, `NogaNogas`, `NogaCities`,
-  `NogaRazgruzy`, `NogaStats`, `NogaProfile`. Исключение — `auth.js`: он ничего не
-  экспортирует, только запускает `bootstrap()`.
+  `NogaRazgruzy`, `NogaTrubki`, `NogaCreateMenu`, `NogaStats`, `NogaProfile`. Исключение —
+  `auth.js`: он ничего не экспортирует, только запускает `bootstrap()`.
 - Стиль ES5-совместимый (`var`, `Array.prototype.forEach.call`), кроме `async/await` в запросах.
 - Порядок подключения в `index.html` важен: `config → telegram → api → roles → dict →
   views → screens/* → auth.js` (auth.js стартует приложение по `DOMContentLoaded`).
@@ -290,6 +321,12 @@ CSS: три файла — `tokens.css` (переменные), `app.css` (да�
 (`user-card__badge--blocked`), состояния — `is-active` / `is-hidden` / `is-visible`.
 Токены: фон `#0B0B0B`, золото `#D4AF37`, статусы amber/blue/green/red, `--radius*`, `--ease`.
 Мобильный фрейм 390–430px, нижний таббар: 5 пунктов + FAB «+».
+
+Таблицы (пока одна — трубки) устроены так: обёртка `.table-scroll` с
+`overflow-x:auto`, сама `.trubki-table` — `width:max-content; min-width:100%`, ячейки
+`white-space:nowrap` **без** `text-overflow`. Колонки берут ширину по содержимому: короткие
+названия городов и имён влезают целиком, длинные уезжают под горизонтальный свайп. Фиксированной
+раскладки с процентами колонок избегать — на 390px она резала значения многоточием.
 
 Размеры текста берутся из шкалы в `tokens.css`: `--fs-hint` 12.5px (бейджи, чипы, подписи
 плиток), `--fs-meta` 13.5px (вторые строки карточек, метаданные), `--fs-body` 15px (кнопки,
@@ -340,6 +377,7 @@ python tests/test_nogas.py
 python tests/test_cities.py
 python tests/test_noga_personal.py
 python tests/test_admin_scope.py
+python tests/test_trubki.py
 python tests/test_profile_rename.py
 ```
 
@@ -374,11 +412,14 @@ origin фронта.
 | Ноги | `viewNogas` | `screens/nogas.js` | `nogas:read` |
 | Города | `viewCities` | `screens/cities.js` | `cities:read` |
 | Разгрузы | `viewRazgruzy` | `screens/razgruzy.js` | `razgruz:read` |
+| Трубки | `viewTrubki` | `screens/trubki.js` | `operations:own` (всем) |
+| Трубка | `viewTrubka` | `screens/trubki.js` | `operations:own` (всем) |
 | Профиль | `viewProfile` | `screens/profile.js` | всем |
 | Статистика | `viewStats` | `screens/stats.js` | всем кроме `noga` |
 
 Вход на экраны — вкладка «Профиль», кнопки на дашборде (`usersEntry`, `nogasEntry`,
-`razgruzyEntry`) и плашка городов `citiesCard` со сводкой «в работе / стоп временно / стоп полностью».
+`razgruzyEntry`, `trubkiEntry`) и плашка городов `citiesCard` со сводкой «в работе / стоп
+временно / стоп полностью».
 Плашка обновляется из `summary.cities` (счётчики общие по системе, включая ноги всех
 админов); после изменений на экране городов `refreshDashboard()` перезапрашивает сводку
 без анимации счётчиков.
@@ -389,6 +430,17 @@ origin фронта.
 остаётся пустой, чтобы «+» не съезжал с центра. Плашка городов на дашборде открывает
 витрину (`mode: "working"`), вкладка таббара — свой участок (`mode: "own"`);
 `NogaRoles.activateTab` подсвечивает нужную вкладку, а если её нет — «Профиль».
+
+FAB «+» в центре таббара открывает вылетающее меню создания (`screens/create-menu.js`,
+`NogaCreateMenu.bind()` из `auth.js`). Разметка — `#fabMenu` с затемнением `#fabBackdrop`
+и списком `#fabMenuList` над таббаром; пункты появляются снизу вверх с задержкой
+`transition-delay` по индексу, закрытие — тап по затемнению, по пункту или Esc.
+Состав собирается заново на каждом открытии из прав: «Трубка» по `operations:all`,
+«Город» по `cities:manage`, «Нога» по `nogas:manage`, «Разгруз» по `razgruz:manage`;
+если не осталось ни одного пункта, FAB не реагирует. Каждый пункт зовёт `openCreate()`
+своего экрана (`NogaTrubki` / `NogaCities` / `NogaNogas` / `NogaRazgruzy`) — метод
+переключает экран и сразу открывает форму. **Новая сущность с созданием = ещё один
+`openCreate()` на её экране и строчка в `items()`.**
 
 Вкладка «Профиль» открывает `NogaProfile.show()`: карточка текущего пользователя и меню
 разделов `#profileMenu`, каждый пункт — переход на существующий экран. На виду только
@@ -407,10 +459,11 @@ origin фронта.
   `users:read`, но править он ничего не может, поэтому список остаётся только на дашборде.
 - **Мои города** / **Мои ноги** / **Мои разгрузы** — по `cities:read` / `nogas:read` /
   `razgruz:read`. У ролей с `*:all` подпись без «Мои», потому что списки и так общие.
+- **Трубки** — `NogaTrubki.show()`, общий список заказов; в меню есть у всех кроме `noga`.
 - **Статистика** — `NogaStats.show()`, общесистемные цифры из `GET /api/dashboard/summary`:
-  оборот (только с `dashboard:global`), операции (нули с подписью, что раздел не запущен)
-  и справочники из блока `cities`. Плитки — те же `.stat`, но с `.stat--static`, чтобы
-  не притворялись кликабельными.
+  оборот (только с `dashboard:global`), трубки по стадиям из блока `trubki` и справочники
+  из блока `cities`. Плитки — те же `.stat`, но с `.stat--static`, чтобы не притворялись
+  кликабельными.
 
 У роли `noga` меню пустое (в нём было бы нечего показать), вместо него `.empty-hint`.
 
@@ -488,17 +541,51 @@ origin фронта.
 Раскрытым держится один блок деталей (`openContainer`), правки личных данных и файлов
 перерисовывают только его (`reloadDetail`), а не весь список.
 
+Трубки живут в трёх местах, и все три рисует один `screens/trubki.js`:
+
+- **Плашка на дашборде** (`#trubkiCard`, вместо прежней «Статистики на сегодня») — восемь
+  последних заказов таблицей «Статус / Город / Сумма / Нога / Чья нога», счётчик всего
+  в углу и кнопка «Все трубки». Наполняет `renderDashboard()` из `applySummary`.
+- **Экран списка** (`viewTrubki`) — та же таблица целиком плюс полоса фильтров по статусу
+  (`.tabs--scroll`, шесть кнопок со «Все») и форма создания/правки.
+- **Страница трубки** (`viewTrubka`) — шапка со статусом, суммой и городом, строки заказа,
+  блок «Заказчик» (ФИО, адрес, «Заход на адрес» / «Такси»), карта, карточка ноги и
+  «Удалить трубку». Кнопка карандаша в шапке открывает ту же форму с `fromDetail: true` —
+  после сохранения возвращает не в список, а обратно в детали.
+
+Строка таблицы кликабельна целиком (`openDetail(id)`), статус — `.trubka-status` с
+модификатором из `NogaDict.TRUBKA_STATUSES` (`--zacep` салатовый, `--vedut` зелёный,
+`--srez` красный, `--zabrali` синий, `--razgruzheno` золотой градиент). Цвета — токены
+`--trubka-*` в `tokens.css`.
+
+Карта — обычный iframe `maps.google.com/maps?q=<адрес>&output=embed`, **без API-ключа**
+и без биллинга; точка ставится по строке адреса, поэтому кривой адрес просто покажет
+неточное место. Под картой — ссылка «Открыть в Google Картах» на случай, если WebView
+не отрисует фрейм. Подробности ноги в деталях рисует `NogaNogas.renderCard(noga_id, host)`
+— тот же readonly-блок, что и в городе, с личными данными по `nogas:personal`.
+
+Форма одна на создание и правку (`openForm(trubka, options)`). Ноги и разгрузы в ней
+зависят от выбранного города: `fillCityDependent` берёт `GET /api/cities/{id}` (ответы
+кэшируются в `cityDetail`) и подставляет ноги этого города и привязанные к нему разгрузы.
+Смена города сбрасывает обе подстановки — заказ не должен ссылаться на ногу из другого
+города. Разгруз необязателен («не выбран»), способ передачи — сегментированный
+переключатель на два положения. Проверки перед отправкой (город, нога, сумма, ФИО, адрес)
+дублируют серверные и говорят по-русски через `NogaTelegram.notify`.
+
 ## Состояние на сейчас
 
 Готово: авторизация, роли и права, пользователи (API + бот + экран), ноги (включая личные
-данные, паспорта и видео), города, разгрузы (API + экраны), аудит, сводка по городам
-на дашборде, профиль с меню разделов и экран статистики.
+данные, паспорта и видео), города, разгрузы (API + экраны), трубки (API + дашборд, список,
+детали с картой, форма), меню создания на FAB, аудит, сводка по городам на дашборде,
+профиль с меню разделов и экран статистики.
 
-Не сделано: **операции/заказы**, кошельки, уведомления. Из-за отсутствия таблицы
-операций в дашборде нули по обороту, `completed_orders` у разгруза всегда 0, а
-`recent_orders` у города — пустой список; когда появятся операции, заполнять именно эти
-поля. Команд бота для городов, ног и разгрузов нет — только Mini App. Кнопка FAB
-в таббаре пока ни к чему не привязана. Отдельного экрана управления городами у роли
+Не сделано: кошельки, уведомления, оборот. «Общий оборот сегодня» на дашборде и
+`usd_equivalent` по-прежнему нули — суммы трубок нигде не складываются и курса валют в
+системе нет; считать надо будет по `trubki.amount` за период. `completed_orders` у
+разгруза всегда 0, а `recent_orders` у города — пустой список, хотя данные для них уже
+есть в `trubki`. Трубки не делятся по участкам: список общий для всех ролей, включая
+`noga`, и любой с `operations:all` правит чужой заказ. Команд бота для городов, ног,
+разгрузов и трубок нет — только Mini App. Отдельного экрана управления городами у роли
 `noga` нет.
 
 Известные мелкие дыры: `index.html` ссылается на `assets/img/logo.png`, которого в репозитории

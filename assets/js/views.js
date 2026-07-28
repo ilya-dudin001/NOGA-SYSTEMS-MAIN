@@ -7,6 +7,8 @@
     "viewNogas",
     "viewCities",
     "viewRazgruzy",
+    "viewTrubki",
+    "viewTrubka",
     "viewProfile",
     "viewStats",
   ];

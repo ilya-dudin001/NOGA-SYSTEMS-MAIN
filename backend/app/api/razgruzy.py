@@ -11,6 +11,7 @@ from app.db import get_session
 from app.db.models import Razgruz, User
 from app.schemas import RazgruzCreateIn, RazgruzOut, RazgruzUpdateIn
 from app.services import razgruzy as razgruzy_service
+from app.services import trubki as trubki_service
 from app.services.audit import write_audit
 
 router = APIRouter(prefix="/api/razgruzy", tags=["razgruzy"])
@@ -172,6 +173,20 @@ async def delete_razgruz(
     # строки city_razgruzy только по загруженной коллекции.
     razgruz = await get_razgruz_or_404(session, razgruz_id, with_cities=True)
     require_own(actor, razgruz)
+
+    trubki_count = await trubki_service.count_for(session, razgruz_id=razgruz.id)
+    if trubki_count:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "RAZGRUZ_HAS_TRUBKI",
+                "message": (
+                    f"Через разгруз проведены трубки: {trubki_count}. "
+                    "Пока они есть, разгруз удалить нельзя — его можно выключить"
+                ),
+                "trubki": trubki_count,
+            },
+        )
 
     linked = await razgruzy_service.city_names(session, razgruz.id)
     if linked and not detach_cities:

@@ -59,12 +59,6 @@
     summary = summary || {};
     var animate = !options || options.animate !== false;
     var map = {
-      "stat-created": summary.created,
-      "stat-in-progress": summary.in_progress,
-      "stat-entries": summary.entries,
-      "stat-paid": summary.paid,
-      "stat-remaining": summary.remaining,
-      "stat-total": summary.total_operations,
       "turn-rub": summary.turnover_rub,
       "turn-usd": summary.turnover_usd,
     };
@@ -74,6 +68,8 @@
     });
 
     applyCities(summary.cities || {});
+    global.NogaTrubki.applyTotal((summary.trubki || {}).total);
+    global.NogaTrubki.renderDashboard();
 
     var turnover = document.getElementById("turnoverCard");
     if (turnover) {
@@ -84,14 +80,6 @@
       }
     }
 
-    var list = document.getElementById("opList");
-    if (list) {
-      var ops = summary.recent_operations || [];
-      if (!ops.length) {
-        list.innerHTML =
-          '<li class="empty-hint" style="list-style:none;padding:8px 4px">Пока нет операций</li>';
-      }
-    }
   }
 
   function applyUser(user) {
