@@ -20,7 +20,7 @@ from app.bot import create_bot, create_dispatcher, ensure_data_dir, run_polling
 from app.config import get_settings
 from app.db import SessionLocal, engine
 from app.db import Base
-from app.db.bootstrap import bootstrap_owners
+from app.db.bootstrap import bootstrap_chat_rooms, bootstrap_owners
 from app.services import nogas as nogas_service
 
 logging.basicConfig(
@@ -42,6 +42,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     async with SessionLocal() as session:
         await bootstrap_owners(session, settings)
+        await bootstrap_chat_rooms(session)
 
     app.state.settings = settings
     bot = None

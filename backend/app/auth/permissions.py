@@ -27,6 +27,11 @@ NOGAS_PERSONAL = "nogas:personal"
 RAZGRUZ_MANAGE = "razgruz:manage"
 RAZGRUZ_READ = "razgruz:read"
 RAZGRUZ_ALL = "razgruz:all"
+CHAT_READ = "chat:read"
+CHAT_WRITE = "chat:write"
+CHAT_DIRECT = "chat:direct"
+CHAT_DELETE_OWN = "chat:delete_own"
+CHAT_DELETE_ANY = "chat:delete_any"
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
     UserRole.owner: frozenset(
@@ -51,6 +56,11 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             RAZGRUZ_MANAGE,
             RAZGRUZ_READ,
             RAZGRUZ_ALL,
+            CHAT_READ,
+            CHAT_WRITE,
+            CHAT_DIRECT,
+            CHAT_DELETE_OWN,
+            CHAT_DELETE_ANY,
         }
     ),
     UserRole.right_hand: frozenset(
@@ -73,6 +83,10 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             RAZGRUZ_MANAGE,
             RAZGRUZ_READ,
             RAZGRUZ_ALL,
+            CHAT_READ,
+            CHAT_WRITE,
+            CHAT_DIRECT,
+            CHAT_DELETE_OWN,
         }
     ),
     # Админ ведёт свой участок: заводит и правит только собственные города, ноги и
@@ -93,6 +107,10 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             NOGAS_PERSONAL,
             RAZGRUZ_READ,
             RAZGRUZ_MANAGE,
+            CHAT_READ,
+            CHAT_WRITE,
+            CHAT_DIRECT,
+            CHAT_DELETE_OWN,
         }
     ),
     UserRole.noga: frozenset(

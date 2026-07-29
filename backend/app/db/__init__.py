@@ -11,10 +11,15 @@ class Base(DeclarativeBase):
 
 
 settings = get_settings()
+sqlite_connect_args = (
+    {"check_same_thread": False, "timeout": 30}
+    if "sqlite" in settings.database_url
+    else {}
+)
 engine = create_async_engine(
     settings.database_url,
     echo=False,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
+    connect_args=sqlite_connect_args,
 )
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

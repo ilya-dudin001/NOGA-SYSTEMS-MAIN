@@ -28,9 +28,14 @@ class UserOut(BaseModel):
     last_seen_at: Optional[datetime] = None
 
 
+class FeaturesOut(BaseModel):
+    chat: bool = False
+
+
 class MeOut(UserOut):
     permissions: list[str]
     role_label: str
+    features: FeaturesOut = Field(default_factory=FeaturesOut)
 
 
 class AuthTelegramIn(BaseModel):
