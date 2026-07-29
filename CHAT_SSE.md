@@ -694,6 +694,7 @@ Authorization: Bearer <jwt>
 | 403 | `CHAT_DELETE_FORBIDDEN` | Нельзя удалить сообщение |
 | 404 | `CHAT_ROOM_NOT_FOUND` | Комната не найдена |
 | 404 | `CHAT_MESSAGE_NOT_FOUND` | Сообщение не найдено |
+| 404 | `CHAT_MENTION_NOT_FOUND` | Уведомление об упоминании не найдено |
 | 404 | `CHAT_ATTACHMENT_NOT_FOUND` | Вложение не найдено |
 | 409 | `CHAT_ROOM_INACTIVE` | Комната отключена |
 | 409 | `CHAT_DIRECT_UNAVAILABLE` | Второй участник больше недоступен |
@@ -793,6 +794,10 @@ Envelope:
 - `read.updated` — targeted владельцу read cursor;
 - `stream.reset` — replay невозможен, нужен REST reload;
 - `access.revoked` — текущий пользователь потерял chat-доступ.
+
+В durable payload `message.created` не сохраняются зависящие от получателя поля
+`author.is_current_user` и `can_delete`. SSE-слой вычисляет их отдельно для текущего
+пользователя перед отправкой события; иначе room broadcast содержал бы права автора.
 
 ### 12.4. Heartbeat
 

@@ -131,6 +131,10 @@ def main() -> None:
             )
             message_id = cursor.lastrowid
             db.execute(
+                "UPDATE chat_messages SET deleted_by_id = ? WHERE id = ?",
+                (noga_id, message_id),
+            )
+            db.execute(
                 """
                 INSERT INTO chat_attachments
                     (message_id, stored_path, original_name, content_type,
@@ -148,6 +152,25 @@ def main() -> None:
                 VALUES (?, ?, 'Nora', 'pending', 0, CURRENT_TIMESTAMP)
                 """,
                 (message_id, noga_id),
+            )
+            cursor = db.execute(
+                """
+                INSERT INTO chat_messages
+                    (room_id, author_id, author_name, body, content, created_at)
+                VALUES (?, ?, 'Owner', 'sent mention',
+                        '[{"type":"text","text":"sent mention"}]', CURRENT_TIMESTAMP)
+                """,
+                (room_id, owner_me["id"]),
+            )
+            sent_message_id = cursor.lastrowid
+            db.execute(
+                """
+                INSERT INTO chat_mentions
+                    (message_id, user_id, user_name, telegram_status,
+                     telegram_attempts, created_at)
+                VALUES (?, ?, 'Nora', 'sent', 1, CURRENT_TIMESTAMP)
+                """,
+                (sent_message_id, noga_id),
             )
             db.execute(
                 """
@@ -177,10 +200,13 @@ def main() -> None:
         assert r.status_code == 401, r.text
         with sqlite3.connect(TEST_DB) as db:
             message = db.execute(
-                "SELECT author_id, author_name FROM chat_messages WHERE id = ?",
+                """
+                SELECT author_id, author_name, deleted_by_id
+                FROM chat_messages WHERE id = ?
+                """,
                 (message_id,),
             ).fetchone()
-            assert message == (None, "Nora"), message
+            assert message == (None, "Nora", None), message
             assert db.execute(
                 "SELECT uploaded_by_id FROM chat_attachments WHERE message_id = ?",
                 (message_id,),
@@ -190,6 +216,11 @@ def main() -> None:
                 (message_id,),
             ).fetchone()
             assert mention == (None, "cancelled"), mention
+            sent_mention = db.execute(
+                "SELECT user_id, telegram_status FROM chat_mentions WHERE message_id = ?",
+                (sent_message_id,),
+            ).fetchone()
+            assert sent_mention == (None, "sent"), sent_mention
             assert db.execute(
                 "SELECT COUNT(*) FROM chat_reads WHERE user_id = ?", (noga_id,)
             ).fetchone()[0] == 0

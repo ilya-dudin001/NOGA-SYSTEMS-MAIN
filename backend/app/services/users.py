@@ -190,15 +190,26 @@ async def delete_user_account(
         .where(ChatAttachment.uploaded_by_id == target.id)
         .values(uploaded_by_id=None)
     )
+    # Историю уже завершённых доставок сохраняем. Отменяются только ещё
+    # не отправленные уведомления, затем user_id снимается со всех упоминаний.
     await session.execute(
         update(ChatMention)
-        .where(ChatMention.user_id == target.id)
+        .where(
+            ChatMention.user_id == target.id,
+            ChatMention.telegram_status.in_(
+                (ChatTelegramStatus.pending, ChatTelegramStatus.retry)
+            ),
+        )
         .values(
-            user_id=None,
             telegram_status=ChatTelegramStatus.cancelled,
             telegram_next_retry_at=None,
             telegram_locked_at=None,
         )
+    )
+    await session.execute(
+        update(ChatMention)
+        .where(ChatMention.user_id == target.id)
+        .values(user_id=None)
     )
     await session.execute(delete(ChatRead).where(ChatRead.user_id == target.id))
     await session.execute(

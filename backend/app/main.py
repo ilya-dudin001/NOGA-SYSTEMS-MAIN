@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import auth as auth_api
+from app.api import chat as chat_api
 from app.api import cities as cities_api
 from app.api import dashboard as dashboard_api
 from app.api import me as me_api
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(nogas_api.router)
     app.include_router(razgruzy_api.router)
     app.include_router(trubki_api.router)
+    app.include_router(chat_api.router)
     app.include_router(dashboard_api.router)
 
     @app.get("/api/health")
