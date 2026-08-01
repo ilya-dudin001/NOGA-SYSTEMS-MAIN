@@ -52,7 +52,8 @@ async def setup_bot_commands(bot: Bot) -> None:
 async def run_polling(bot: Bot, dp: Dispatcher) -> None:
     await setup_bot_commands(bot)
     logger.info("Starting bot polling…")
-    await dp.start_polling(bot, handle_signals=False)
+    # Bot общий с notification worker; сессию закрывает только app lifespan.
+    await dp.start_polling(bot, handle_signals=False, close_bot_session=False)
 
 
 def ensure_data_dir(database_url: str) -> None:

@@ -162,7 +162,7 @@ Soft-delete удаляет metadata транзакционно, а физиче�
 
 
 
-В [index.html](index.html), [assets/js/views.js](assets/js/views.js) и новом [assets/js/screens/chat.js](assets/js/screens/chat.js) добавить viewChatRooms/viewChatRoom и сохранить текущий порядок scripts, включая существующий theme script.
+В [index.html](index.html), [assets/js/views.js](assets/js/views.js) и новом [assets/js/screens/chat.js](assets/js/screens/chat.js) добавить viewChatRooms/viewChatRoom и сохранить текущий порядок scripts.
 
 
 

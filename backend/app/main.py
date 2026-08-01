@@ -25,6 +25,7 @@ from app.db.bootstrap import bootstrap_chat_rooms, bootstrap_owners
 from app.services import chat as chat_service
 from app.services import nogas as nogas_service
 from app.services.chat_broker import ChatBroker, ChatRateLimiter
+from app.services.chat_notifications import run_notification_worker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,6 +54,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     bot = None
     poll_task: asyncio.Task | None = None
     chat_cleanup_task: asyncio.Task | None = None
+    chat_notification_task: asyncio.Task | None = None
 
     async def _chat_cleanup_worker() -> None:
         while True:
@@ -74,10 +76,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             _chat_cleanup_worker(), name="chat-event-cleanup"
         )
 
-    if settings.bot_polling_enabled:
+    notifications_enabled = (
+        settings.chat_enabled and settings.chat_telegram_notifications_enabled
+    )
+    if settings.bot_polling_enabled or notifications_enabled:
         bot = create_bot(settings)
-        dp = create_dispatcher(settings)
         app.state.bot = bot
+
+    if settings.bot_polling_enabled and bot is not None:
+        dp = create_dispatcher(settings)
         app.state.dp = dp
 
         async def _polling_safe() -> None:
@@ -89,14 +96,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 logger.exception("Bot polling stopped with error (API keeps running)")
 
         poll_task = asyncio.create_task(_polling_safe(), name="bot-polling")
-        logger.info("API + bot started")
-    else:
-        logger.info("API started (bot polling disabled)")
+
+    if notifications_enabled and bot is not None:
+        chat_notification_task = asyncio.create_task(
+            run_notification_worker(bot, settings),
+            name="chat-notifications",
+        )
+
+    logger.info(
+        "API started bot_polling=%s chat_notifications=%s",
+        settings.bot_polling_enabled,
+        notifications_enabled,
+    )
 
     try:
         yield
     finally:
-        tasks = [task for task in (poll_task, chat_cleanup_task) if task is not None]
+        tasks = [
+            task
+            for task in (poll_task, chat_cleanup_task, chat_notification_task)
+            if task is not None
+        ]
         for task in tasks:
             task.cancel()
         for task in tasks:

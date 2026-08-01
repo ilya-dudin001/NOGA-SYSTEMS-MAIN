@@ -19,6 +19,7 @@ if TEST_DB.exists():
 shutil.rmtree(UPLOADS, ignore_errors=True)
 
 os.environ["BOT_POLLING_ENABLED"] = "false"
+os.environ["CHAT_TELEGRAM_NOTIFICATIONS_ENABLED"] = "false"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test_chat.db"
 os.environ["UPLOADS_DIR"] = "./data/test_chat_uploads"
 os.environ["DEV_AUTH_ENABLED"] = "true"
