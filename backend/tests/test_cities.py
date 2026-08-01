@@ -9,6 +9,7 @@ if TEST_DB.exists():
     TEST_DB.unlink()
 
 os.environ["BOT_POLLING_ENABLED"] = "false"
+os.environ["GEOCODE_ENABLED"] = "false"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test_cities.db"
 os.environ["DEV_AUTH_ENABLED"] = "true"
 os.environ["DEV_AUTH_SECRET"] = "dev-only-secret"
@@ -322,7 +323,9 @@ def main() -> None:
             )
             assert r.status_code == 201, r.text
         summary = client.get("/api/dashboard/summary", headers=owner).json()
-        assert summary["cities"] == {
+        cities_block = summary["cities"]
+        geo = cities_block.pop("geography", None)
+        assert cities_block == {
             "total": 3,
             "working": 1,
             "paused": 1,
@@ -330,6 +333,8 @@ def main() -> None:
             "nogas": 0,
             "razgruzy": 0,
         }, summary
+        assert isinstance(geo, list) and len(geo) == 3
+        assert {row["name"] for row in geo} == {"Тула", "Самара", "Омск"}
         noga_summary = client.get("/api/dashboard/summary", headers=noga_h).json()
         assert noga_summary["scope"] == "own"
         print("dashboard cities summary ok")

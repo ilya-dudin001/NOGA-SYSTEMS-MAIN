@@ -617,6 +617,135 @@
   color:var(--text-dim);
 }
 
+/* Виджет «География» — Simplemaps SVG + метки статусов */
+.geo-card{
+  margin-top:18px;
+  padding:18px 16px 14px;
+  border-radius:var(--radius-lg);
+  border:1px solid var(--hairline);
+  background:
+    linear-gradient(180deg, rgba(212,175,55,.05) 0%, rgba(255,255,255,0) 40%),
+    linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
+  box-shadow:var(--shadow-card);
+}
+.geo-card[hidden]{ display:none !important; }
+.geo-card__head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:12px;
+}
+.geo-card__title{
+  margin:0;
+  font-size:var(--fs-strong);
+  font-weight:700;
+  color:#E8E4DC;
+}
+.geo-card__hint{
+  font-size:var(--fs-hint);
+  color:var(--text-dim);
+  font-variant-numeric:tabular-nums;
+  text-align:right;
+}
+.geo-card__map{
+  position:relative;
+  aspect-ratio:1000 / 666;
+  border-radius:var(--radius-sm);
+  overflow:hidden;
+  border:1px solid var(--hairline);
+  background:#0A0A0A;
+}
+.geo-card__svg{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:fill;
+  pointer-events:none;
+  user-select:none;
+}
+.geo-card__markers{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+.geo-card__pin{
+  position:absolute;
+  width:12px;
+  height:12px;
+  margin:0;
+  padding:0;
+  border-radius:50%;
+  border:1.5px solid rgba(11,11,11,.85);
+  transform:translate(-50%, -50%) scale(0.6);
+  pointer-events:auto;
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+  opacity:0;
+  animation:geo-pin-in .28s var(--ease) forwards;
+  animation-delay:calc(var(--i, 0) * 35ms);
+}
+.geo-card__pin:focus-visible{
+  outline:2px solid var(--gold);
+  outline-offset:2px;
+}
+.geo-card__pin:active{
+  transform:translate(-50%, -50%) scale(0.92);
+}
+.geo-card__pin--working{
+  background:var(--green);
+  box-shadow:0 0 0 3px rgba(34,197,94,.22), 0 0 10px rgba(34,197,94,.45);
+}
+.geo-card__pin--paused{
+  background:var(--amber);
+  box-shadow:0 0 0 3px rgba(245,158,11,.2), 0 0 10px rgba(245,158,11,.4);
+}
+.geo-card__pin--stopped{
+  background:var(--red);
+  box-shadow:0 0 0 3px rgba(239,68,68,.2), 0 0 10px rgba(239,68,68,.4);
+  /* второй признак статуса: кольцо вместо заливки ядра */
+  background:
+    radial-gradient(circle at center, transparent 0 28%, var(--red) 30% 100%);
+}
+@keyframes geo-pin-in{
+  to{ opacity:1; transform:translate(-50%, -50%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce){
+  .geo-card__pin{
+    animation:none;
+    opacity:1;
+    transform:translate(-50%, -50%) scale(1);
+  }
+}
+.geo-card__legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 14px;
+  margin-top:12px;
+}
+.geo-card__leg{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:var(--fs-hint);
+  color:var(--text-dim);
+}
+.geo-card__empty{
+  margin:10px 0 0;
+  font-size:var(--fs-meta);
+  color:var(--text-dim);
+  text-align:center;
+}
+.geo-card__empty[hidden]{ display:none !important; }
+.geo-card__attr{
+  margin:8px 0 0;
+  font-size:var(--fs-hint);
+  color:var(--text-dim);
+  opacity:.55;
+  text-align:right;
+}
+
 /* Вкладки в деталях ноги */
 .tabs{
   display:flex;

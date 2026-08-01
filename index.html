@@ -66,7 +66,25 @@
         </button>
       </header>
 
-      <section class="trubki-card reveal" id="trubkiCard" style="animation-delay:.1s" aria-label="Трубки">
+      <section class="geo-card reveal" id="geoCard" style="animation-delay:.08s" hidden aria-label="География">
+        <div class="geo-card__head">
+          <h2 class="geo-card__title">География</h2>
+          <span class="geo-card__hint" id="geoHint">города в работе</span>
+        </div>
+        <div class="geo-card__map" id="geoMap">
+          <img class="geo-card__svg" src="assets/img/russia-map.svg" alt="Карта России" width="1000" height="666" decoding="async">
+          <div class="geo-card__markers" id="geoMarkers" aria-hidden="true"></div>
+        </div>
+        <div class="geo-card__legend" aria-label="Статусы">
+          <span class="geo-card__leg"><span class="status-dot status-dot--working" aria-hidden="true"></span>В работе</span>
+          <span class="geo-card__leg"><span class="status-dot status-dot--paused" aria-hidden="true"></span>Стоп врем.</span>
+          <span class="geo-card__leg"><span class="status-dot status-dot--stopped" aria-hidden="true"></span>Стоп полн.</span>
+        </div>
+        <p class="geo-card__empty" id="geoEmpty" hidden>Нет городов с координатами</p>
+        <p class="geo-card__attr">контур © Simplemaps</p>
+      </section>
+
+      <section class="trubki-card reveal" id="trubkiCard" style="animation-delay:.16s" aria-label="Трубки">
         <div class="trubki-card__head">
           <h2 class="trubki-card__title">Трубки</h2>
           <span class="trubki-card__total" id="trubkiTotal">0</span>
@@ -75,7 +93,7 @@
         <button class="btn-all" id="trubkiEntry" type="button">Все трубки</button>
       </section>
 
-      <section class="cities-card reveal" id="citiesCard" style="animation-delay:.26s" hidden aria-label="Города">
+      <section class="cities-card reveal" id="citiesCard" style="animation-delay:.28s" hidden aria-label="Города">
         <div class="cities-card__head">
           <h2 class="cities-card__title">Города</h2>
           <span class="cities-card__total" id="citiesTotal">0</span>

@@ -8,19 +8,39 @@ from app.auth.deps import get_current_user
 from app.auth.permissions import CITIES_READ, DASHBOARD_GLOBAL, has_permission
 from app.db import get_session
 from app.db.models import City, CityStatus, Noga, Razgruz, User
-from app.schemas import CitiesSummaryOut, DashboardSummaryOut
+from app.schemas import CitiesSummaryOut, DashboardSummaryOut, GeographyCityOut
+from app.services import geocode as geocode_service
 from app.services import trubki as trubki_service
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
 async def cities_summary(session: AsyncSession) -> CitiesSummaryOut:
+    # Дособираем координаты пачками — Nominatim лимитирован, полный прогон на каждом
+    # summary не делаем.
+    await geocode_service.fill_missing(session, limit=5)
+
     by_status = await session.execute(
         select(City.status, func.count()).group_by(City.status)
     )
     counts = {status: count for status, count in by_status.all()}
     nogas = await session.scalar(select(func.count()).select_from(Noga)) or 0
     razgruzy = await session.scalar(select(func.count()).select_from(Razgruz)) or 0
+
+    rows = await session.execute(select(City).order_by(City.name.asc()))
+    geography = [
+        GeographyCityOut(
+            id=city.id,
+            name=city.name,
+            status=city.status,
+            lat=city.lat,
+            lon=city.lon,
+        )
+        for city in rows.scalars().all()
+    ]
+
+    await session.commit()
+
     return CitiesSummaryOut(
         total=sum(counts.values()),
         working=counts.get(CityStatus.working, 0),
@@ -28,6 +48,7 @@ async def cities_summary(session: AsyncSession) -> CitiesSummaryOut:
         stopped=counts.get(CityStatus.stopped, 0),
         nogas=nogas,
         razgruzy=razgruzy,
+        geography=geography,
     )
 
 

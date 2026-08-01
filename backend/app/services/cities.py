@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models import City, CityRazgruz, CityStatus, Noga, Razgruz, User
 from app.schemas import CityDetailOut, CityOut, NogaBriefOut
+from app.services import geocode as geocode_service
 from app.services import razgruzy as razgruzy_service
 
 LOAD_OPTIONS = (
@@ -37,6 +38,7 @@ async def get_or_create(session: AsyncSession, name: str, actor: User) -> City:
     city = City(name=normalize(name), created_by_id=actor.id)
     session.add(city)
     await session.flush()
+    await geocode_service.ensure_city_coords(session, city)
     return city
 
 

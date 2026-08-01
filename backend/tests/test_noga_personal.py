@@ -15,6 +15,7 @@ if TEST_DB.exists():
 shutil.rmtree(UPLOADS, ignore_errors=True)
 
 os.environ["BOT_POLLING_ENABLED"] = "false"
+os.environ["GEOCODE_ENABLED"] = "false"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test_noga_personal.db"
 os.environ["UPLOADS_DIR"] = "./data/test_uploads"
 os.environ["DEV_AUTH_ENABLED"] = "true"

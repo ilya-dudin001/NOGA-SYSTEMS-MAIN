@@ -23,6 +23,7 @@ from app.db import SessionLocal, engine
 from app.db import Base
 from app.db.bootstrap import bootstrap_chat_rooms, bootstrap_owners
 from app.services import chat as chat_service
+from app.services import geocode as geocode_service
 from app.services import nogas as nogas_service
 from app.services.chat_broker import ChatBroker, ChatRateLimiter
 from app.services.chat_notifications import run_notification_worker
@@ -43,6 +44,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Create tables (Alembic preferred in prod; create_all is fine for SQLite bootstrap)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # create_all не добавляет колонки в уже существующие таблицы SQLite
+        await geocode_service.ensure_schema(conn)
 
     async with SessionLocal() as session:
         await bootstrap_owners(session, settings)

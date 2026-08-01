@@ -8,6 +8,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -365,6 +366,10 @@ class City(Base):
     min_amount_currency: Mapped[Optional[Currency]] = mapped_column(
         Enum(Currency, name="currency", native_enum=False), nullable=True
     )
+    # Координаты для виджета «География»; заполняются публичным геокодером.
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lon: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    geocode_failed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_by_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

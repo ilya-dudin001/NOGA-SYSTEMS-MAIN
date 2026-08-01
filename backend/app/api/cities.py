@@ -21,6 +21,7 @@ from app.db import get_session
 from app.db.models import City, CityStatus, Noga, Razgruz, User
 from app.schemas import CityCreateIn, CityDetailOut, CityOut, CityUpdateIn
 from app.services import cities as cities_service
+from app.services import geocode as geocode_service
 from app.services import nogas as nogas_service
 from app.services import razgruzy as razgruzy_service
 from app.services import trubki as trubki_service
@@ -254,6 +255,7 @@ async def create_city(
     )
     session.add(city)
     await session.flush()
+    await geocode_service.ensure_city_coords(session, city)
     await cities_service.replace_razgruzy(session, city.id, razgruz_ids)
     if noga_ids:
         await nogas_service.attach_to_city(
@@ -325,6 +327,8 @@ async def update_city(
         changes["name"] = {"from": city.name, "to": new_name}
         await nogas_service.rename_city_snapshots(session, city.name, new_name)
         city.name = new_name
+        geocode_service.clear_coords(city)
+        await geocode_service.ensure_city_coords(session, city)
     if body.status is not None and body.status != city.status:
         changes["status"] = {"from": city.status.value, "to": body.status.value}
         city.status = body.status

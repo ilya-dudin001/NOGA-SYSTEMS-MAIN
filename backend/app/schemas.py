@@ -328,6 +328,16 @@ class TrubkiPageOut(BaseModel):
     offset: int = 0
 
 
+class GeographyCityOut(BaseModel):
+    """Точка на карте дашборда: статус и координаты (если геокодер нашёл)."""
+
+    id: int
+    name: str
+    status: CityStatus
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+
+
 class CitiesSummaryOut(BaseModel):
     total: int = 0
     working: int = 0
@@ -335,6 +345,7 @@ class CitiesSummaryOut(BaseModel):
     stopped: int = 0
     nogas: int = 0
     razgruzy: int = 0
+    geography: list[GeographyCityOut] = Field(default_factory=list)
 
 
 class DashboardSummaryOut(BaseModel):

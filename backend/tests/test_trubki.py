@@ -12,6 +12,7 @@ if TEST_DB.exists():
 shutil.rmtree(TEST_UPLOADS, ignore_errors=True)
 
 os.environ["BOT_POLLING_ENABLED"] = "false"
+os.environ["GEOCODE_ENABLED"] = "false"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test_trubki.db"
 os.environ["UPLOADS_DIR"] = str(TEST_UPLOADS)
 os.environ["DEV_AUTH_ENABLED"] = "true"

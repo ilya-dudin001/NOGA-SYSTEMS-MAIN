@@ -79,12 +79,14 @@ class Settings(BaseSettings):
     chat_sse_max_streams_per_user: int = Field(
         default=3, ge=1, le=20, alias="CHAT_SSE_MAX_STREAMS_PER_USER"
     )
+    geocode_enabled: bool = Field(default=True, alias="GEOCODE_ENABLED")
 
     @field_validator(
         "bot_polling_enabled",
         "dev_auth_enabled",
         "chat_enabled",
         "chat_telegram_notifications_enabled",
+        "geocode_enabled",
         mode="before",
     )
     @classmethod

@@ -12,6 +12,7 @@ if TEST_DB.exists():
     TEST_DB.unlink()
 
 os.environ["BOT_POLLING_ENABLED"] = "false"
+os.environ["GEOCODE_ENABLED"] = "false"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test_admin_scope.db"
 os.environ["DEV_AUTH_ENABLED"] = "true"
 os.environ["DEV_AUTH_SECRET"] = "dev-only-secret"
