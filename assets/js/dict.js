@@ -19,15 +19,15 @@
   ];
 
   var CURRENCIES = [
-    { value: "RUB", label: "Рубли", sign: "₽", short: "руб" },
-    { value: "USD", label: "Доллары", sign: "$", short: "$" },
-    { value: "UZS", label: "Узбекские сумы", sign: "сум", short: "сум" },
-    { value: "KGS", label: "Киргизские сомы", sign: "сом", short: "сом" },
-    { value: "KZT", label: "Казахские тенге", sign: "₸", short: "₸" },
-    { value: "AZN", label: "Азербайджанские манаты", sign: "₼", short: "₼" },
-    { value: "BYN", label: "Белорусские рубли", sign: "Br", short: "Br" },
-    { value: "MDL", label: "Молдавские леи", sign: "lei", short: "lei" },
-    { value: "PRB", label: "Приднестровские рубли", sign: "руб. ПМР", short: "руб. ПМР" },
+    { value: "RUB", label: "руб", sign: "₽", short: "руб" },
+    { value: "USD", label: "$", sign: "$", short: "$" },
+    { value: "UZS", label: "сум", sign: "сум", short: "сум" },
+    { value: "KGS", label: "сом", sign: "сом", short: "сом" },
+    { value: "KZT", label: "тенге", sign: "₸", short: "тенге" },
+    { value: "AZN", label: "манат", sign: "₼", short: "манат" },
+    { value: "BYN", label: "бел. руб", sign: "Br", short: "бел. руб" },
+    { value: "MDL", label: "леи", sign: "lei", short: "леи" },
+    { value: "PRB", label: "пмр. руб", sign: "руб. ПМР", short: "пмр. руб" },
   ];
 
   /* Блоки файлов в личных данных ноги. accept дублирует расширениями то, что

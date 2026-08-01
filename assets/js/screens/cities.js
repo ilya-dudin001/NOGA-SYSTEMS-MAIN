@@ -535,7 +535,7 @@
     global.NogaDict.CURRENCIES.forEach(function (item) {
       var opt = document.createElement("option");
       opt.value = item.value;
-      opt.textContent = item.label + " (" + item.sign + ")";
+      opt.textContent = item.label;
       select.appendChild(opt);
     });
   }
