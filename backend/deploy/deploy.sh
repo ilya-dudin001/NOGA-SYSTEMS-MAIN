@@ -17,6 +17,7 @@ KEEP_BACKUPS="${KEEP_BACKUPS:-10}"
 BACKEND_DIR="$REPO_DIR/backend"
 PY="$BACKEND_DIR/.venv/bin/python"
 DB_FILE="$BACKEND_DIR/data/noga.db"
+CHAT_UPLOADS="$BACKEND_DIR/data/uploads/chat"
 BACKUP_DIR="$BACKEND_DIR/data/backups"
 SERVICE_STOPPED=0
 
@@ -92,6 +93,17 @@ if [ -f "$DB_FILE" ]; then
   fi
 else
   echo "Файла $DB_FILE нет — бэкап пропущен (первый запуск или свой DATABASE_URL в .env)"
+fi
+
+if [ -d "$CHAT_UPLOADS" ]; then
+  say "Бэкап вложений чата"
+  mkdir -p "$BACKUP_DIR"
+  CHAT_BACKUP="$BACKUP_DIR/chat-uploads-$(date +%Y%m%d-%H%M%S).tar.gz"
+  tar -C "$(dirname "$CHAT_UPLOADS")" -czf "$CHAT_BACKUP" "$(basename "$CHAT_UPLOADS")"
+  echo "$CHAT_BACKUP"
+  ls -1t "$BACKUP_DIR"/chat-uploads-*.tar.gz 2>/dev/null | tail -n "+$((KEEP_BACKUPS + 1))" | xargs -r rm -- || true
+else
+  echo "Каталога $CHAT_UPLOADS нет — бэкап вложений чата пропущен"
 fi
 
 say "Миграции"

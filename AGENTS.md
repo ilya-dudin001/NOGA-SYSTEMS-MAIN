@@ -59,6 +59,11 @@ NOGA Systems (EM 3.5 — Operations) — закрытая система учё�
 | `nogas:personal` | + | + | + | − |
 | `razgruz:read` / `razgruz:manage` | + / + | + / + | + / + | − / − |
 | `razgruz:all` | + | + | − | − |
+| `chat:read` / `chat:write` / `chat:direct` | + / + / + | + / + / + | + / + / + | − / − / − |
+| `chat:delete_own` / `chat:delete_any` | + / + | + / − | + / − | − / − |
+
+Чат доступен только owner / right_hand / admin. Роль `noga` не имеет `chat:*`.
+Живой UI дополнительно требует `features.chat` (`CHAT_ENABLED` на сервере).
 
 `cities:read` есть у всех ролей — он нужен для форм операций. Именно поэтому состав
 ответа города режется по правам: без `razgruz:read` список `razgruzy` приходит пустым,
@@ -117,9 +122,18 @@ trubka_files  trubka_id → trubki ON DELETE CASCADE, kind, stored_path, origina
               content_type, size_bytes, uploaded_by_id            UNIQUE (trubka_id, kind)
 trubka_events trubka_id → trubki ON DELETE CASCADE, actor_user_id, actor_name,
               action, payload JSON, created_at
+chat_rooms    kind system|direct, slug, title, direct_key, sort_order, is_active
+chat_room_members room_id, user_id, last_read_message_id
+chat_messages room_id, author_id/author_name, body, content JSON, reply_to_id, deleted_at
+chat_attachments message_id → chat_messages ON DELETE CASCADE, stored_path, original_name, …
+chat_events   type, room_id, target_user_id, payload JSON — durable SSE
+chat_mentions message_id, user_id, telegram_status pending|sending|sent|retry|failed|cancelled
 audit_log     actor_user_id (nullable), action, target_type, target_id, payload JSON
 auth_attempts telegram_id, success, reason
 ```
+
+Контракт чата / SSE / nginx / rollout: [CHAT_SSE.md](CHAT_SSE.md), [DEPLOY.md](DEPLOY.md).
+Файлы чата: `UPLOADS_DIR/chat/...`.
 
 Enum'ы (`user_role`, `user_status`, `city_status`, `currency`, `noga_file_kind`,
 `trubka_status`, `trubka_delivery`, `trubka_file_kind`) объявлены `native_enum=False` —
@@ -170,17 +184,20 @@ pydantic-settings. Зависимости — `backend/requirements.txt`.
 
 ```
 backend/app/
-  main.py            create_app() + lifespan: create_all → bootstrap_owners → polling бота задачей
+  main.py            create_app() + lifespan: create_all → bootstrap_owners →
+                     bootstrap_chat_rooms → polling бота + chat workers
   config.py          Settings (pydantic-settings, .env), get_settings() кэшируется lru_cache
   db/                Base, engine, SessionLocal (expire_on_commit=False), get_session, models, bootstrap
   auth/              initdata (HMAC), jwt, deps (get_current_user, require_permission), permissions
-  api/               auth, me, users, cities, nogas, razgruzy, trubki, dashboard — все под /api
-  services/          users, cities, nogas (привязка к городу + файлы на диске), razgruzy,
-                     trubki, audit
+  api/               auth, me, users, cities, nogas, razgruzy, trubki, chat, dashboard — все под /api
+  services/          users, cities, nogas, razgruzy, trubki, chat, chat_broker,
+                     chat_notifications, audit
   bot/               create_bot/create_dispatcher/run_polling, middlewares, handlers/{start,users_cmd}
-alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 004_noga_personal,
-                     005_noga_city_history, 006_trubki, 007_chat, 008_trubka_lifecycle
+alembic/versions/    001_initial … 007_chat, 008_trubka_lifecycle
 ```
+
+ChatBroker и rate limiter — in-memory. Production: ровно один uvicorn process
+(`backend/deploy/noga-api.service`). Нельзя `--workers N`, пока broker не в Redis.
 
 Файлы ног лежат не в БД, а на диске: `UPLOADS_DIR` (по умолчанию `./data/uploads`),
 раскладка `nogas/{noga_id}/{uuid}{ext}`, в `noga_files.stored_path` — путь относительно
@@ -188,7 +205,8 @@ alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 00
 (`nogas_service.ensure_uploads_dir`). Лимиты и списки расширений — в `services/nogas.py`
 (картинки 25 МБ, видео 200 МБ; тело читается чанками, при превышении файл удаляется).
 Фото этапов трубки лежат там же по пути `trubki/{trubka_id}/{uuid}{ext}` и используют
-тот же лимит изображений 25 МБ.
+тот же лимит изображений 25 МБ. Вложения чата — `chat/{room_id|message}/{uuid}{ext}`,
+лимит суммарно `CHAT_UPLOAD_MAX_TOTAL_MB` (по умолчанию 100 МБ).
 
 Конвенции:
 
@@ -220,6 +238,14 @@ alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 00
 | POST | `/api/trubki/{id}/recalculation`, `/usdt`, `/report`, `/files` | `operations:all` |
 | GET | `/api/trubki/{id}/files/{file_id}` | `operations:own` |
 | GET | `/api/dashboard/summary` | авторизация; оборот — нули, блоки `cities` и `trubki` живые |
+| GET | `/api/chat/rooms`, `/api/chat/peers` | `chat:read` (+ `CHAT_ENABLED`) |
+| POST | `/api/chat/direct` | `chat:direct` |
+| GET/POST | `/api/chat/rooms/{id}/messages` | `chat:read` / `chat:write` |
+| PATCH | `/api/chat/rooms/{id}/read` | `chat:read` |
+| DELETE | `/api/chat/messages/{id}` | `chat:delete_own` или `chat:delete_any` |
+| GET | `/api/chat/stream` | `chat:read`, durable SSE |
+| GET | `/api/chat/attachments/{id}` | `chat:read` |
+| GET/PATCH | `/api/chat/mentions`, `.../{id}/read` | `chat:read` |
 | GET | `/api/health` | — |
 
 `PATCH /api/me` принимает единственное поле `display_name` и чистит его через
@@ -308,11 +334,11 @@ polling логируется, но API продолжает работать. К
 - Каждый файл — IIFE `(function (global) { "use strict"; ... })(window)`, экспорт одним
   объектом в `window`: `NOGA_CONFIG`, `NogaTelegram`, `NogaApi`, `NogaRoles`, `NogaDict`,
   `NogaViews`, `NogaDashboard`, `NogaNoAccess`, `NogaUsers`, `NogaNogas`, `NogaCities`,
-  `NogaRazgruzy`, `NogaTrubki`, `NogaCreateMenu`, `NogaStats`, `NogaProfile`. Исключение —
-  `auth.js`: он ничего не экспортирует, только запускает `bootstrap()`.
+  `NogaRazgruzy`, `NogaTrubki`, `NogaChat`, `NogaCreateMenu`, `NogaStats`, `NogaProfile`.
+  Исключение — `auth.js`: он ничего не экспортирует, только запускает `bootstrap()`.
 - Стиль ES5-совместимый (`var`, `Array.prototype.forEach.call`), кроме `async/await` в запросах.
 - Порядок подключения в `index.html` важен: `config → telegram → api → roles → dict →
-  views → screens/* → auth.js` (auth.js стартует приложение по `DOMContentLoaded`).
+  views → screens/* → auth.js` (`chat.js` до `profile.js`).
 - Общие справочники (статусы городов, валюты, форматирование чисел, дат и процентов) —
   в `assets/js/dict.js` (`NogaDict`). Новые списки значений класть туда, а не дублировать
   по экранам; `NogaDashboard.format` тоже делегирует в `NogaDict.formatNumber`.
@@ -394,29 +420,31 @@ python tests/test_noga_personal.py
 python tests/test_admin_scope.py
 python tests/test_trubki.py
 python tests/test_profile_rename.py
+python tests/test_chat_foundation.py
+python tests/test_chat.py
+python tests/test_chat_sse.py
+python tests/test_chat_notifications.py
+python tests/check_chat_log_hygiene.py
 ```
 
 Тесты — самостоятельные скрипты на `TestClient` (не pytest), каждый со своей БД в `data/`;
 переменные окружения выставляются в начале файла до импорта `app`, с `get_settings.cache_clear()`.
 Новый функционал покрывать в том же стиле.
 
-Фронтенд можно прогонять в `jsdom` (Node): загрузить `index.html`, выполнить скрипты в
-порядке из `index.html`, подменить `window.fetch` фейковым API и кликать по кнопкам.
-В jsdom нужно доопределить `matchMedia`, `Element.prototype.scrollIntoView` и
-`URL.createObjectURL` / `revokeObjectURL` — в браузере и Telegram WebView они есть.
-Выбор файла имитируется через `Object.defineProperty(input, "files", { value: [file] })`
-и `dispatchEvent(new Event("change"))`: `DataTransfer` в jsdom нет.
+Фронтенд можно прогонять в `jsdom` (Node): `node _jsdom_trubki.js`, `node _jsdom_chat.js`
+(нужен пакет `jsdom`). Для chat SSE в jsdom полифилить `TextEncoder`/`TextDecoder` и
+ReadableStream reader. Выбор файла — `Object.defineProperty(input, "files", { value: [file] })`.
 
 Прод: VPS + Docker (`backend/docker-compose.yml`, `Dockerfile`, том `./data`) или systemd
 (`backend/deploy/noga-api.service`, репозиторий в `/opt/noga`, сервис `noga-api` от юзера
 `noga`); фронт — GitHub Pages, едет сам по пушу в `main`. `CORS_ORIGINS` должен содержать
-origin фронта.
+origin фронта. Для чата — nginx example `backend/deploy/nginx-noga-api.conf.example`
+(`proxy_buffering off` на stream, `client_max_body_size 110m`), один uvicorn process,
+rollout с `CHAT_ENABLED=false` → migrate → nginx → enable — см. [DEPLOY.md](DEPLOY.md).
 
 Выкатка бэкенда — `sudo bash /opt/noga/backend/deploy/deploy.sh` (pull → зависимости →
-бэкап базы → `alembic upgrade head` → рестарт → `/api/health`, с автоподъёмом сервиса при
-ошибке). Подробности, разовый `alembic stamp` для баз из `create_all` и откат — в
-[DEPLOY.md](DEPLOY.md). Скрипты и unit-файлы держим с LF (`.gitattributes`), иначе bash на
-сервере спотыкается о `\r`.
+бэкап базы и `uploads/chat` → `alembic upgrade head` → рестарт → `/api/health`). Скрипты
+и unit-файлы держим с LF (`.gitattributes`).
 
 ## Экраны Mini App
 
@@ -431,8 +459,15 @@ origin фронта.
 | Трубка | `viewTrubka` | `screens/trubki.js` | `operations:own` (всем) |
 | Профиль | `viewProfile` | `screens/profile.js` | всем |
 | Статистика | `viewStats` | `screens/stats.js` | всем кроме `noga` |
+| Чат (комнаты) | `viewChatRooms` | `screens/chat.js` | `features.chat` + `chat:read` |
+| Чат (комната) | `viewChatRoom` | `screens/chat.js` | `features.chat` + `chat:read` |
 
-Вход на экраны — вкладка «Профиль», кнопка `razgruzyEntry` и плашка трубок
+Вход в чат — колокольчик на дашборде и пункт «Чат» в меню профиля. Таббар не меняется.
+Глобальный SSE стартует после сессии (`NogaChat.syncAccess`); `release()` на 401.
+Deep link: `?chat_room=&chat_message=` через `NogaTelegram.getChatDeepLink`.
+Разметка — `em-*` из design-system; layout в `screens.css` только на `--em-*`.
+
+Вход на экраны справочников — вкладка «Профиль», кнопка `razgruzyEntry` и плашка трубок
 `trubkiEntry` на дашборде, а также плашка городов `citiesCard` (тап по ней открывает
 витрину «В работе»). Сводки «в работе / стоп временно / стоп полностью» на плашке
 обновляются из `summary.cities` (счётчики общие по системе, включая ноги всех
@@ -585,25 +620,22 @@ FAB «+» в центре таббара открывает вылетающее
 
 Готово: авторизация, роли и права, пользователи (API + бот + экран), ноги (включая личные
 данные, паспорта и видео), города, разгрузы (API + экраны), трубки (API + дашборд, список,
-детали с картой, форма), меню создания на FAB, аудит, сводка по городам на дашборде,
-профиль с меню разделов и экран статистики.
+детали с картой, форма), **внутренний чат** (REST, durable SSE, Telegram mentions outbox,
+Mini App: комнаты, direct, лента, composer, deep link), меню создания на FAB, аудит,
+сводка по городам на дашборде, профиль с меню разделов и экран статистики.
 
-Не сделано: кошельки, уведомления, оборот. «Общий оборот сегодня» на дашборде и
-`usd_equivalent` по-прежнему нули — суммы трубок нигде не складываются и курса валют в
-системе нет; считать надо будет по `trubki.amount` за период. `completed_orders` у
-разгруза всегда 0, а `recent_orders` у города — пустой список, хотя данные для них уже
-есть в `trubki`. Трубки не делятся по участкам: список общий для всех ролей, включая
-`noga`, и любой с `operations:all` правит чужой заказ. Команд бота для городов, ног,
-разгрузов и трубок нет — только Mini App. Отдельного экрана управления городами у роли
-`noga` нет.
+Не сделано: кошельки, оборот. «Общий оборот сегодня» на дашборде и `usd_equivalent`
+по-прежнему нули. `completed_orders` у разгруза всегда 0, `recent_orders` у города —
+пустой список. Трубки не делятся по участкам. Команд бота для городов, ног, разгрузов,
+трубок и чата нет — только Mini App. Chat broker пока in-memory (один process).
 
 Известные мелкие дыры: `index.html` ссылается на `assets/img/logo.png`, которого в репозитории
-нет (лежит `bot_logo.png`) — три битые картинки в splash/gate/topbar; папки `reference/` с
-мокапами в рабочей копии тоже нет; смена роли в экране пользователей сделана через
-`window.prompt`, что внутри Telegram WebView ненадёжно.
+нет (лежит `bot_logo.png`); смена роли в экране пользователей через `window.prompt`
+внутри Telegram WebView ненадёжна.
 
 Новые справочники делать по образцу городов и разгрузов: таблица + миграция в
 `alembic/versions/`, права `сущность:read` / `сущность:manage`, сервис с загрузкой и
 сериализацией в `services/`, роутер в `api/`, экран в `assets/js/screens/`, регистрация id
 экрана в `views.js`, справочные значения в `dict.js`. Имена таблиц и полей — транслитом от
 доменного термина (как `nogas`, `razgruzy`), английские синонимы не изобретать.
+Чат — исключение с отдельным контрактом [CHAT_SSE.md](CHAT_SSE.md).

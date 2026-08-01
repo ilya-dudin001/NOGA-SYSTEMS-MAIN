@@ -36,6 +36,10 @@ copy .env.example .env   # или: cp .env.example .env
 | `CORS_ORIGINS` | Origin фронта через запятую |
 | `DEV_AUTH_ENABLED` | `true` для входа из браузера без Telegram |
 | `DEV_AUTH_SECRET` | Секрет для `POST /api/auth/dev` |
+| `CHAT_ENABLED` | Внутренний чат (REST + SSE); `false` скрывает UI и отдаёт 404 |
+
+Полный список chat-переменных — в `backend/.env.example` (`CHAT_UPLOAD_MAX_TOTAL_MB`,
+`CHAT_SSE_*`, `CHAT_EVENT_RETENTION_DAYS`, Telegram outbox и rate limits).
 
 Запуск:
 
@@ -121,6 +125,10 @@ sudo bash /opt/noga/backend/deploy/deploy.sh
 - `GET|POST /api/razgruzy`, `PATCH|DELETE /api/razgruzy/{id}`
 - `GET|POST /api/trubki`, `GET|PATCH|DELETE /api/trubki/{id}` — заказы; читают все,
   создают и правят все роли кроме «Ноги»
+- `GET /api/chat/rooms`, `GET /api/chat/peers`, `POST /api/chat/direct` — комнаты
+- `GET|POST /api/chat/rooms/{id}/messages`, `PATCH .../read`, `DELETE /api/chat/messages/{id}`
+- `GET /api/chat/stream` — durable SSE (Bearer, `Last-Event-ID`); один uvicorn process
+- `GET /api/chat/attachments/{id}`, mentions — см. [CHAT_SSE.md](CHAT_SSE.md)
 - `GET /api/dashboard/summary` — оборот нулевой, блоки `cities` и `trubki` живые
 
 Миграции Alembic: `alembic upgrade head` (из `backend/`). При старте также вызывается `create_all` + bootstrap Owner.
@@ -131,6 +139,11 @@ sudo bash /opt/noga/backend/deploy/deploy.sh
 необязательным и создаёт таблицу `noga_files`. `005_noga_city_history` добавляет
 `initial_city_name` и `last_city_name` (у уже прикреплённых ног обе заполняются
 текущим городом). `006_trubki` создаёт таблицу заказов `trubki`.
+`007_chat` — комнаты, сообщения, вложения, durable events, mentions / Telegram outbox.
+`008_trubka_lifecycle` — стадии трубки (пересчёт, USDT, отчёт).
+
+Перед включением чата на VPS: nginx `proxy_buffering off` для `/api/chat/stream`,
+`client_max_body_size 110m`, один process uvicorn — см. [DEPLOY.md](DEPLOY.md).
 
 Если рабочая база была создана через `create_all` и таблицы `alembic_version` в ней нет,
 перед обновлением отметьте текущую ревизию, иначе Alembic начнёт с самого начала и
@@ -335,12 +348,23 @@ python tests/test_noga_personal.py
 python tests/test_admin_scope.py
 python tests/test_profile_rename.py
 python tests/test_trubki.py
+python tests/test_chat_foundation.py
+python tests/test_chat.py
+python tests/test_chat_sse.py
+python tests/test_chat_notifications.py
 ```
 
-Каждый скрипт использует свою БД (`data/test_delete.db`, `data/test_nogas.db`,
-`data/test_cities.db`, `data/test_noga_personal.db`, `data/test_admin_scope.db`,
-`data/test_rename.db`, `data/test_trubki.db`) и не трогает рабочую.
+Каждый скрипт использует свою БД в `data/` и не трогает рабочую.
 Тест личных данных пишет файлы в `data/test_uploads` и чистит каталог при запуске.
+Гигиена логов чата: `python tests/check_chat_log_hygiene.py`.
+
+Фронтенд (из корня репозитория, нужен `npm install jsdom` локально):
+
+```bash
+node _jsdom_trubki.js
+node _jsdom_chat.js
+node design-system/tools/audit.js
+```
 
 ## Чеклист приёмки
 
@@ -361,6 +385,10 @@ python tests/test_trubki.py
 8. **Трубки**: «+» в панели → «Трубка» → статус и город → сумма и нога; после создания
    проверить пересчёт 10%, фото денег, сумму USDT, фото чека, историю и отправку отчёта.
    Город с трубкой не удаляется.
+9. **Чат** (при `CHAT_ENABLED=true`): колокольчик и пункт «Чат» в профиле у owner /
+   right_hand / admin; две системные комнаты; direct; reply / mention / файл; soft-delete;
+   роль «Нога» чата не видит. После `systemctl restart noga-api` stream переподключается.
+   Rollout и nginx — [DEPLOY.md](DEPLOY.md), контракт — [CHAT_SSE.md](CHAT_SSE.md).
 
 ## Структура
 
@@ -368,9 +396,13 @@ python tests/test_trubki.py
 /
   index.html
   assets/css|js|img
-  reference/
+  design-system/
+  docs/
+  CHAT_SSE.md
   backend/app/          # FastAPI + bot
   backend/alembic/
+  backend/deploy/       # systemd, deploy.sh, nginx example
   AGENTS.md
   README.md
+  DEPLOY.md
 ```

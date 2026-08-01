@@ -208,31 +208,31 @@ Soft-delete удаляет metadata транзакционно, а физиче�
 
 Шлюз: два пользователя проходят полный сценарий send/reply/mention/file/delete/reconnect, третий не видит direct, мобильная вёрстка не ломает существующие экраны.
 
-Этап 8. Интеграционная проверка и rollout
+Этап 8. Интеграционная проверка и rollout — ✅
 
 
 
+Документация обновлена: [README.md](README.md), [DEPLOY.md](DEPLOY.md), [AGENTS.md](AGENTS.md) —
+API/экраны, env, nginx (`proxy_buffering off`, `client_max_body_size 110m`), single-worker,
+backup `uploads/chat`, rollout/rollback и observability.
 
 
-Обновить [README.md](README.md), [DEPLOY.md](DEPLOY.md) и [AGENTS.md](AGENTS.md): API/экраны, env, nginx proxy_buffering off, client_max_body_size 110m, single-worker restriction, backup и rollback.
+Пример nginx: [backend/deploy/nginx-noga-api.conf.example](backend/deploy/nginx-noga-api.conf.example).
+Бэкап чата в [backend/deploy/deploy.sh](backend/deploy/deploy.sh); комментарий в unit-файле —
+без `--workers N`.
 
 
-
-Запустить все существующие backend smoke-тесты, новый test_chat.py, _jsdom_trubki.js, _jsdom_chat.js, lints и ручные REST/SSE проверки.
-
-
-
-Проверить observability без утечки body/filenames/JWT, свободное место, event retention и pending Telegram queue.
+Локальный gate прогнан: smoke (delete_user, nogas, cities, noga_personal, admin_scope,
+profile_rename, trubki), `test_chat*.py`, `check_chat_log_hygiene.py`, `_jsdom_chat.js`,
+`_jsdom_trubki.js`, `design-system/tools/audit.js`.
 
 
-
-Rollout: backup БД и data/uploads/chat → backend/migration с production flag off → nginx → smoke → frontend → включение flag → проверки трёх внутренних ролей и отказ роли noga → restart/replay test → наблюдение 24–72 часа за DB/disk/outbox.
-
-
-
-При проблеме сначала выключить feature flag; downgrade migration только после отдельного backup, поскольку он удаляет историю.
+Прод-rollout (на VPS): backup БД и `data/uploads/chat` → код с `CHAT_ENABLED=false` →
+migrate → nginx → smoke → frontend → флаг on → owner/right_hand/admin + отказ `noga` →
+restart/replay → наблюдение 24–72 ч. При проблеме сначала флаг off; `alembic downgrade`
+`007_chat` только после отдельного backup (удаляет историю).
 
 
-
-Финальный шлюз: выполнены все критерии приёмки из [CHAT_SSE.md](CHAT_SSE.md), существующие функции приложения не регрессировали.
+Финальный шлюз (код): критерии из [CHAT_SSE.md](CHAT_SSE.md) закрыты тестами и доками;
+живой прод-чеклист — [DEPLOY.md](DEPLOY.md) § «Чат: rollout».
 

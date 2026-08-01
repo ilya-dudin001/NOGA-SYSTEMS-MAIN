@@ -19,8 +19,9 @@
 systemd-сервис: noga-api    # запускает uvicorn от пользователя noga
 ```
 
-Скрипт деплоя бэкапит только `noga.db`. Файлы ног в `data/uploads/` он не трогает и не
-копирует — если они важны, заведите отдельный бэкап каталога (`rsync`, `tar`).
+Скрипт деплоя бэкапит `noga.db` и, если есть, каталог `data/uploads/chat`
+(`chat-uploads-*.tar.gz`). Остальные файлы ног в `data/uploads/nogas/` он не копирует —
+если они важны, заведите отдельный бэкап каталога (`rsync`, `tar`).
 
 ## Быстрый путь
 
@@ -120,7 +121,9 @@ if 'nogas' in t:
 | в `cities` колонка `is_active` | `sudo .venv/bin/python -m alembic stamp 002_cities_nogas` |
 | в `cities` колонка `status`, в `nogas` нет `address` | `sudo .venv/bin/python -m alembic stamp 003_city_status_razgruzy` |
 | в `nogas` есть `address`, но нет `initial_city_name` | `sudo .venv/bin/python -m alembic stamp 004_noga_personal` |
-| в `nogas` есть `initial_city_name` | `sudo .venv/bin/python -m alembic stamp 005_noga_city_history` |
+| в `nogas` есть `initial_city_name`, нет `trubki` | `sudo .venv/bin/python -m alembic stamp 005_noga_city_history` |
+| есть `trubki`, нет `chat_rooms` | `sudo .venv/bin/python -m alembic stamp 006_trubki` |
+| есть `chat_rooms`, нет колонок lifecycle трубок | `sudo .venv/bin/python -m alembic stamp 007_chat` |
 
 Ревизию указываем точную, а не `head`: `stamp head` отметит базу как полностью
 свежую и все недостающие миграции будут пропущены.
@@ -229,6 +232,16 @@ sudo nano /opt/noga/backend/.env
 sudo systemctl restart noga-api
 ```
 
+Для чата ключевые ключи (полный список в `.env.example`):
+
+| Переменная | Смысл |
+|------------|--------|
+| `CHAT_ENABLED` | feature flag: `false` → REST/SSE 404, UI скрыт |
+| `CHAT_UPLOAD_MAX_TOTAL_MB` | лимит суммарного размера файлов (по умолчанию 100) |
+| `CHAT_SSE_HEARTBEAT_SECONDS` / `CHAT_SSE_REVALIDATE_SECONDS` | heartbeat и revalidation доступа |
+| `CHAT_EVENT_RETENTION_DAYS` | очистка `chat_events` |
+| `CHAT_TELEGRAM_NOTIFICATIONS_ENABLED` | outbox упоминаний в Telegram |
+
 ## Вариант с Docker
 
 Если сервис поднят через `docker compose`, а не systemd:
@@ -276,3 +289,109 @@ curl -s http://127.0.0.1:8000/api/health
 Mini App обязан работать по HTTPS, поэтому перед API нужен reverse proxy с сертификатом
 (nginx + certbot), проксирующий домен на `127.0.0.1:8000`. Этот домен и подставляется в
 `apiBase` в `index.html`.
+
+## Nginx: SSE и загрузки чата
+
+Готовый черновик: `backend/deploy/nginx-noga-api.conf.example`.
+
+Обязательные отличия от «прокси как обычно»:
+
+| Настройка | Зачем |
+|-----------|--------|
+| `client_max_body_size 110m` | multipart до 100 МБ файлов + запас на overhead |
+| `location /api/chat/stream` + `proxy_buffering off` | иначе nginx держит SSE и «живые» события не доходят |
+| `proxy_read_timeout 3600s` на stream | длинные соединения |
+| `proxy_request_buffering off` на `/api/chat/` | крупные upload не буферизуются целиком на диске nginx |
+| один upstream process | in-memory broker; см. unit `noga-api.service` |
+
+После правки:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Проверка, что SSE не буферизуется: в DevTools → Network → `GET /api/chat/stream`
+тип `event-stream`, периодически приходят comment-heartbeat (`: heartbeat …`).
+
+Проверка одного process:
+
+```bash
+systemctl show noga-api -p ExecStart
+# не должно быть --workers N
+ps -o pid,cmd -C uvicorn
+```
+
+## Чат: rollout
+
+Полный контракт — [CHAT_SSE.md](CHAT_SSE.md). Краткий безопасный порядок на проде:
+
+1. Свободное место: `df -h /opt/noga` (запас под backup БД + `uploads/chat`).
+2. Выкатить код с **`CHAT_ENABLED=false`** в `.env` (миграции и UI-gate без live-чата).
+3. `sudo bash /opt/noga/backend/deploy/deploy.sh` — бэкап БД/chat uploads, `alembic upgrade head`.
+4. Убедиться, что системные комнаты есть:
+
+```bash
+cd /opt/noga/backend
+sudo -u noga .venv/bin/python -c "
+import sqlite3
+c = sqlite3.connect('data/noga.db')
+print(list(c.execute(\"SELECT slug, title FROM chat_rooms WHERE kind='system' ORDER BY sort_order\")))
+"
+```
+
+5. Накатить nginx (пример выше), `nginx -t && reload`.
+6. Smoke с выключенным флагом: `/api/health` ок, `GET /api/chat/rooms` → 404,
+   в Mini App колокольчика нет (`features.chat=false`).
+7. Включить `CHAT_ENABLED=true`, `sudo systemctl restart noga-api`.
+8. Проверить owner / right_hand / admin: две системные комнаты, direct, текст, reply,
+   mention, небольшой файл, unread badge.
+9. Роль `noga`: нет колокольчика, REST `/api/chat/*` → 403.
+10. `sudo systemctl restart noga-api` при открытом stream — клиент reconnect + replay.
+11. Наблюдение 24–72 ч: размер БД, диск, очередь Telegram (см. ниже).
+
+### Откат чата
+
+| Ситуация | Действие |
+|----------|----------|
+| Только фронт | откатить статику / предыдущий commit Pages; таблицы чата можно оставить |
+| Runtime / нагрузка | `CHAT_ENABLED=false` + `systemctl restart noga-api` — данные сохраняются |
+| Полный rollback | остановить сервис → **отдельная** копия текущей БД и `uploads/chat` → восстановить backup **до** migration → предыдущий commit → старт → `/api/health` |
+
+`alembic downgrade` на проде **не применять** без отдельного backup: downgrade `007_chat`
+удаляет историю чата.
+
+## Наблюдаемость чата
+
+В логах (`journalctl -u noga-api`) допустимы только структурные события без body,
+имён файлов и JWT:
+
+- `chat.message.created` / `chat.message.deleted` (id, room_id, files=count)
+- `chat.sse.connected` / `disconnected` / `replay` / `reset` / `queue_overflow`
+- `chat.notification.sent` / `retry` / `failed` (`mention_id`, `attempts`, класс ошибки)
+
+Проверка, что секреты не светятся:
+
+```bash
+journalctl -u noga-api --since "1 hour ago" --no-pager \
+  | grep -Ei 'Bearer |eyJ|filename=|original_name|chat\.body' && echo 'УТЕЧКА' || echo 'ok'
+```
+
+Очередь Telegram-упоминаний и retention:
+
+```bash
+cd /opt/noga/backend
+sudo -u noga .venv/bin/python -c "
+import sqlite3
+c = sqlite3.connect('data/noga.db')
+print('mentions by status:', list(c.execute(
+  'SELECT telegram_status, COUNT(*) FROM chat_mentions GROUP BY telegram_status')))
+print('chat_events:', c.execute('SELECT COUNT(*) FROM chat_events').fetchone()[0])
+print('chat_messages:', c.execute('SELECT COUNT(*) FROM chat_messages').fetchone()[0])
+"
+du -sh data/uploads/chat 2>/dev/null || echo 'uploads/chat пуст'
+df -h /opt/noga
+```
+
+Worker чистит `chat_events` старше `CHAT_EVENT_RETENTION_DAYS` (по умолчанию 7).
+Pending/retry не должны бесконечно расти при живом Bot API.
