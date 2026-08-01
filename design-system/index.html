@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EM 3.5 — Operations. Дизайн-система</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="showcase.css">
+</head>
+<body>
+<main class="doc">
+
+  <header class="doc__top">
+    <div class="em-brand" style="align-items:flex-start;text-align:left">
+      <div class="em-row">
+        <span class="em-brand__mark" data-em-icon="logo" style="--em-icon-size:56px"></span>
+        <div>
+          <div class="em-brand__title" style="font-size:30px">EM 3.5</div>
+          <div class="em-brand__sub">Eby MedVedya 3.5 — Operations</div>
+        </div>
+      </div>
+    </div>
+    <div class="em-row">
+      <span class="em-pill em-pill--home">Дизайн-система v1</span>
+      <span class="em-pill em-pill--neutral">390 px, тёмная тема</span>
+    </div>
+  </header>
+
+  <p class="doc__lead">
+    Значения токенов сняты пиксельным замером с макетов в <code>reference/</code>: усреднение по областям,
+    поиск самых насыщенных пикселей акцентов, замер высоты глифов и границ карточек.
+    Где макет нарушал читаемость или размеры зон нажатия — значение исправлено, оттенок сохранён;
+    полный список правок в конце страницы.
+  </p>
+
+  <nav class="doc__nav" aria-label="Разделы">
+    <a href="#color">Цвет</a>
+    <a href="#type">Типографика</a>
+    <a href="#space">Сетка и радиусы</a>
+    <a href="#motion">Движение</a>
+    <a href="#icons">Иконки</a>
+    <a href="#buttons">Кнопки</a>
+    <a href="#forms">Поля и загрузка</a>
+    <a href="#cards">Карточки</a>
+    <a href="#status">Статусы</a>
+    <a href="#nav">Навигация</a>
+    <a href="#data">Данные</a>
+    <a href="#roles">Роли и возможности</a>
+    <a href="#screens">Экраны</a>
+    <a href="#fixes">Правки UX</a>
+  </nav>
+
+  <!-- ============================ ЦВЕТ ============================ -->
+  <h2 id="color">1. Цвет</h2>
+  <p>Все значения — замер с макета. Контраст считался по WCAG 2.1 на фоне карточки <code>#171613</code>.</p>
+
+  <h3>Поверхности</h3>
+  <div class="doc__grid">
+    <div class="sw"><div class="sw__chip" style="background:#0A0908"></div><div class="sw__body">
+      <div class="sw__name">--em-bg</div><div class="sw__hex">#0A0908</div><div class="sw__note">замер #080808…#0E0E0C</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#050504"></div><div class="sw__body">
+      <div class="sw__name">--em-bg-deep</div><div class="sw__hex">#050504</div><div class="sw__note">под шторками</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#171613"></div><div class="sw__body">
+      <div class="sw__name">--em-surface</div><div class="sw__hex">#171613</div><div class="sw__note">замер #171614 / #191916</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#1F1D19"></div><div class="sw__body">
+      <div class="sw__name">--em-surface-2</div><div class="sw__hex">#1F1D19</div><div class="sw__note">поле ввода, вложенная строка</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#262320"></div><div class="sw__body">
+      <div class="sw__name">--em-surface-3</div><div class="sw__hex">#262320</div><div class="sw__note">hover карточки</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#0E0D0B"></div><div class="sw__body">
+      <div class="sw__name">--em-surface-nav</div><div class="sw__hex">#0E0D0B</div><div class="sw__note">таббар и шапка</div></div></div>
+  </div>
+
+  <h3>Золото</h3>
+  <p>Оттенок макета — тёплое шампанское, а не жёлтый: в самом светлом пикселе <code>#FBE18F</code>, в ядре <code>#D9B26A</code>.</p>
+  <div class="doc__grid">
+    <div class="sw"><div class="sw__chip" style="background:#FBEFD2"></div><div class="sw__body"><div class="sw__name">--em-gold-100</div><div class="sw__hex">#FBEFD2</div><div class="sw__note">блик на градиенте</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#F3D9A4"></div><div class="sw__body"><div class="sw__name">--em-gold-200</div><div class="sw__hex">#F3D9A4</div><div class="sw__note">активный текст</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#E9C77F"></div><div class="sw__body"><div class="sw__name">--em-gold-300</div><div class="sw__hex">#E9C77F</div><div class="sw__note">заголовки, 11.2:1</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#D9B26A"></div><div class="sw__body"><div class="sw__name">--em-gold-400</div><div class="sw__hex">#D9B26A</div><div class="sw__note">иконки, 9.1:1</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#C69A5B"></div><div class="sw__body"><div class="sw__name">--em-gold-500</div><div class="sw__hex">#C69A5B</div><div class="sw__note">pressed</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#A67C3E"></div><div class="sw__body"><div class="sw__name">--em-gold-600</div><div class="sw__hex">#A67C3E</div><div class="sw__note">обводка</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#7D5B33"></div><div class="sw__body"><div class="sw__name">--em-gold-700</div><div class="sw__hex">#7D5B33</div><div class="sw__note">верх кнопки (замер)</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#573D25"></div><div class="sw__body"><div class="sw__name">--em-gold-800</div><div class="sw__hex">#573D25</div><div class="sw__note">низ кнопки (замер)</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#3A2C1B"></div><div class="sw__body"><div class="sw__name">--em-gold-900</div><div class="sw__hex">#3A2C1B</div><div class="sw__note">активный таб</div></div></div>
+  </div>
+
+  <h3>Текст</h3>
+  <div class="doc__grid">
+    <div class="sw"><div class="sw__chip" style="background:#F4EEE2"></div><div class="sw__body"><div class="sw__name">--em-text</div><div class="sw__hex">#F4EEE2</div><div class="sw__note">тёплый белый, 15.7:1</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#C0B4A0"></div><div class="sw__body"><div class="sw__name">--em-text-2</div><div class="sw__hex">#C0B4A0</div><div class="sw__note">8.9:1</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#A99B85"></div><div class="sw__body"><div class="sw__name">--em-text-muted</div><div class="sw__hex">#A99B85</div><div class="sw__note">правка: было #958364 (4.9:1) → 6.7:1</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#7E7565"></div><div class="sw__body"><div class="sw__name">--em-text-dim</div><div class="sw__hex">#7E7565</div><div class="sw__note">только декор</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:#FFFAE7"></div><div class="sw__body"><div class="sw__name">--em-text-cream</div><div class="sw__hex">#FFFAE7</div><div class="sw__note">на бронзовой кнопке</div></div></div>
+  </div>
+
+  <h3>Статусы операций</h3>
+  <p>Оттенки макета сохранены, светлота поднята до AA. В таблице — замер, токен и контраст.</p>
+  <div class="doc__panel">
+    <table class="spec">
+      <thead><tr><th>Статус</th><th>Замер</th><th>Токен</th><th>Контраст</th><th>Вид</th></tr></thead>
+      <tbody>
+        <tr><td>В работе</td><td><code>#C96C27</code> 4.87:1</td><td><code>--em-work</code> #F2913C</td><td>7.66:1</td><td><span class="em-status em-status--work"><span class="em-dot"></span>В работе</span></td></tr>
+        <tr><td>Ждёт подтверждения</td><td><code>#4A87B9</code> 4.70:1</td><td><code>--em-wait</code> #6FB1EE</td><td>7.93:1</td><td><span class="em-status em-status--wait"><span class="em-dot"></span>Ждёт подтверждения</span></td></tr>
+        <tr><td>Выплачено</td><td><code>#498C56</code> 4.45:1</td><td><code>--em-paid</code> #5FD07E</td><td>9.31:1</td><td><span class="em-status em-status--paid"><span class="em-dot"></span>Выплачено</span></td></tr>
+        <tr><td>Подтверждено</td><td>зелёный, как «выплачено»</td><td><code>--em-done</code> #7FD4B0</td><td>10.9:1</td><td><span class="em-status em-status--done"><span class="em-dot em-dot--ring"></span>Подтверждено</span></td></tr>
+        <tr><td>Выплата</td><td>золото</td><td><code>--em-payout</code> #E9C77F</td><td>11.2:1</td><td><span class="em-status em-status--payout"><span class="em-dot"></span>Выплата</span></td></tr>
+        <tr><td>Осталось</td><td><code>#B1362C</code> 2.96:1 — провал</td><td><code>--em-left</code> #F0776A</td><td>6.51:1</td><td><span class="em-status em-status--left"><span class="em-dot"></span>Осталось</span></td></tr>
+        <tr><td>Дома</td><td>золотая заливка</td><td><code>--em-grad-gold</code></td><td>5.88:1</td><td><span class="em-pill em-pill--home"><span data-em-icon="home"></span>Дома</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Градиенты</h3>
+  <div class="doc__grid">
+    <div class="sw"><div class="sw__chip" style="background:var(--em-grad-gold)"></div><div class="sw__body"><div class="sw__name">--em-grad-gold</div><div class="sw__hex">#7D5B33 → #573D25</div><div class="sw__note">замер основной кнопки</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:var(--em-grad-gold-bright)"></div><div class="sw__body"><div class="sw__name">--em-grad-gold-bright</div><div class="sw__hex">#FBEFD2 → #A67C3E</div><div class="sw__note">логотип, вордмарк</div></div></div>
+    <div class="sw"><div class="sw__chip" style="background:var(--em-grad-surface)"></div><div class="sw__body"><div class="sw__name">--em-grad-surface</div><div class="sw__hex">#1B1A16 → #151410</div><div class="sw__note">карточка со светом сверху</div></div></div>
+    <div class="sw"><div class="sw__chip hero-mock"></div><div class="sw__body"><div class="sw__name">hero + scrim</div><div class="sw__hex">--em-grad-scrim</div><div class="sw__note">затемнение под фото</div></div></div>
+  </div>
+
+  <!-- ======================== ТИПОГРАФИКА ======================== -->
+  <h2 id="type">2. Типографика</h2>
+  <p>
+    Интерфейс — геометрический гротеск (Manrope как ближайший к макету), вордмарк — антиква (Playfair Display).
+    Кегли пересчитаны из высоты глифов на макете: <code>16.5px</code> капитель у hero-суммы → 24px,
+    <code>14.3px</code> у числа в плитке → 20px, <code>12.8px</code> у номера операции → 17px.
+    <strong>Допущение:</strong> макет отрендерен в ширине 287–354px, значения нормированы к 390px.
+  </p>
+  <div class="doc__panel">
+    <div class="type__row"><span class="type__meta">--em-fs-display · 34/1.15 · 600</span><span class="em-t-display em-gold-fill">EM 3.5 Operations</span></div>
+    <div class="type__row"><span class="type__meta">--em-fs-hero · 28/1.15 · 600</span><span class="em-t-hero em-num">5 400 000 ₽</span></div>
+    <div class="type__row"><span class="type__meta">--em-fs-amount · 24/1.15 · 600</span><span class="em-t-amount em-num" style="color:var(--em-gold-100)">500 000 ₽</span></div>
+    <div class="type__row"><span class="type__meta">--em-fs-title · 20/1.3 · 600</span><span class="em-t-title">Новая операция</span></div>
+    <div class="type__row"><span class="type__meta">--em-fs-strong · 17/1.3 · 600</span><span class="em-t-strong">EM-000125</span></div>
+    <div class="type__row"><span class="type__meta">--em-fs-body · 15/1.45 · 400</span><span class="em-t-body">Отметить «Дома» — обычный текст интерфейса</span></div>
+    <div class="type__row"><span class="type__meta">--em-fs-meta · 13.5/1.45 · 400</span><span class="em-t-meta">Тула · Иван · вторая строка карточки</span></div>
+    <div class="type__row"><span class="type__meta">--em-fs-caption · 12.5/1.3 · 500</span><span class="em-t-caption">12:42 · подпись, бейдж, таббар</span></div>
+    <div class="type__row"><span class="type__meta">.em-t-caps · 12.5 · 0.14em</span><span class="em-t-caps">Роли системы</span></div>
+  </div>
+
+  <!-- ==================== СЕТКА, РАДИУСЫ, ТЕНИ ==================== -->
+  <h2 id="space">3. Сетка, радиусы, тени, размеры</h2>
+  <p>Замер: внешние поля 20px, зазор между плитками 8–10px, радиус карточек 10–12px, высота основной кнопки 52px.</p>
+
+  <h3>Шаг сетки</h3>
+  <div class="doc__panel">
+    <div class="ruler">
+      <div><div class="ruler__bar" style="height:8px"></div><div class="ruler__cap">4</div></div>
+      <div><div class="ruler__bar" style="height:16px"></div><div class="ruler__cap">8</div></div>
+      <div><div class="ruler__bar" style="height:24px"></div><div class="ruler__cap">12</div></div>
+      <div><div class="ruler__bar" style="height:32px"></div><div class="ruler__cap">16</div></div>
+      <div><div class="ruler__bar" style="height:40px"></div><div class="ruler__cap">20</div></div>
+      <div><div class="ruler__bar" style="height:48px"></div><div class="ruler__cap">24</div></div>
+      <div><div class="ruler__bar" style="height:64px"></div><div class="ruler__cap">32</div></div>
+      <div><div class="ruler__bar" style="height:80px"></div><div class="ruler__cap">40</div></div>
+      <div><div class="ruler__bar" style="height:96px"></div><div class="ruler__cap">48</div></div>
+    </div>
+  </div>
+
+  <h3>Радиусы</h3>
+  <div class="doc__grid">
+    <div class="box-demo" style="border-radius:var(--em-radius-xs)">xs · 8</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-sm)">sm · 10</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-md)">md · 12 — поля, плитки</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-lg)">lg · 14 — карточки</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-xl)">xl · 18 — hero</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-pill)">pill · ∞</div>
+  </div>
+
+  <h3>Тени и свечения</h3>
+  <div class="doc__grid">
+    <div class="box-demo" style="border-radius:var(--em-radius-lg);box-shadow:var(--em-shadow-card)">--em-shadow-card</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-lg);box-shadow:var(--em-shadow-hover)">--em-shadow-hover</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-lg);box-shadow:var(--em-shadow-raised)">--em-shadow-raised</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-lg);box-shadow:var(--em-glow-gold)">--em-glow-gold</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-lg);box-shadow:var(--em-glow-focus)">--em-glow-focus</div>
+    <div class="box-demo" style="border-radius:var(--em-radius-lg);box-shadow:var(--em-shadow-fab)">--em-shadow-fab</div>
+  </div>
+
+  <h3>Размеры элементов</h3>
+  <div class="doc__panel">
+    <table class="spec">
+      <thead><tr><th>Токен</th><th>Значение</th><th>Замер / причина</th></tr></thead>
+      <tbody>
+        <tr><td><code>--em-btn-h</code></td><td>52px</td><td>замер 38px при ширине 287 → 52px при 390</td></tr>
+        <tr><td><code>--em-control-h</code></td><td>48px</td><td><strong>правка:</strong> замер ≈40px — меньше минимальной зоны нажатия</td></tr>
+        <tr><td><code>--em-tap-min</code></td><td>44px</td><td>минимум для любой интерактивной зоны</td></tr>
+        <tr><td><code>--em-nav-h</code></td><td>64px</td><td>замер 57px при 354 → 63px при 390</td></tr>
+        <tr><td><code>--em-header-h</code></td><td>52px</td><td>замер 36px контента + линия</td></tr>
+        <tr><td><code>--em-fab</code></td><td>56px</td><td><strong>правка:</strong> замер 45–49px → 56px</td></tr>
+        <tr><td><code>--em-gutter</code></td><td>20px</td><td>замер 15px при 287 и 20px при 354</td></tr>
+        <tr><td><code>--em-gap</code></td><td>10px</td><td>замер 8px между плитками статистики</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ========================= ДВИЖЕНИЕ ========================= -->
+  <h2 id="motion">4. Движение</h2>
+  <p>
+    Только ease-out, длительности 120–320ms, смещения не больше 8px. Нажатие — <code>scale(.975)</code>
+    и золотое свечение. Все анимации выключаются при <code>prefers-reduced-motion</code>.
+  </p>
+  <div class="doc__panel">
+    <table class="spec">
+      <thead><tr><th>Токен</th><th>Значение</th><th>Где применяется</th></tr></thead>
+      <tbody>
+        <tr><td><code>--em-dur-1</code> 120ms</td><td><code>--em-ease-out</code></td><td>нажатие кнопки и иконки, scale</td></tr>
+        <tr><td><code>--em-dur-2</code> 180ms</td><td><code>--em-ease-out</code></td><td>цвет, обводка, свечение, hover</td></tr>
+        <tr><td><code>--em-dur-3</code> 240ms</td><td><code>--em-ease-lux</code></td><td>появление карточек, бегунок сегмента, смена статуса</td></tr>
+        <tr><td><code>--em-dur-4</code> 320ms</td><td><code>--em-ease-lux</code></td><td>переход между экранами</td></tr>
+        <tr><td><code>--em-stagger</code> 45ms</td><td>шаг каскада</td><td>строки списка, точки таймлайна</td></tr>
+        <tr><td><code>--em-press</code> .975</td><td>scale</td><td>все нажимаемые поверхности</td></tr>
+      </tbody>
+    </table>
+    <div class="doc__row" style="margin-top:18px">
+      <button class="em-btn em-btn--primary" type="button">Наведите — блик</button>
+      <button class="em-btn em-btn--ghost" type="button" data-em-async="ok">Загрузка → успех</button>
+      <button class="em-btn em-btn--quiet" type="button" data-em-async="error">Загрузка → ошибка</button>
+    </div>
+  </div>
+
+  <!-- ========================== ИКОНКИ ========================== -->
+  <h2 id="icons">5. Иконки</h2>
+  <p>
+    Monoline, viewBox 24×24, толщина 1.6, скруглённые окончания и стыки — как в макете.
+    Заливка только там, где она есть в референсе: корона, звезда, точки статуса, «···».
+    Логотип — гербовый монограм в отдельном viewBox 48×60 (пропорция макета 120×150) с золотым градиентом
+    (<strong>допущение:</strong> фаска растрового логотипа передана линией, а не объёмом).
+  </p>
+  <div class="icons" id="iconGrid"></div>
+
+  <!-- ========================== КНОПКИ ========================== -->
+  <h2 id="buttons">6. Кнопки</h2>
+  <p>Пять уровней: основная бронзовая, ghost, обводка, тихая, опасная. Высота 52px, компакт — 40px.</p>
+
+  <h3>Варианты</h3>
+  <div class="doc__panel">
+    <div class="doc__row">
+      <button class="em-btn em-btn--primary" type="button"><span class="em-btn__icon" data-em-icon="home"></span><span class="em-btn__label">Отметить «Дома»</span></button>
+      <button class="em-btn em-btn--ghost" type="button"><span class="em-btn__icon" data-em-icon="send"></span><span class="em-btn__label">Отправить администратору</span></button>
+      <button class="em-btn em-btn--outline" type="button">Все операции</button>
+      <button class="em-btn em-btn--quiet" type="button">Все операции</button>
+      <button class="em-btn em-btn--danger" type="button"><span class="em-btn__icon" data-em-icon="trash"></span><span class="em-btn__label">Удалить операцию</span></button>
+      <button class="em-btn em-btn--primary em-btn--sm" type="button">Компакт</button>
+    </div>
+  </div>
+
+  <h3>Состояния</h3>
+  <p>default · hover · pressed · focus-visible · disabled · loading · success · error. Наведите и нажмите — состояния живые.</p>
+  <div class="doc__panel">
+    <div class="doc__row">
+      <button class="em-btn em-btn--primary" type="button">default</button>
+      <button class="em-btn em-btn--primary" type="button" style="background:var(--em-grad-gold-hover);box-shadow:inset 0 1px 0 rgba(251,239,210,.30),0 10px 24px rgba(0,0,0,.5),var(--em-glow-gold-sm)">hover</button>
+      <button class="em-btn em-btn--primary" type="button" style="background:var(--em-grad-gold-press);transform:scale(.975);box-shadow:inset 0 2px 6px rgba(0,0,0,.45)">pressed</button>
+      <button class="em-btn em-btn--primary" type="button" style="box-shadow:var(--em-glow-focus)">focus</button>
+      <button class="em-btn em-btn--primary" type="button" disabled>disabled</button>
+      <button class="em-btn em-btn--primary is-loading" type="button">loading</button>
+      <button class="em-btn em-btn--ghost is-success" type="button"><span class="em-btn__icon" data-em-icon="check"></span><span class="em-btn__label">Сохранено</span></button>
+      <button class="em-btn em-btn--ghost is-error" type="button"><span class="em-btn__icon" data-em-icon="alert"></span><span class="em-btn__label">Не отправлено</span></button>
+    </div>
+  </div>
+
+  <h3>Кнопки-иконки и FAB</h3>
+  <div class="doc__panel">
+    <div class="doc__row">
+      <button class="em-btn-icon" type="button" aria-label="Изменить"><span data-em-icon="pencil"></span></button>
+      <button class="em-btn-icon" type="button" aria-label="Скопировать номер" data-em-copy="EM-000125"><span data-em-icon="copy"></span><span class="em-sr-only" data-em-copy-live role="status"></span></button>
+      <button class="em-btn-icon em-btn-icon--muted" type="button" aria-label="Ещё"><span data-em-icon="dots"></span></button>
+      <button class="em-btn-icon em-btn-icon--danger" type="button" aria-label="Удалить"><span data-em-icon="trash"></span></button>
+      <button class="em-btn-icon is-active" type="button" aria-label="Фильтры" aria-pressed="true"><span data-em-icon="filter"></span></button>
+      <button class="em-btn-icon" type="button" aria-label="Скачать" disabled><span data-em-icon="download"></span></button>
+      <button class="em-fab" type="button" aria-label="Создать операцию"><span data-em-icon="plus"></span></button>
+      <span class="em-btn-icon em-bell" role="img" aria-label="Уведомления: есть новые"><span data-em-icon="bell"></span><span class="em-bell__dot"></span></span>
+    </div>
+    <p style="margin-top:14px">Каждая кнопка-иконка — 44×44, подпись только в <code>aria-label</code>, как в макете.</p>
+  </div>
+
+  <!-- ===================== ПОЛЯ И ЗАГРУЗКА ===================== -->
+  <h2 id="forms">7. Поля, выбор, сумма, загрузка фото</h2>
+  <p>
+    Высота поля поднята с замеренных ≈40px до 48px, подпись поля — золотая,
+    подсказка и ошибка занимают одно место, чтобы форма не «дёргалась».
+  </p>
+
+  <div class="doc__grid doc__grid--wide">
+    <div class="doc__panel">
+      <div class="doc__case">Текст, выбор, сумма</div>
+      <div class="em-field">
+        <label class="em-label" for="f-city">Город</label>
+        <div class="em-control em-control--select">
+          <select class="em-select is-placeholder" id="f-city">
+            <option value="">Выберите город</option>
+            <option>Тула</option><option>Самара</option><option>Казань</option>
+          </select>
+          <span class="em-control__suffix" data-em-icon="chevron-down"></span>
+        </div>
+      </div>
+      <div class="em-field">
+        <label class="em-label" for="f-noga">Нога</label>
+        <div class="em-control em-control--select">
+          <select class="em-select is-placeholder" id="f-noga">
+            <option value="">Выберите ногу</option>
+            <option>Иван</option><option>Алексей</option>
+          </select>
+          <span class="em-control__suffix" data-em-icon="chevron-down"></span>
+        </div>
+      </div>
+      <div class="em-field">
+        <label class="em-label" for="f-sum">Пересчёт</label>
+        <div class="em-control em-control--amount">
+          <input class="em-input em-num" id="f-sum" inputmode="numeric" placeholder="Введите сумму">
+          <span class="em-currency">₽</span>
+        </div>
+        <div class="em-hint">Валюта берётся из справочника города</div>
+      </div>
+    </div>
+
+    <div class="doc__panel">
+      <div class="doc__case">Состояния поля</div>
+      <div class="em-field">
+        <label class="em-label" for="f-ok">Заполнено</label>
+        <div class="em-control"><input class="em-input" id="f-ok" value="450 000"><span class="em-control__suffix" data-em-icon="ruble"></span></div>
+      </div>
+      <div class="em-field is-success">
+        <label class="em-label" for="f-succ">Успех</label>
+        <div class="em-control"><input class="em-input" id="f-succ" value="Тула"><span class="em-control__suffix" style="color:var(--em-paid)" data-em-icon="check"></span></div>
+        <div class="em-hint">Город найден в справочнике</div>
+      </div>
+      <div class="em-field is-error">
+        <label class="em-label" for="f-err">Ошибка<span class="em-label__req">*</span></label>
+        <div class="em-control"><input class="em-input" id="f-err" value="" aria-invalid="true" aria-describedby="f-err-msg"></div>
+        <div class="em-error-text" id="f-err-msg">Укажите сумму пересчёта</div>
+      </div>
+      <div class="em-field is-disabled">
+        <label class="em-label" for="f-dis">Недоступно</label>
+        <div class="em-control"><input class="em-input" id="f-dis" value="Разгруз выберут позже" disabled></div>
+      </div>
+    </div>
+
+    <div class="doc__panel">
+      <div class="doc__case">Загрузка фото</div>
+      <div class="em-field" data-em-upload>
+        <span class="em-label">Фото чека<span class="em-label__req">*</span></span>
+        <div class="em-upload">
+          <label class="em-upload__btn" tabindex="0">
+            <span data-em-icon="camera"></span>
+            <input type="file" accept="image/*" class="em-upload__drop" aria-label="Выбрать фото чека">
+          </label>
+          <div class="em-upload__preview" data-em-upload-preview hidden></div>
+          <div class="em-upload__meta">
+            <div class="em-upload__title">Фото чека</div>
+            <div class="em-upload__status" data-em-upload-status>Не добавлено</div>
+            <div class="em-progress" data-em-progress hidden style="margin-top:6px;width:120px"><div class="em-progress__bar"></div></div>
+          </div>
+        </div>
+        <div class="em-hint">JPG, PNG или HEIC до 25 МБ</div>
+      </div>
+      <div class="em-upload is-done" style="margin-top:22px">
+        <div class="em-upload__preview"><div style="width:100%;height:100%" class="hero-mock"></div></div>
+        <div class="em-upload__meta">
+          <div class="em-upload__title">Фото денег</div>
+          <div class="em-upload__status">Добавлено</div>
+        </div>
+        <button class="em-btn-icon em-btn-icon--danger" type="button" aria-label="Удалить фото денег"><span data-em-icon="trash"></span></button>
+      </div>
+      <div class="em-upload is-error" style="margin-top:18px">
+        <label class="em-upload__btn"><span data-em-icon="camera"></span><input type="file" class="em-upload__drop" aria-label="Повторить загрузку"></label>
+        <div class="em-upload__meta">
+          <div class="em-upload__title">Фото чека</div>
+          <div class="em-upload__status">Файл больше 25 МБ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================= КАРТОЧКИ ========================= -->
+  <h2 id="cards">8. Карточки и плитки</h2>
+
+  <h3>Оборот за день</h3>
+  <div class="doc__panel">
+    <div class="em-hero" style="max-width:390px">
+      <div class="em-hero__media hero-mock"></div>
+      <div class="em-hero__scrim"></div>
+      <div class="em-hero__row">
+        <div class="em-hero__col">
+          <div class="em-hero__label">Общий оборот сегодня</div>
+          <div class="em-hero__value em-num">5 400 000 ₽</div>
+        </div>
+        <div class="em-hero__col em-hero__col--right">
+          <div class="em-hero__label">USD эквивалент</div>
+          <div class="em-hero__value em-num">59 340 $</div>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:14px">
+      Под фотографией обязателен слой <code>.em-hero__scrim</code>: в макете белые цифры
+      местами попадали на светлые купюры и теряли контраст.
+    </p>
+  </div>
+
+  <h3>Плитки статистики</h3>
+  <div class="doc__panel">
+    <div class="em-stats em-stagger" data-em-stagger style="max-width:390px">
+      <div class="em-stat"><div class="em-stat__top"><span class="em-stat__num em-num">18</span><span class="em-orb em-orb--tile"><span data-em-icon="doc"></span></span></div><div class="em-stat__label">Создано</div></div>
+      <div class="em-stat"><div class="em-stat__top"><span class="em-stat__num em-num">5</span><span class="em-orb em-orb--work"><span data-em-icon="clock"></span></span></div><div class="em-stat__label">В работе</div></div>
+      <div class="em-stat"><div class="em-stat__top"><span class="em-stat__num em-num">8</span><span class="em-orb em-orb--wait"><span data-em-icon="map-pin"></span></span></div><div class="em-stat__label">Заходов</div></div>
+      <div class="em-stat"><div class="em-stat__top"><span class="em-stat__num em-num">5</span><span class="em-orb em-orb--paid"><span data-em-icon="check"></span></span></div><div class="em-stat__label">Выплачено</div></div>
+      <div class="em-stat"><div class="em-stat__top"><span class="em-stat__num em-num">3</span><span class="em-orb em-orb--left"><span data-em-icon="pause-circle"></span></span></div><div class="em-stat__label">Осталось</div></div>
+      <div class="em-stat"><div class="em-stat__top"><span class="em-stat__num em-num em-stat__num--gold">67</span></div><div class="em-stat__label">Всего операций</div></div>
+    </div>
+    <p style="margin-top:14px">
+      В каждом кружке есть иконка, а не только цвет: цвет один не различают при дальтонизме.
+      Кликабельная плитка получает <code>.em-stat--action</code> и приподнимается на 2px.
+    </p>
+  </div>
+
+  <h3>Денежные строки карточки операции</h3>
+  <div class="doc__panel">
+    <div class="em-money" style="max-width:390px">
+      <div class="em-money__row">
+        <div><div class="em-money__label">Пересчёт</div><div class="em-money__value em-num">500 000 ₽</div></div>
+        <span class="em-icon-badge" role="img" aria-label="Сумма из отчёта ноги"><span data-em-icon="doc"></span></span>
+      </div>
+      <div class="em-money__row em-money__row--accent">
+        <div><div class="em-money__label">Нога 10%</div><div class="em-money__value em-num">50 000 ₽</div></div>
+        <span class="em-icon-badge em-icon-badge--round em-icon-badge--work" role="img" aria-label="Выплата ноге"><span data-em-icon="arrow-down-circle"></span></span>
+      </div>
+      <div class="em-money__row">
+        <div><div class="em-money__label">Остаток</div><div class="em-money__value em-num">450 000 ₽</div></div>
+        <span class="em-icon-badge em-icon-badge--round em-icon-badge--paid" role="img" aria-label="К выплате подтверждено"><span data-em-icon="check-circle"></span></span>
+      </div>
+    </div>
+    <p style="margin-top:14px">Иконки справа получили <code>aria-label</code>: в макете их смысл нельзя было прочитать.</p>
+  </div>
+
+  <h3>Пустое состояние, скелетон, предупреждения</h3>
+  <div class="doc__grid doc__grid--wide">
+    <div class="em-card"><div class="em-empty">Операций пока нет</div></div>
+    <div class="em-card">
+      <div class="em-skeleton em-skeleton--title"></div>
+      <div class="em-skeleton em-skeleton--text" style="width:80%"></div>
+      <div class="em-skeleton em-skeleton--text" style="width:60%"></div>
+      <div class="em-skeleton em-skeleton--row" style="margin-top:12px"></div>
+    </div>
+    <div class="em-stack">
+      <div class="em-alert"><span data-em-icon="alert"></span><span>В городе нет ни одной ноги</span></div>
+      <div class="em-alert em-alert--error"><span data-em-icon="alert"></span><span>Город без разгруза</span></div>
+      <div class="em-alert em-alert--success"><span data-em-icon="check-circle"></span><span>Операция подтверждена</span></div>
+    </div>
+  </div>
+
+  <!-- ========================= СТАТУСЫ ========================= -->
+  <h2 id="status">9. Статусы и переключение «в работе» ↔ «дома»</h2>
+  <p>
+    Статус читается тремя признаками: цвет, форма точки (заливка или кольцо) и текст.
+    Пилюля не обрезает текст — в макете «В работе» было срезано до «работе».
+  </p>
+
+  <div class="doc__panel">
+    <div class="doc__case">Пилюли</div>
+    <div class="doc__row">
+      <span class="em-pill em-pill--work"><span class="em-dot em-dot--ring em-dot--live"></span>В работе</span>
+      <span class="em-pill em-pill--wait"><span data-em-icon="clock"></span>Ждёт подтверждения</span>
+      <span class="em-pill em-pill--paid"><span data-em-icon="check-circle"></span>Выплачено</span>
+      <span class="em-pill em-pill--done"><span class="em-dot em-dot--ring"></span>Подтверждено</span>
+      <span class="em-pill em-pill--payout"><span data-em-icon="arrow-down-circle"></span>Выплата</span>
+      <span class="em-pill em-pill--left"><span data-em-icon="pause-circle"></span>Осталось</span>
+      <span class="em-pill em-pill--home"><span data-em-icon="home"></span>Дома</span>
+      <span class="em-pill em-pill--neutral">Черновик</span>
+    </div>
+
+    <div class="doc__case" style="margin-top:24px">Переключение статуса — 240ms, цвет точки и текст меняются вместе</div>
+    <div class="doc__row">
+      <span class="em-pill em-pill--work" id="statusDemo" data-status="work">
+        <span data-em-status-icon><span class="em-dot em-dot--ring"></span></span>
+        <span data-em-status-label>В работе</span>
+      </span>
+      <button class="em-btn em-btn--primary em-btn--sm" type="button" data-em-status-toggle="#statusDemo" data-em-status-order="work,home,wait,paid">
+        <span class="em-btn__icon" data-em-icon="refresh"></span><span class="em-btn__label">Сменить статус</span>
+      </button>
+    </div>
+
+    <div class="doc__case" style="margin-top:24px">Счётчики и точки</div>
+    <div class="doc__row">
+      <span class="em-count">5</span>
+      <span class="em-count">12</span>
+      <span class="em-status em-status--work"><span class="em-dot em-dot--live"></span>живая точка</span>
+      <span class="em-status em-status--done"><span class="em-dot em-dot--ring"></span>кольцо</span>
+    </div>
+  </div>
+
+  <!-- ======================== НАВИГАЦИЯ ======================== -->
+  <h2 id="nav">10. Навигация</h2>
+
+  <h3>Шапка экрана</h3>
+  <div class="doc__panel">
+    <div style="max-width:390px">
+      <div class="em-header">
+        <button class="em-header__back" type="button"><span data-em-icon="chevron-left"></span><span>Назад</span></button>
+        <div class="em-header__title">Операция</div>
+        <div class="em-header__actions"><button class="em-btn-icon em-btn-icon--muted" type="button" aria-label="Действия с операцией"><span data-em-icon="dots"></span></button></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Фильтры списка</h3>
+  <div class="doc__panel">
+    <div class="em-tabs" role="tablist" data-em-tabs style="max-width:390px">
+      <button class="em-tab" role="tab" aria-selected="true" data-value="all" type="button">Все</button>
+      <button class="em-tab" role="tab" aria-selected="false" data-value="work" type="button">В работе <span class="em-count">5</span></button>
+      <button class="em-tab" role="tab" aria-selected="false" data-value="done" type="button">Подтверждённые <span class="em-count">2</span></button>
+      <button class="em-tab" role="tab" aria-selected="false" data-value="payout" type="button">Выплаты <span class="em-count">2</span></button>
+      <button class="em-tab" role="tab" aria-selected="false" data-value="left" type="button" disabled>Архив</button>
+    </div>
+    <p style="margin-top:14px">
+      Подписи развёрнуты: в макете было «Подтв. 2» и «Выплаты 2» — сокращение экономило 12px и стоило понятности.
+      Стрелки клавиатуры листают табы.
+    </p>
+  </div>
+
+  <h3>Сегментированный переключатель</h3>
+  <div class="doc__panel">
+    <div class="em-seg" data-em-seg role="tablist" aria-label="Способ передачи" style="max-width:320px">
+      <span class="em-seg__thumb" aria-hidden="true"></span>
+      <button class="em-seg__btn" role="tab" data-em-seg-btn data-value="zahod" aria-selected="true" type="button">Заход на адрес</button>
+      <button class="em-seg__btn" role="tab" data-em-seg-btn data-value="taxi" aria-selected="false" type="button">Такси</button>
+    </div>
+    <div class="em-seg" data-em-seg role="tablist" aria-label="Статус города" style="max-width:390px;margin-top:14px">
+      <span class="em-seg__thumb" aria-hidden="true"></span>
+      <button class="em-seg__btn" role="tab" data-em-seg-btn data-value="working" aria-selected="true" type="button">В работе</button>
+      <button class="em-seg__btn" role="tab" data-em-seg-btn data-value="paused" aria-selected="false" type="button">Стоп временно</button>
+      <button class="em-seg__btn" role="tab" data-em-seg-btn data-value="stopped" aria-selected="false" type="button">Стоп полностью</button>
+    </div>
+  </div>
+
+  <h3>Нижняя навигация</h3>
+  <div class="doc__panel">
+    <div style="max-width:390px">
+      <div class="em-tabbar" data-em-tabbar role="tablist" aria-label="Основная навигация">
+        <button class="em-navtab" data-em-navtab data-value="home" aria-current="page" type="button"><span class="em-navtab__icon"><span data-em-icon="home"></span></span><span>Главная</span></button>
+        <button class="em-navtab" data-em-navtab data-value="ops" type="button"><span class="em-navtab__icon"><span data-em-icon="doc"></span></span><span>Операции</span></button>
+        <div class="em-tabbar__fab"><button class="em-fab" type="button" aria-label="Создать операцию"><span data-em-icon="plus"></span></button></div>
+        <button class="em-navtab" data-em-navtab data-value="search" type="button"><span class="em-navtab__icon"><span data-em-icon="search"></span></span><span>Поиск</span></button>
+        <button class="em-navtab" data-em-navtab data-value="profile" type="button"><span class="em-navtab__icon"><span data-em-icon="profile"></span></span><span>Профиль</span></button>
+      </div>
+    </div>
+    <p style="margin-top:14px">
+      Золотая подложка активной вкладки появляется за 180ms и подрастает из <code>scale(.86)</code>.
+      FAB поднят на 6px, но остаётся внутри полосы: в макете он перекрывал соседние подписи.
+    </p>
+  </div>
+
+  <!-- ========================== ДАННЫЕ ========================== -->
+  <h2 id="data">11. Данные: строки, история, пользователь</h2>
+
+  <h3>Строка операции</h3>
+  <div class="doc__panel">
+    <div class="em-oplist em-stagger" data-em-stagger style="max-width:390px">
+      <button class="em-oprow" type="button">
+        <span class="em-oprow__id">EM-000125</span>
+        <span class="em-oprow__side"><span class="em-status em-status--work"><span class="em-dot"></span>В работе</span><span class="em-oprow__time">12:42</span></span>
+        <span class="em-oprow__meta">Тула <span class="em-oprow__sep">·</span> Иван</span>
+        <span class="em-oprow__amount em-num">450 000 ₽</span>
+      </button>
+      <button class="em-oprow" type="button">
+        <span class="em-oprow__id">EM-000124</span>
+        <span class="em-oprow__side"><span class="em-status em-status--wait"><span class="em-dot"></span>Ждёт подтверждения</span><span class="em-oprow__time">12:35</span></span>
+        <span class="em-oprow__meta">Самара <span class="em-oprow__sep">·</span> Алексей</span>
+        <span class="em-oprow__amount em-num">445 000 ₽</span>
+      </button>
+      <button class="em-oprow is-selected" type="button">
+        <span class="em-oprow__id">EM-000123</span>
+        <span class="em-oprow__side"><span class="em-status em-status--paid"><span class="em-dot"></span>Выплачено</span><span class="em-oprow__time">11:58</span></span>
+        <span class="em-oprow__meta">Казань <span class="em-oprow__sep">·</span> Максим</span>
+        <span class="em-oprow__amount em-num">4 890 USDT</span>
+      </button>
+      <button class="em-oprow" type="button">
+        <span class="em-oprow__id">EM-000122</span>
+        <span class="em-oprow__side"><span class="em-status em-status--payout"><span class="em-dot"></span>Выплата</span><span class="em-oprow__time">10:47</span></span>
+        <span class="em-oprow__meta">Москва <span class="em-oprow__sep">·</span> Андрей</span>
+        <span class="em-oprow__amount em-num">12 000 USDT</span>
+      </button>
+    </div>
+    <p style="margin-top:14px">
+      Сумма и время — табличные цифры, поэтому колонка выстраивается ровно.
+      Город и имя обрезаются многоточием и не наезжают на статус.
+    </p>
+  </div>
+
+  <h3>История действий</h3>
+  <div class="doc__panel">
+    <div class="em-card" style="max-width:390px">
+      <div class="em-card__head">
+        <span class="em-card__title">История</span>
+        <button class="em-card__link" type="button">Смотреть все</button>
+      </div>
+      <div class="em-tl">
+        <div class="em-tl__item" style="--i:0"><div class="em-tl__time em-num">11:24</div><div class="em-tl__text">Создана операция</div></div>
+        <div class="em-tl__item" style="--i:1"><div class="em-tl__time em-num">11:25</div><div class="em-tl__text">Указан пересчёт: 500 000 ₽</div></div>
+        <div class="em-tl__item em-tl__item--now" style="--i:2"><div class="em-tl__time em-num">11:38</div><div class="em-tl__text">Отмечено «Дома»</div></div>
+      </div>
+    </div>
+    <p style="margin-top:14px">Линия прорисовывается снизу вверх за 520ms, точки проявляются каскадом по 45ms.</p>
+  </div>
+
+  <h3>Пользователь</h3>
+  <div class="doc__panel">
+    <div class="em-stack" style="max-width:390px">
+      <div class="em-user">
+        <span class="em-avatar em-avatar--gold">ОW</span>
+        <div class="em-user__body">
+          <div class="em-user__name">Owner</div>
+          <div class="em-user__meta">
+            <span class="em-user__role"><span data-em-icon="crown"></span>Owner</span>
+            <span>Тула</span>
+          </div>
+        </div>
+      </div>
+      <div class="em-user">
+        <span class="em-avatar"><span data-em-icon="person"></span></span>
+        <div class="em-user__body">
+          <div class="em-user__name">Иван</div>
+          <div class="em-user__meta"><span class="em-user__role"><span data-em-icon="person"></span>Нога</span><span>Тула</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== РОЛИ И ВОЗМОЖНОСТИ ==================== -->
+  <h2 id="roles">12. Роли системы и возможности</h2>
+
+  <div class="doc__grid doc__grid--wide">
+    <div class="em-card">
+      <div class="em-t-caps em-section__caps">Роли системы</div>
+      <div class="em-roles">
+        <div class="em-role">
+          <span class="em-role__icon" data-em-icon="crown"></span>
+          <div><div class="em-role__name">Owner</div><div class="em-role__desc">Полный доступ ко всем функциям, настройкам и пользователям</div></div>
+        </div>
+        <div class="em-role">
+          <span class="em-role__icon" data-em-icon="star"></span>
+          <div><div class="em-role__name">Правая рука</div><div class="em-role__desc">Расширенный доступ к управлению и операциям</div></div>
+        </div>
+        <div class="em-role">
+          <span class="em-role__icon" data-em-icon="shield"></span>
+          <div><div class="em-role__name">Администратор</div><div class="em-role__desc">Работа со своим участком: операции, подтверждения и выплаты</div></div>
+        </div>
+        <div class="em-role">
+          <span class="em-role__icon" data-em-icon="person"></span>
+          <div><div class="em-role__name">Нога</div><div class="em-role__desc">Создание и ведение своих операций</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="em-card">
+      <div class="em-t-caps em-section__caps">Возможности системы</div>
+      <div class="em-features">
+        <div class="em-feature"><span class="em-tile" data-em-icon="grid"></span><span class="em-feature__label">Уникальные номера операций</span></div>
+        <div class="em-feature"><span class="em-tile" data-em-icon="card-live"></span><span class="em-feature__label">Живая карточка операции</span></div>
+        <div class="em-feature"><span class="em-tile" data-em-icon="clock"></span><span class="em-feature__label">История всех действий</span></div>
+        <div class="em-feature"><span class="em-tile" data-em-icon="bag"></span><span class="em-feature__label">Фото и документы внутри операции</span></div>
+        <div class="em-feature"><span class="em-tile" data-em-icon="bell"></span><span class="em-feature__label">Уведомления и статусы</span></div>
+        <div class="em-feature"><span class="em-tile" data-em-icon="search"></span><span class="em-feature__label">Фильтры и поиск по всем данным</span></div>
+        <div class="em-feature"><span class="em-tile" data-em-icon="box"></span><span class="em-feature__label">Управление городами, ногами и кошельками</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================== ЭКРАНЫ ========================== -->
+  <h2 id="screens">13. Экраны целиком</h2>
+  <p>Те же пять экранов, что на референсе, собранные только из компонентов дизайн-системы.</p>
+
+  <div class="screens">
+
+    <!-- --- Дашборд --- -->
+    <div class="screens__item">
+      <div class="em-frame">
+        <div class="em-frame__body">
+          <div class="em-topbar">
+            <div>
+              <div class="em-topbar__hello">Добро пожаловать,</div>
+              <div class="em-topbar__name">Owner</div>
+            </div>
+            <span class="em-topbar__logo" data-em-icon="logo" data-em-title="EM 3.5"></span>
+            <div class="em-topbar__side">
+              <button class="em-btn-icon em-bell" type="button" aria-label="Уведомления: есть новые"><span data-em-icon="bell"></span><span class="em-bell__dot"></span></button>
+            </div>
+          </div>
+
+          <div class="em-hero em-reveal">
+            <div class="em-hero__media hero-mock"></div>
+            <div class="em-hero__scrim"></div>
+            <div class="em-hero__row">
+              <div class="em-hero__col">
+                <div class="em-hero__label">Общий оборот сегодня</div>
+                <div class="em-hero__value em-num">5 400 000 ₽</div>
+              </div>
+              <div class="em-hero__col em-hero__col--right">
+                <div class="em-hero__label">USD эквивалент</div>
+                <div class="em-hero__value em-num">59 340 $</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="em-section" style="margin-top:2px">
+            <div class="em-section__title">Статистика на сегодня</div>
+            <div class="em-stats em-stagger" data-em-stagger>
+              <button class="em-stat em-stat--action" type="button"><div class="em-stat__top"><span class="em-stat__num em-num">18</span><span class="em-orb em-orb--tile"><span data-em-icon="doc"></span></span></div><div class="em-stat__label">Создано</div></button>
+              <button class="em-stat em-stat--action" type="button"><div class="em-stat__top"><span class="em-stat__num em-num">5</span><span class="em-orb em-orb--work"><span data-em-icon="clock"></span></span></div><div class="em-stat__label">В работе</div></button>
+              <button class="em-stat em-stat--action" type="button"><div class="em-stat__top"><span class="em-stat__num em-num">8</span><span class="em-orb em-orb--wait"><span data-em-icon="map-pin"></span></span></div><div class="em-stat__label">Заходов</div></button>
+              <button class="em-stat em-stat--action" type="button"><div class="em-stat__top"><span class="em-stat__num em-num">5</span><span class="em-orb em-orb--paid"><span data-em-icon="check"></span></span></div><div class="em-stat__label">Выплачено</div></button>
+              <button class="em-stat em-stat--action" type="button"><div class="em-stat__top"><span class="em-stat__num em-num">3</span><span class="em-orb em-orb--left"><span data-em-icon="pause-circle"></span></span></div><div class="em-stat__label">Осталось</div></button>
+              <div class="em-stat em-stat--static"><div class="em-stat__top"><span class="em-stat__num em-num em-stat__num--gold">67</span></div><div class="em-stat__label">Всего операций</div></div>
+            </div>
+          </div>
+
+          <div class="em-card em-card--tight em-reveal">
+            <div class="em-card__head">
+              <span class="em-card__title">Последние операции</span>
+            </div>
+            <div data-em-stagger>
+              <button class="em-oprow em-oprow--plain" type="button">
+                <span class="em-oprow__id">EM-000125</span>
+                <span class="em-oprow__side"><span class="em-status em-status--work"><span class="em-dot em-dot--live"></span>В работе</span><span class="em-oprow__time">12:42</span></span>
+                <span class="em-oprow__meta">Тула <span class="em-oprow__sep">·</span> Иван</span>
+              </button>
+              <button class="em-oprow em-oprow--plain" type="button">
+                <span class="em-oprow__id">EM-000124</span>
+                <span class="em-oprow__side"><span class="em-status em-status--wait"><span class="em-dot"></span>Ждёт подтверждения</span><span class="em-oprow__time">12:35</span></span>
+                <span class="em-oprow__meta">Самара <span class="em-oprow__sep">·</span> Алексей</span>
+              </button>
+              <button class="em-oprow em-oprow--plain" type="button">
+                <span class="em-oprow__id">EM-000123</span>
+                <span class="em-oprow__side"><span class="em-status em-status--paid"><span class="em-dot"></span>Выплачено</span><span class="em-oprow__time">11:58</span></span>
+                <span class="em-oprow__meta">Казань <span class="em-oprow__sep">·</span> Максим</span>
+              </button>
+            </div>
+            <button class="em-btn em-btn--quiet em-btn--block em-btn--sm" type="button" style="margin-top:12px">Все операции</button>
+          </div>
+        </div>
+
+        <div class="em-tabbar" data-em-tabbar role="tablist" aria-label="Основная навигация">
+          <button class="em-navtab" data-em-navtab data-value="home" aria-current="page" type="button"><span class="em-navtab__icon"><span data-em-icon="home"></span></span><span>Главная</span></button>
+          <button class="em-navtab" data-em-navtab data-value="ops" type="button"><span class="em-navtab__icon"><span data-em-icon="doc"></span></span><span>Операции</span></button>
+          <div class="em-tabbar__fab"><button class="em-fab" type="button" aria-label="Создать операцию"><span data-em-icon="plus"></span></button></div>
+          <button class="em-navtab" data-em-navtab data-value="search" type="button"><span class="em-navtab__icon"><span data-em-icon="search"></span></span><span>Поиск</span></button>
+          <button class="em-navtab" data-em-navtab data-value="profile" type="button"><span class="em-navtab__icon"><span data-em-icon="profile"></span></span><span>Профиль</span></button>
+        </div>
+      </div>
+      <div class="screens__caption">Дашборд</div>
+    </div>
+
+    <!-- --- Список операций --- -->
+    <div class="screens__item">
+      <div class="em-frame">
+        <div class="em-header">
+          <button class="em-header__back" type="button" aria-label="Назад"><span data-em-icon="chevron-left"></span></button>
+          <div class="em-header__title">Операции</div>
+          <div class="em-header__actions"><button class="em-btn-icon" type="button" aria-label="Фильтры"><span data-em-icon="filter"></span></button></div>
+        </div>
+        <div class="em-frame__body">
+          <div class="em-tabs" role="tablist" data-em-tabs aria-label="Фильтр операций">
+            <button class="em-tab" role="tab" aria-selected="true" data-value="all" type="button">Все</button>
+            <button class="em-tab" role="tab" aria-selected="false" data-value="work" type="button">В работе <span class="em-count">5</span></button>
+            <button class="em-tab" role="tab" aria-selected="false" data-value="done" type="button">Подтверждённые <span class="em-count">2</span></button>
+            <button class="em-tab" role="tab" aria-selected="false" data-value="payout" type="button">Выплаты <span class="em-count">2</span></button>
+          </div>
+
+          <div class="em-oplist em-stagger" data-em-stagger>
+            <button class="em-oprow" type="button">
+              <span class="em-oprow__id">EM-000125</span>
+              <span class="em-oprow__side"><span class="em-status em-status--work"><span class="em-dot em-dot--live"></span>В работе</span><span class="em-oprow__time">12:42</span></span>
+              <span class="em-oprow__meta">Тула <span class="em-oprow__sep">·</span> Иван</span>
+              <span class="em-oprow__amount em-num">450 000 ₽</span>
+            </button>
+            <button class="em-oprow" type="button">
+              <span class="em-oprow__id">EM-000124</span>
+              <span class="em-oprow__side"><span class="em-status em-status--wait"><span class="em-dot"></span>Ждёт подтверждения</span><span class="em-oprow__time">12:35</span></span>
+              <span class="em-oprow__meta">Самара <span class="em-oprow__sep">·</span> Алексей</span>
+              <span class="em-oprow__amount em-num">445 000 ₽</span>
+            </button>
+            <button class="em-oprow" type="button">
+              <span class="em-oprow__id">EM-000123</span>
+              <span class="em-oprow__side"><span class="em-status em-status--paid"><span class="em-dot"></span>Выплачено</span><span class="em-oprow__time">11:58</span></span>
+              <span class="em-oprow__meta">Казань <span class="em-oprow__sep">·</span> Максим</span>
+              <span class="em-oprow__amount em-num">4 890 USDT</span>
+            </button>
+            <button class="em-oprow" type="button">
+              <span class="em-oprow__id">EM-000122</span>
+              <span class="em-oprow__side"><span class="em-status em-status--payout"><span class="em-dot"></span>Выплата</span><span class="em-oprow__time">10:47</span></span>
+              <span class="em-oprow__meta">Москва <span class="em-oprow__sep">·</span> Андрей</span>
+              <span class="em-oprow__amount em-num">12 000 USDT</span>
+            </button>
+            <button class="em-oprow" type="button">
+              <span class="em-oprow__id">EM-000121</span>
+              <span class="em-oprow__side"><span class="em-status em-status--done"><span class="em-dot em-dot--ring"></span>Подтверждено</span><span class="em-oprow__time">10:12</span></span>
+              <span class="em-oprow__meta">Тула <span class="em-oprow__sep">·</span> Сергей</span>
+              <span class="em-oprow__amount em-num">435 000 ₽</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="em-tabbar" data-em-tabbar role="tablist" aria-label="Основная навигация">
+          <button class="em-navtab" data-em-navtab data-value="home" type="button"><span class="em-navtab__icon"><span data-em-icon="home"></span></span><span>Главная</span></button>
+          <button class="em-navtab" data-em-navtab data-value="ops" aria-current="page" type="button"><span class="em-navtab__icon"><span data-em-icon="doc"></span></span><span>Операции</span></button>
+          <div class="em-tabbar__fab"><button class="em-fab" type="button" aria-label="Создать операцию"><span data-em-icon="plus"></span></button></div>
+          <button class="em-navtab" data-em-navtab data-value="search" type="button"><span class="em-navtab__icon"><span data-em-icon="search"></span></span><span>Поиск</span></button>
+          <button class="em-navtab" data-em-navtab data-value="profile" type="button"><span class="em-navtab__icon"><span data-em-icon="profile"></span></span><span>Профиль</span></button>
+        </div>
+      </div>
+      <div class="screens__caption">Список операций</div>
+    </div>
+
+    <!-- --- Операция: в работе --- -->
+    <div class="screens__item">
+      <div class="em-frame">
+        <div class="em-header">
+          <button class="em-header__back" type="button"><span data-em-icon="chevron-left"></span><span>Назад</span></button>
+          <div class="em-header__title">Операция</div>
+          <div class="em-header__actions"><button class="em-btn-icon em-btn-icon--muted" type="button" aria-label="Действия с операцией"><span data-em-icon="dots"></span></button></div>
+        </div>
+        <div class="em-frame__body">
+          <div class="em-row em-row--between">
+            <div class="em-row">
+              <span class="em-t-amount em-num" style="color:var(--em-gold-200)">EM-000125</span>
+              <button class="em-btn-icon" type="button" aria-label="Скопировать номер операции" data-em-copy="EM-000125">
+                <span data-em-icon="copy"></span><span class="em-sr-only" data-em-copy-live role="status"></span>
+              </button>
+            </div>
+            <span class="em-pill em-pill--work"><span class="em-dot em-dot--ring em-dot--live"></span>В работе</span>
+          </div>
+
+          <div class="em-stack em-stack--tight">
+            <div class="em-line"><span data-em-icon="map-pin"></span><span>Город: <strong>Тула</strong></span></div>
+            <div class="em-line"><span data-em-icon="person"></span><span>Нога: <strong>Иван</strong></span></div>
+          </div>
+
+          <div class="em-money em-reveal">
+            <div class="em-money__row">
+              <div><div class="em-money__label">Пересчёт</div><div class="em-money__value em-num">500 000 ₽</div></div>
+              <span class="em-icon-badge" role="img" aria-label="Сумма из отчёта"><span data-em-icon="doc"></span></span>
+            </div>
+            <div class="em-money__row em-money__row--accent">
+              <div><div class="em-money__label">Нога 10%</div><div class="em-money__value em-num">50 000 ₽</div></div>
+              <span class="em-icon-badge em-icon-badge--round em-icon-badge--work" role="img" aria-label="Выплата ноге"><span data-em-icon="arrow-down-circle"></span></span>
+            </div>
+            <div class="em-money__row">
+              <div><div class="em-money__label">Остаток</div><div class="em-money__value em-num">450 000 ₽</div></div>
+              <span class="em-icon-badge em-icon-badge--round em-icon-badge--paid" role="img" aria-label="Остаток подтверждён"><span data-em-icon="check-circle"></span></span>
+            </div>
+          </div>
+
+          <div class="em-card em-card--tight">
+            <div class="em-upload is-done">
+              <div class="em-upload__preview"><div class="hero-mock" style="width:100%;height:100%"></div></div>
+              <div class="em-upload__meta">
+                <div class="em-upload__title">Фото денег</div>
+                <div class="em-upload__status">Добавлено</div>
+              </div>
+              <button class="em-btn-icon" type="button" aria-label="Открыть фото денег" style="margin-left:auto"><span data-em-icon="eye"></span></button>
+            </div>
+          </div>
+
+          <button class="em-btn em-btn--primary em-btn--block" type="button">
+            <span class="em-btn__icon" data-em-icon="home"></span><span class="em-btn__label">Отметить «Дома»</span>
+          </button>
+
+          <div class="em-card">
+            <div class="em-card__head">
+              <span class="em-card__title">История</span>
+              <button class="em-card__link" type="button">Смотреть все</button>
+            </div>
+            <div class="em-tl">
+              <div class="em-tl__item" style="--i:0"><div class="em-tl__time em-num">11:24</div><div class="em-tl__text">Создана операция</div></div>
+              <div class="em-tl__item" style="--i:1"><div class="em-tl__time em-num">11:25</div><div class="em-tl__text">Указан пересчёт: 500 000 ₽</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screens__caption">Операция — статус «В работе»</div>
+    </div>
+
+    <!-- --- Операция: дома --- -->
+    <div class="screens__item">
+      <div class="em-frame">
+        <div class="em-header">
+          <button class="em-header__back" type="button"><span data-em-icon="chevron-left"></span><span>Назад</span></button>
+          <div class="em-header__title">Операция</div>
+          <div class="em-header__actions"><button class="em-btn-icon em-btn-icon--muted" type="button" aria-label="Действия с операцией"><span data-em-icon="dots"></span></button></div>
+        </div>
+        <div class="em-frame__body">
+          <div class="em-row em-row--between">
+            <div class="em-row">
+              <span class="em-t-amount em-num" style="color:var(--em-gold-200)">EM-000125</span>
+              <button class="em-btn-icon" type="button" aria-label="Скопировать номер операции" data-em-copy="EM-000125"><span data-em-icon="copy"></span></button>
+            </div>
+            <span class="em-pill em-pill--home"><span data-em-icon="home"></span>Дома</span>
+          </div>
+
+          <div class="em-stack em-stack--tight">
+            <div class="em-line"><span data-em-icon="map-pin"></span><span>Город: <strong>Тула</strong></span></div>
+            <div class="em-line"><span data-em-icon="person"></span><span>Нога: <strong>Иван</strong></span></div>
+          </div>
+
+          <div class="em-money">
+            <div class="em-money__row">
+              <div><div class="em-money__label">Пересчёт</div><div class="em-money__value em-num">500 000 ₽</div></div>
+              <span class="em-icon-badge" role="img" aria-label="Сумма из отчёта"><span data-em-icon="doc"></span></span>
+            </div>
+            <div class="em-money__row em-money__row--accent">
+              <div><div class="em-money__label">Нога 10%</div><div class="em-money__value em-num">50 000 ₽</div></div>
+              <span class="em-icon-badge em-icon-badge--round em-icon-badge--work" role="img" aria-label="Выплата ноге"><span data-em-icon="arrow-down-circle"></span></span>
+            </div>
+            <div class="em-money__row">
+              <div><div class="em-money__label">Остаток</div><div class="em-money__value em-num">450 000 ₽</div></div>
+              <span class="em-icon-badge em-icon-badge--round em-icon-badge--paid" role="img" aria-label="Остаток подтверждён"><span data-em-icon="check-circle"></span></span>
+            </div>
+          </div>
+
+          <form class="em-card" data-em-validate>
+            <div class="em-field" data-em-required>
+              <label class="em-label" for="d2-sum">Зашло на счёт<span class="em-label__req">*</span></label>
+              <div class="em-control em-control--amount">
+                <input class="em-input em-num" id="d2-sum" inputmode="numeric" placeholder="Введите сумму">
+                <span class="em-currency">₽</span>
+              </div>
+              <div class="em-error-text">Укажите сумму, которая зашла на счёт</div>
+            </div>
+
+            <div class="em-field" data-em-upload style="margin-top:16px">
+              <span class="em-label">Фото чека<span class="em-label__req">*</span></span>
+              <div class="em-upload">
+                <label class="em-upload__btn">
+                  <span data-em-icon="camera"></span>
+                  <input type="file" accept="image/*" class="em-upload__drop" aria-label="Выбрать фото чека">
+                </label>
+                <div class="em-upload__preview" data-em-upload-preview hidden></div>
+                <div class="em-upload__meta">
+                  <div class="em-upload__title">Фото чека</div>
+                  <div class="em-upload__status" data-em-upload-status>Обязательно</div>
+                  <div class="em-progress" data-em-progress hidden style="margin-top:6px;width:110px"><div class="em-progress__bar"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <button class="em-btn em-btn--primary em-btn--block" type="submit" style="margin-top:18px" data-em-async="ok">
+              <span class="em-btn__icon" data-em-icon="send"></span><span class="em-btn__label">Отправить администратору</span>
+            </button>
+          </form>
+
+          <div class="em-card">
+            <div class="em-card__head">
+              <span class="em-card__title">История</span>
+              <button class="em-card__link" type="button">Смотреть все</button>
+            </div>
+            <div class="em-tl">
+              <div class="em-tl__item" style="--i:0"><div class="em-tl__time em-num">11:24</div><div class="em-tl__text">Создана операция</div></div>
+              <div class="em-tl__item" style="--i:1"><div class="em-tl__time em-num">11:25</div><div class="em-tl__text">Указан пересчёт: 500 000 ₽</div></div>
+              <div class="em-tl__item em-tl__item--now" style="--i:2"><div class="em-tl__time em-num">11:38</div><div class="em-tl__text">Отмечено «Дома»</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screens__caption">Операция — статус «Дома»</div>
+    </div>
+
+    <!-- --- Новая операция --- -->
+    <div class="screens__item">
+      <div class="em-frame">
+        <div class="em-header">
+          <button class="em-header__back" type="button"><span data-em-icon="chevron-left"></span><span>Назад</span></button>
+          <div class="em-header__title">Новая операция</div>
+          <div class="em-header__actions"></div>
+        </div>
+        <div class="em-frame__body">
+          <form class="em-card" data-em-validate>
+            <div class="em-field" data-em-required>
+              <label class="em-label" for="n-city">Город<span class="em-label__req">*</span></label>
+              <div class="em-control em-control--select">
+                <select class="em-select is-placeholder" id="n-city">
+                  <option value="">Выберите город</option>
+                  <option>Тула</option><option>Самара</option><option>Казань</option>
+                </select>
+                <span class="em-control__suffix" data-em-icon="chevron-down"></span>
+              </div>
+              <div class="em-error-text">Выберите город</div>
+            </div>
+
+            <div class="em-field" data-em-required>
+              <label class="em-label" for="n-noga">Нога<span class="em-label__req">*</span></label>
+              <div class="em-control em-control--select">
+                <select class="em-select is-placeholder" id="n-noga">
+                  <option value="">Выберите ногу</option>
+                  <option>Иван</option><option>Сергей</option>
+                </select>
+                <span class="em-control__suffix" data-em-icon="chevron-down"></span>
+              </div>
+              <div class="em-hint">Список зависит от выбранного города</div>
+              <div class="em-error-text">Выберите ногу</div>
+            </div>
+
+            <div class="em-field" data-em-required>
+              <label class="em-label" for="n-sum">Пересчёт<span class="em-label__req">*</span></label>
+              <div class="em-control em-control--amount">
+                <input class="em-input em-num" id="n-sum" inputmode="numeric" placeholder="Введите сумму">
+                <span class="em-currency">₽</span>
+              </div>
+              <div class="em-error-text">Укажите сумму пересчёта</div>
+            </div>
+
+            <div class="em-field" data-em-upload>
+              <span class="em-label">Фото денег <span class="em-label__opt">(необязательно)</span></span>
+              <div class="em-upload">
+                <label class="em-upload__btn">
+                  <span data-em-icon="camera"></span>
+                  <input type="file" accept="image/*" class="em-upload__drop" aria-label="Выбрать фото денег">
+                </label>
+                <div class="em-upload__preview" data-em-upload-preview hidden></div>
+                <div class="em-upload__meta">
+                  <div class="em-upload__title">Фото денег</div>
+                  <div class="em-upload__status" data-em-upload-status>Не добавлено</div>
+                  <div class="em-progress" data-em-progress hidden style="margin-top:6px;width:110px"><div class="em-progress__bar"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="em-field">
+              <span class="em-label">Способ передачи</span>
+              <div class="em-seg" data-em-seg role="tablist" aria-label="Способ передачи">
+                <span class="em-seg__thumb" aria-hidden="true"></span>
+                <button class="em-seg__btn" role="tab" data-em-seg-btn data-value="zahod" aria-selected="true" type="button">Заход на адрес</button>
+                <button class="em-seg__btn" role="tab" data-em-seg-btn data-value="taxi" aria-selected="false" type="button">Такси</button>
+              </div>
+            </div>
+
+            <div class="em-hint" style="margin-top:16px">Дата и время будут указаны автоматически</div>
+            <button class="em-btn em-btn--primary em-btn--block" type="submit" style="margin-top:12px">
+              <span class="em-btn__icon" data-em-icon="plus"></span><span class="em-btn__label">Создать операцию</span>
+            </button>
+          </form>
+        </div>
+      </div>
+      <div class="screens__caption">Новая операция</div>
+    </div>
+  </div>
+
+  <!-- ======================== ПРАВКИ UX ======================== -->
+  <h2 id="fixes">14. Что исправлено по сравнению с макетом</h2>
+  <p>Стиль, палитра и настроение сохранены. Менялись только величины, которые мешали пользоваться.</p>
+
+  <div class="doc__panel fix">
+    <div class="fix__item"><div>
+      <div class="fix__title">Красный «Осталось» не проходил контраст</div>
+      <div class="fix__text">Замер #B1362C на карточке — 2.96:1 при норме 4.5:1. Поднято до #F0776A (6.51:1), оттенок тот же. Заодно подняты зелёный (4.45 → 9.31), синий (4.70 → 7.93) и оранжевый (4.87 → 7.66).</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Приглушённый текст был на грани</div>
+      <div class="fix__text">Время и подписи #958364 давали 4.92:1 на карточке и терялись на фото в hero-блоке. Токен поднят до #A99B85 (6.65:1), самый тусклый оттенок оставлен только для декоративных элементов.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Текст в пилюле статуса был срезан</div>
+      <div class="fix__text">В макете «В работе» превратилось в «работе» — читается как ошибка данных. Пилюля больше не режет текст: <code>white-space: nowrap</code> плюс внутренние отступы 12px, минимальная высота 32px.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Поля ввода ниже минимальной зоны нажатия</div>
+      <div class="fix__text">Замер ≈40px, у иконки камеры ≈40×40. Высота поля поднята до 48px, кнопка загрузки — 56px, любая интерактивная зона — не меньше 44px (<code>--em-tap-min</code>).</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Белые цифры прямо на фотографии</div>
+      <div class="fix__text">В блоке оборота сумма попадала на светлые купюры, контраст в этих местах падал ниже 3:1. Добавлен обязательный слой затемнения <code>.em-hero__scrim</code> и тень у текста; фотография осталась видна.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Статус различался только цветом</div>
+      <div class="fix__text">Точки в плитках статистики и статусы в списке отличались лишь оттенком. Добавлены иконка внутри кружка и форма точки: заливка у «выплачено», кольцо у «подтверждено». Теперь статус читается и без различения цветов.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Не было состояния фокуса</div>
+      <div class="fix__text">С клавиатуры интерфейс был непроходим. Добавлено <code>:focus-visible</code> с золотым двойным контуром <code>--em-glow-focus</code>; у табов работают стрелки, у формы — переход к первому непройденному полю.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Сокращения в фильтрах</div>
+      <div class="fix__text">«Подтв. 2» и «Выплаты 2» экономили пару десятков пикселей и стоили понятности. Подписи развёрнуты, счётчик вынесен в отдельный бейдж <code>.em-count</code>, полоса табов скроллится по горизонтали.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Иконки в денежных строках без смысла</div>
+      <div class="fix__text">Документ, стрелка и галочка справа от сумм ничего не объясняли. Каждая получила <code>role="img"</code> и подпись: «Сумма из отчёта», «Выплата ноге», «Остаток подтверждён».</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Суммы в списке не выстраивались в колонку</div>
+      <div class="fix__text">Пропорциональные цифры и разные валюты (₽ и USDT) ломали правый край. Включены табличные цифры, сумма и время выровнены по правому краю, город и имя обрезаются многоточием и не наезжают на статус.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">FAB перекрывал соседние подписи</div>
+      <div class="fix__text">Кнопка «+» вылезала на «Операции» и «Поиск». Теперь у неё своя ячейка в сетке из пяти колонок, подъём всего 6px, диаметр 56px вместо замеренных 45–49px.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Обязательность полей и ошибки</div>
+      <div class="fix__text">В макете «(обязательно)» было только словами в подписи, состояния ошибки не существовало. Добавлены маркер <code>*</code>, состояния <code>is-error</code> / <code>is-success</code>, текст ошибки на месте подсказки — форма не подпрыгивает.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Терминология</div>
+      <div class="fix__text">«Выберите сотрудника» заменено на «Выберите ногу»: в системе исполнитель называется ногой, и подписи в формах должны совпадать со справочником. Исправлено «Ждет» → «Ждёт».</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Город и нога срезались в плашке дашборда</div>
+      <div class="fix__text">Длинный статус сверху («Ждёт подтверждения») поджимал колонку, и вторая строка превращалась в «Самара · Алек…». В компактной строке второй ряд отдан на всю ширину (<code>grid-column: 1 / -1</code>), суммы там нет — как в макете, где на дашборде показаны только город и нога.</div>
+    </div></div>
+
+    <div class="fix__item"><div>
+      <div class="fix__title">Анимации без учёта системных настроек</div>
+      <div class="fix__text">Добавлен <code>prefers-reduced-motion</code>: каскады, блики и пульсация точки выключаются полностью. Также поддержан <code>prefers-contrast: more</code> — приглушённые тона становятся светлее.</div>
+    </div></div>
+  </div>
+
+  <h2>15. Допущения</h2>
+  <div class="doc__panel">
+    <ul class="em-stack em-stack--tight" style="color:var(--em-text-2);font-size:var(--em-fs-meta)">
+      <li>Макет отрендерён в ширине 287–354px; все размеры нормированы к 390px (коэффициент 1.10–1.36) и округлены до шага 2px.</li>
+      <li>Гарнитуры в референсе не подписаны: интерфейс собран на Manrope, вордмарк — на Playfair Display как ближайших по рисунку. Стек начинается с них и заканчивается системным шрифтом.</li>
+      <li>Рендер макета лежит под общим тёплым затемнением, поэтому насыщенность акцентов бралась по самым насыщенным пикселям области, а не по среднему.</li>
+      <li>Фаска объёмного логотипа передана monoline-контуром с золотым градиентом: геометрия снята с карты яркости растра (три вложенные линии на половину, шеврон по центру, хвосты с вырезом), но объём и блики металла линией не воспроизводятся.</li>
+      <li>Фотография в блоке оборота заменена мок-градиентом <code>.hero-mock</code>; в приложении в <code>.em-hero__media</code> подставляется реальный снимок.</li>
+    </ul>
+  </div>
+</main>
+
+<script src="icons.js"></script>
+<script src="ds.js"></script>
+<script>
+  /* Сетка иконок собирается из набора, чтобы список нельзя было
+     забыть обновить при добавлении новой иконки */
+  (function () {
+    "use strict";
+    var host = document.getElementById("iconGrid");
+    if (!host || !window.EmIcons) return;
+    host.innerHTML = window.EmIcons.names().map(function (name) {
+      return '<div class="icons__item">' + window.EmIcons.svg(name) + '<span class="icons__name">' + name + "</span></div>";
+    }).join("");
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+/* ============================================================
+   Оформление самой страницы-гайда (не часть дизайн-системы).
+   Компоненты внутри примеров используют только em-* классы.
+   ============================================================ */
+.doc {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 24px 96px;
+}
+
+.doc__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--em-hairline);
+}
+.doc__lead {
+  max-width: 62ch;
+  margin-top: 16px;
+  color: var(--em-text-2);
+}
+
+.doc__nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  margin: 24px 0 8px;
+  background: linear-gradient(180deg, var(--em-bg) 70%, rgba(10, 9, 8, 0));
+  backdrop-filter: blur(6px);
+}
+.doc__nav a {
+  padding: 7px 12px;
+  border-radius: var(--em-radius-pill);
+  border: 1px solid var(--em-hairline);
+  font-size: var(--em-fs-caption);
+  color: var(--em-text-muted);
+  transition: color var(--em-dur-2) var(--em-ease-out), border-color var(--em-dur-2) var(--em-ease-out), background var(--em-dur-2) var(--em-ease-out);
+}
+.doc__nav a:hover { color: var(--em-gold-200); border-color: var(--em-border-strong); background: var(--em-gold-a06); }
+
+.doc h2 {
+  margin: 56px 0 6px;
+  font-size: 24px;
+  font-weight: var(--em-fw-semibold);
+  color: var(--em-gold-200);
+  scroll-margin-top: 72px;
+}
+.doc h3 {
+  margin: 32px 0 12px;
+  font-size: var(--em-fs-strong);
+  font-weight: var(--em-fw-semibold);
+  color: var(--em-text);
+}
+.doc h2 + p,
+.doc h3 + p { color: var(--em-text-muted); font-size: var(--em-fs-meta); margin-bottom: 16px; max-width: 78ch; }
+
+.doc__panel {
+  padding: 24px;
+  border-radius: var(--em-radius-lg);
+  border: 1px solid var(--em-hairline);
+  background: linear-gradient(180deg, #121110, #0D0C0B);
+}
+
+.doc__grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.doc__grid--wide { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.doc__row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+/* Заголовок примера */
+.doc__case { margin-bottom: 8px; font-size: var(--em-fs-caption); color: var(--em-text-dim); letter-spacing: var(--em-ls-wide); text-transform: uppercase; }
+
+/* Палитра */
+.sw { border-radius: var(--em-radius-md); overflow: hidden; border: 1px solid var(--em-hairline); }
+.sw__chip { height: 64px; }
+.sw__body { padding: 10px 12px; background: var(--em-surface); }
+.sw__name { font-size: var(--em-fs-meta); color: var(--em-text); }
+.sw__hex { font-size: var(--em-fs-caption); color: var(--em-text-muted); font-variant-numeric: tabular-nums; }
+.sw__note { font-size: var(--em-fs-caption); color: var(--em-text-dim); }
+
+/* Спецификация: пары «токен → значение» */
+.spec { width: 100%; border-collapse: collapse; font-size: var(--em-fs-meta); }
+.spec th, .spec td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--em-hairline); vertical-align: top; }
+.spec th { color: var(--em-gold-300); font-weight: var(--em-fw-semibold); }
+.spec td code { color: var(--em-text-2); }
+.spec tr:last-child td { border-bottom: 0; }
+
+code, kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: var(--em-gold-300);
+  background: var(--em-gold-a06);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+/* Сетка иконок */
+.icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
+.icons__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 6px;
+  border-radius: var(--em-radius-md);
+  border: 1px solid var(--em-hairline);
+  background: var(--em-surface);
+  color: var(--em-gold-300);
+  text-align: center;
+}
+.icons__item svg { width: 26px; height: 26px; }
+.icons__name { font-size: 11.5px; color: var(--em-text-dim); word-break: break-word; }
+
+/* Демонстрация шкалы текста */
+.type__row { display: flex; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--em-hairline); }
+.type__meta { flex: 0 0 190px; font-size: var(--em-fs-caption); color: var(--em-text-dim); font-variant-numeric: tabular-nums; }
+
+/* Линейка отступов */
+.ruler { display: flex; align-items: flex-end; gap: 10px; }
+.ruler__bar { background: var(--em-grad-gold); border-radius: 4px 4px 0 0; width: 34px; }
+.ruler__cap { font-size: 11.5px; color: var(--em-text-dim); text-align: center; margin-top: 6px; }
+
+/* Радиусы и тени */
+.box-demo {
+  height: 84px;
+  background: var(--em-grad-surface);
+  border: 1px solid var(--em-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--em-fs-caption);
+  color: var(--em-text-muted);
+}
+
+/* Экраны рядом */
+.screens { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.screens__item { flex: 0 0 auto; width: 390px; max-width: 100%; }
+.screens__caption { margin-top: 10px; font-size: var(--em-fs-caption); color: var(--em-text-dim); text-align: center; }
+.screens .em-frame { box-shadow: var(--em-shadow-raised); min-height: 720px; }
+
+/* Мок «фотографии денег» под hero-блоком: в приложении
+   сюда ставится реальный снимок */
+.hero-mock {
+  background-image:
+    /* «купюры»: тонкая полосатая штриховка поверх тёплых пятен света */
+    repeating-linear-gradient(96deg, rgba(255, 246, 224, .10) 0 1px, transparent 1px 5px),
+    radial-gradient(34% 34% at 32% 86%, rgba(240, 208, 148, .92), transparent 72%),
+    radial-gradient(30% 30% at 68% 78%, rgba(212, 168, 100, .82), transparent 74%),
+    radial-gradient(26% 26% at 12% 66%, rgba(176, 136, 78, .62), transparent 76%),
+    linear-gradient(180deg, #16110B 0%, #241C12 60%, #0C0A08 100%);
+  background-size: 100% 46%, auto, auto, auto, auto;
+  background-position: 0 100%, 0 0, 0 0, 0 0, 0 0;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+}
+
+/* Список правок */
+.fix { counter-reset: fix; }
+.fix__item {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--em-hairline);
+}
+.fix__item::before {
+  counter-increment: fix;
+  content: counter(fix);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--em-gold-a10);
+  border: 1px solid var(--em-border);
+  color: var(--em-gold-300);
+  font-size: var(--em-fs-caption);
+  font-weight: var(--em-fw-semibold);
+}
+.fix__title { font-size: var(--em-fs-body); font-weight: var(--em-fw-semibold); color: var(--em-text); }
+.fix__text { font-size: var(--em-fs-meta); color: var(--em-text-muted); margin-top: 3px; }
+
+@media (max-width: 720px) {
+  .doc { padding: 24px 16px 72px; }
+  .type__meta { flex-basis: 120px; }
+  .screens__item { width: 100%; }
+}
