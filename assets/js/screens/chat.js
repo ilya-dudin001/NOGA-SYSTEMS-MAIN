@@ -526,6 +526,11 @@
     if (picker) picker.hidden = true;
   }
 
+  function isMentionPickerOpen() {
+    var picker = document.getElementById("chatMentionPicker");
+    return Boolean(picker && !picker.hidden);
+  }
+
   function setComposerEnabled(enabled) {
     var input = document.getElementById("chatInput");
     var send = document.getElementById("chatSendBtn");
@@ -1084,6 +1089,10 @@
         loadOlder();
       }
     });
+    /* Пикер «Упомянуть» живёт в композере; клик по ленте/сообщению его закрывает */
+    on(thread, "click", function () {
+      if (isMentionPickerOpen()) hideMentionPicker();
+    });
 
     on(document.getElementById("chatLoadOlder"), "click", function () {
       loadOlder();
@@ -1115,6 +1124,10 @@
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         sendCurrent();
+      }
+      if (event.key === "Escape" && isMentionPickerOpen()) {
+        event.preventDefault();
+        hideMentionPicker();
       }
     });
   }
