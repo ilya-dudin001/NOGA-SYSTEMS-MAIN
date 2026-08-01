@@ -124,9 +124,11 @@ def _pick_localized_name(item: dict[str, Any], lang: str) -> Optional[str]:
 
 
 def _norm_place_token(value: str) -> str:
-    """Схлопывает дефисы/пробелы для сравнения «Алма-ата» ↔ «Алматы»."""
+    """Схлопывает дефисы/пробелы и ё→е для сравнения «Кишинев» ↔ «Кишинёв»."""
     out: list[str] = []
     for ch in value.casefold():
+        if ch == "ё":
+            ch = "е"
         if ch.isalnum():
             out.append(ch)
     return "".join(out)
@@ -140,8 +142,15 @@ def _match_score(name: str, query: str) -> float:
         return 0.0
     if n == q:
         return 1.0
-    if n.startswith(q) or q.startswith(n):
+    # Запрос — префикс имени: пользователь ещё допечатывает («Киш» → «Кишинёв»).
+    if n.startswith(q):
         return 0.9
+    # Имя — короткий префикс запроса: «Кишин» не должен затмевать «Кишинёв».
+    if q.startswith(n):
+        ratio = len(n) / len(q)
+        if ratio >= 0.85:
+            return 0.9
+        return ratio * 0.6
     common = 0
     for a, b in zip(n, q):
         if a != b:
@@ -228,12 +237,83 @@ async def suggest(
         candidates, lang=locale, limit=max(limit * 3, 6)
     )
     best = max((_match_score(r.get("name") or "", cleaned) for r in localized), default=0.0)
+    # #region agent log
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+
+        _log = {
+            "sessionId": "328f38",
+            "location": "geocode.py:suggest",
+            "message": "suggest_path",
+            "hypothesisId": "H1-H4",
+            "timestamp": int(__import__("time").time() * 1000),
+            "data": {
+                "query": cleaned,
+                "norm_q": _norm_place_token(cleaned),
+                "photon_count": len(candidates),
+                "photon": [
+                    {
+                        "name": c.get("name"),
+                        "cc": c.get("country_code"),
+                        "osm": f"{c.get('osm_type')}:{c.get('osm_id')}",
+                    }
+                    for c in candidates[:8]
+                ],
+                "localized": [
+                    {
+                        "name": r.get("name"),
+                        "cc": r.get("country_code"),
+                        "score": round(
+                            _match_score(r.get("name") or "", cleaned), 3
+                        ),
+                    }
+                    for r in localized
+                ],
+                "best": round(best, 3),
+                "use_photon_path": bool(localized) and best >= 0.9,
+                "runId": "post-fix",
+            },
+        }
+        _Path(__file__).resolve().parents[3].joinpath("debug-328f38.log").open(
+            "a", encoding="utf-8"
+        ).write(_json.dumps(_log, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # #endregion
     # Исторические имена вроде «Алма-ата» Photon часто не связывает с городом —
     # тогда уходим в Nominatim (у него alias'ы name:*, addresstype=city).
-    if localized and best >= 0.7:
+    # Порог 0.9: иначе короткий «Кишин» (UA) с prefix-score 0.9 блокирует «Кишинёв».
+    if localized and best >= 0.9:
         return _finalize_suggest(localized, limit=limit)
 
     rows = await _nominatim_suggest(cleaned, fetch=max(limit * 3, 6), lang=locale)
+    # #region agent log
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+
+        _log2 = {
+            "sessionId": "328f38",
+            "location": "geocode.py:suggest:nominatim",
+            "message": "nominatim_fallback",
+            "hypothesisId": "H2-H4",
+            "timestamp": int(__import__("time").time() * 1000),
+            "data": {
+                "query": cleaned,
+                "nominatim": [
+                    {"name": r.get("name"), "cc": r.get("country_code")}
+                    for r in rows[:8]
+                ],
+                "final": _finalize_suggest(rows, limit=limit),
+            },
+        }
+        _Path(__file__).resolve().parents[3].joinpath("debug-328f38.log").open(
+            "a", encoding="utf-8"
+        ).write(_json.dumps(_log2, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # #endregion
     return _finalize_suggest(rows, limit=limit)
 
 
