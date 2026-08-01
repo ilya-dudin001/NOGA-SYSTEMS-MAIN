@@ -128,7 +128,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
 ROLE_LABELS_RU: dict[UserRole, str] = {
     UserRole.owner: "Owner",
     UserRole.right_hand: "Правая рука",
-    UserRole.admin: "Администратор",
+    UserRole.admin: "Админ",
     UserRole.noga: "Нога",
 }
 

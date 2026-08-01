@@ -204,8 +204,7 @@
   }
 
   function openForm(razgruz) {
-    var form = document.getElementById("razgruzForm");
-    if (!form) return;
+    bindForm();
     editingId = razgruz ? razgruz.id : null;
     document.getElementById("razgruzFormTitle").textContent = razgruz
       ? "Изменить разгруз"
@@ -213,14 +212,13 @@
     document.getElementById("razgruzName").value = razgruz ? razgruz.name : "";
     document.getElementById("razgruzPercent").value = razgruz ? razgruz.commission_percent : "";
     document.getElementById("razgruzContact").value = razgruz && razgruz.contact ? razgruz.contact : "";
-    form.hidden = false;
-    form.scrollIntoView({ block: "nearest" });
+    if (global.NogaProfile && global.NogaProfile.hideBack) global.NogaProfile.hideBack();
+    global.NogaViews.show("viewRazgruzCreate");
   }
 
-  function closeForm() {
-    var form = document.getElementById("razgruzForm");
-    if (form) form.hidden = true;
+  function leaveForm() {
     editingId = null;
+    show(mineOnly ? { mine: true } : undefined);
   }
 
   function bindForm() {
@@ -229,13 +227,16 @@
     if (formBound) return;
     formBound = true;
 
+    var backBtn = document.getElementById("razgruzCreateBack");
+    if (backBtn) backBtn.addEventListener("click", leaveForm);
+
     if (openBtn) {
       openBtn.addEventListener("click", function () {
         openForm(null);
       });
     }
     var cancelBtn = document.getElementById("btnCancelRazgruz");
-    if (cancelBtn) cancelBtn.addEventListener("click", closeForm);
+    if (cancelBtn) cancelBtn.addEventListener("click", leaveForm);
 
     var form = document.getElementById("razgruzForm");
     if (!form) return;
@@ -262,8 +263,8 @@
         } else {
           await global.NogaApi.updateRazgruz(editingId, payload);
         }
-        closeForm();
-        await loadAndRender();
+        editingId = null;
+        show(mineOnly ? { mine: true } : undefined);
       } catch (err) {
         global.NogaTelegram.notify(err.message || "Не удалось сохранить разгруз");
       }
@@ -281,13 +282,13 @@
     mineOnly = Boolean(options && options.mine);
     applyTitle();
     bindForm();
-    closeForm();
     loadAndRender();
   }
 
-  /** Вход из меню «+»: экран уже с открытой формой нового разгруза. */
+  /** Вход из меню «+»: отдельный экран создания. */
   function openCreate() {
-    show();
+    mineOnly = false;
+    bindForm();
     openForm(null);
   }
 

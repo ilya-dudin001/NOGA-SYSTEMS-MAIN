@@ -307,6 +307,25 @@ body{
 .trubki-table__row:focus-visible{ background:rgba(255,255,255,.05); outline:none; }
 .trubki-table__amount{ font-weight:600; font-variant-numeric:tabular-nums; }
 .trubki-table__owner{ color:var(--text-dim); }
+.trubki-table__status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font:inherit;
+  color:inherit;
+  font-weight:inherit;
+}
+.trubki-table__dot{
+  flex:0 0 auto;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+}
+.trubki-table__dot--wait{ background:var(--em-wait-dot); }
+.trubki-table__dot--work{ background:var(--em-work-dot); }
+.trubki-table__dot--paid{ background:var(--em-paid-dot); }
+.trubki-table__dot--payout{ background:var(--em-payout); }
+.trubki-table__dot--left{ background:var(--em-left-dot); }
 
 .btn-all{
   display:block;

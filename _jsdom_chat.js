@@ -57,7 +57,7 @@ const peers = [
     display_name: "Мария",
     username: "maria",
     role: "admin",
-    role_label: "Администратор",
+    role_label: "Админ",
     room_id: 18,
   },
   {
@@ -65,7 +65,7 @@ const peers = [
     display_name: "Пётр",
     username: "petr",
     role: "admin",
-    role_label: "Администратор",
+    role_label: "Админ",
     room_id: null,
   },
 ];

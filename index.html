@@ -148,7 +148,7 @@
           <label for="newUserRole">Роль</label>
           <select id="newUserRole">
             <option value="noga">Нога</option>
-            <option value="admin">Администратор</option>
+            <option value="admin">Админ</option>
             <option value="right_hand">Правая рука</option>
             <option value="owner">Owner</option>
           </select>
@@ -174,8 +174,22 @@
         <h2 class="users-toolbar__title">Ноги</h2>
       </div>
 
-      <form class="form-card" id="nogaForm" hidden>
-        <p class="form-card__title" id="nogaFormTitle">Новая нога</p>
+      <div id="nogasList"></div>
+    </div>
+
+    <!-- ===== NOGA CREATE / EDIT ===== -->
+    <div class="view" id="viewNogaCreate" hidden>
+      <div class="users-toolbar">
+        <button class="btn-icon" id="nogaCreateBack" type="button" title="Назад к ногам" aria-label="Назад к ногам">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5"/>
+            <path d="m11 6-6 6 6 6"/>
+          </svg>
+        </button>
+        <h2 class="users-toolbar__title" id="nogaFormTitle">Новая нога</h2>
+      </div>
+
+      <form class="form-card" id="nogaForm">
         <div class="field">
           <label for="nogaName">Имя</label>
           <input id="nogaName" type="text" required placeholder="Иван">
@@ -201,8 +215,6 @@
           <button class="btn-gold" type="submit" style="flex:1">Сохранить</button>
         </div>
       </form>
-
-      <div id="nogasList"></div>
     </div>
 
     <!-- ===== CITIES ===== -->
@@ -219,8 +231,22 @@
 
       <div class="tabs" id="citiesModes" role="tablist"></div>
 
-      <form class="form-card" id="cityForm" hidden>
-        <p class="form-card__title" id="cityFormTitle">Новый город</p>
+      <div id="citiesList"></div>
+    </div>
+
+    <!-- ===== CITY CREATE / EDIT ===== -->
+    <div class="view" id="viewCityCreate" hidden>
+      <div class="users-toolbar">
+        <button class="btn-icon" id="cityCreateBack" type="button" title="Назад к городам" aria-label="Назад к городам">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5"/>
+            <path d="m11 6-6 6 6 6"/>
+          </svg>
+        </button>
+        <h2 class="users-toolbar__title" id="cityFormTitle">Новый город</h2>
+      </div>
+
+      <form class="form-card" id="cityForm">
         <div class="field">
           <label for="cityName">Название</label>
           <input id="cityName" type="text" required placeholder="Тула">
@@ -252,8 +278,6 @@
           <button class="btn-gold" type="submit" style="flex:1">Сохранить</button>
         </div>
       </form>
-
-      <div id="citiesList"></div>
     </div>
 
     <!-- ===== RAZGRUZY ===== -->
@@ -269,8 +293,22 @@
         <button class="btn-gold" id="btnAddRazgruz" type="button" hidden>+ Добавить</button>
       </div>
 
-      <form class="form-card" id="razgruzForm" hidden>
-        <p class="form-card__title" id="razgruzFormTitle">Новый разгруз</p>
+      <div id="razgruzyList"></div>
+    </div>
+
+    <!-- ===== RAZGRUZ CREATE / EDIT ===== -->
+    <div class="view" id="viewRazgruzCreate" hidden>
+      <div class="users-toolbar">
+        <button class="btn-icon" id="razgruzCreateBack" type="button" title="Назад к разгрузам" aria-label="Назад к разгрузам">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5"/>
+            <path d="m11 6-6 6 6 6"/>
+          </svg>
+        </button>
+        <h2 class="users-toolbar__title" id="razgruzFormTitle">Новый разгруз</h2>
+      </div>
+
+      <form class="form-card" id="razgruzForm">
         <div class="field">
           <label for="razgruzName">Название</label>
           <input id="razgruzName" type="text" required placeholder="Альфа">
@@ -288,8 +326,6 @@
           <button class="btn-gold" type="submit" style="flex:1">Сохранить</button>
         </div>
       </form>
-
-      <div id="razgruzyList"></div>
     </div>
 
     <!-- ===== TRUBKI ===== -->
@@ -307,10 +343,24 @@
 
       <div class="tabs tabs--scroll" id="trubkiFilters" role="tablist"></div>
 
-      <form class="em-card em-card--gold em-trubka-wizard" id="trubkaForm" hidden>
+      <div id="trubkiList"></div>
+    </div>
+
+    <!-- ===== TRUBKA CREATE ===== -->
+    <div class="view" id="viewTrubkaCreate" hidden>
+      <div class="users-toolbar">
+        <button class="btn-icon" id="trubkaCreateBack" type="button" title="Назад к трубкам" aria-label="Назад к трубкам">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5"/>
+            <path d="m11 6-6 6 6 6"/>
+          </svg>
+        </button>
+        <h2 class="users-toolbar__title" id="trubkaFormTitle">Новая трубка</h2>
+      </div>
+
+      <form class="em-card em-card--gold em-trubka-wizard" id="trubkaForm">
         <div class="em-trubka-wizard__head">
           <div>
-            <p class="em-card__title" id="trubkaFormTitle">Новая трубка</p>
             <p class="em-trubka-wizard__step" id="trubkaStepLabel">Шаг 1 из 2</p>
           </div>
           <div class="em-trubka-wizard__dots" aria-hidden="true">
@@ -361,8 +411,6 @@
           <button class="em-btn em-btn--primary em-trubka-wizard__primary" id="btnSaveTrubka" type="submit" hidden>Создать трубку</button>
         </div>
       </form>
-
-      <div id="trubkiList"></div>
     </div>
 
     <!-- ===== TRUBKA DETAIL ===== -->

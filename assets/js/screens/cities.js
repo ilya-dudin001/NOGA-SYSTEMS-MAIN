@@ -683,9 +683,10 @@
     });
   }
 
-  function openForm(city) {
-    var form = document.getElementById("cityForm");
-    if (!form) return;
+  async function openForm(city) {
+    bindForm();
+    await loadRazgruzy();
+    await loadNogas();
     fillStatusSelect();
     fillCurrencySelect();
 
@@ -713,15 +714,14 @@
     }
     fillNogaChecklist(city || null);
 
-    form.hidden = false;
-    form.scrollIntoView({ block: "nearest" });
+    if (global.NogaProfile && global.NogaProfile.hideBack) global.NogaProfile.hideBack();
+    global.NogaViews.show("viewCityCreate");
   }
 
-  function closeForm() {
-    var form = document.getElementById("cityForm");
-    if (form) form.hidden = true;
+  function leaveForm() {
     editingId = null;
     editingCity = null;
+    show({ mode: mode });
   }
 
   function collectPayload() {
@@ -753,8 +753,11 @@
     if (formBound) return;
     formBound = true;
 
+    var backBtn = document.getElementById("cityCreateBack");
+    if (backBtn) backBtn.addEventListener("click", leaveForm);
+
     var cancelBtn = document.getElementById("btnCancelCity");
-    if (cancelBtn) cancelBtn.addEventListener("click", closeForm);
+    if (cancelBtn) cancelBtn.addEventListener("click", leaveForm);
 
     var form = document.getElementById("cityForm");
     if (!form) return;
@@ -790,11 +793,12 @@
       } else {
         await global.NogaApi.updateCity(editingId, payload);
       }
-      closeForm();
+      editingId = null;
+      editingCity = null;
       // Состав города мог поменяться — перечитываем ноги, чтобы чек-лист
       // в следующий раз показал актуальную привязку.
       await loadNogas();
-      await loadAndRender();
+      await show({ mode: mode });
       await refreshDashboard();
     } catch (err) {
       global.NogaTelegram.notify(err.message || "Не удалось сохранить город");
@@ -808,7 +812,6 @@
       openDetailId = null;
     }
     bindForm();
-    closeForm();
     renderModes();
     global.NogaNogas.release();
     await loadRazgruzy();
@@ -816,10 +819,10 @@
     await loadAndRender();
   }
 
-  /** Вход из меню «+»: экран уже с открытой формой нового города. */
+  /** Вход из меню «+»: отдельный экран создания. */
   async function openCreate() {
-    await show({ mode: "own" });
-    openForm(null);
+    mode = "own";
+    await openForm(null);
   }
 
   function hide() {

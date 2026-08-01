@@ -712,24 +712,22 @@
     if (hidden) hidden.value = isTest ? "true" : "false";
   }
 
-  function openForm(noga) {
-    var form = document.getElementById("nogaForm");
-    if (!form) return;
-
+  async function openForm(noga) {
+    bindForm();
+    await loadCities();
     editingId = noga ? noga.id : null;
     document.getElementById("nogaFormTitle").textContent = noga ? "Изменить ногу" : "Новая нога";
     document.getElementById("nogaName").value = noga ? noga.name : "";
     fillCitySelect(noga ? noga.city_id : null);
     setTestSwitch(noga ? noga.is_test : false);
 
-    form.hidden = false;
-    form.scrollIntoView({ block: "nearest" });
+    if (global.NogaProfile && global.NogaProfile.hideBack) global.NogaProfile.hideBack();
+    global.NogaViews.show("viewNogaCreate");
   }
 
-  function closeForm() {
-    var form = document.getElementById("nogaForm");
-    if (form) form.hidden = true;
+  function leaveForm() {
     editingId = null;
+    show();
   }
 
   function collectPayload() {
@@ -759,8 +757,11 @@
     if (formBound) return;
     formBound = true;
 
+    var backBtn = document.getElementById("nogaCreateBack");
+    if (backBtn) backBtn.addEventListener("click", leaveForm);
+
     var cancelBtn = document.getElementById("btnCancelNoga");
-    if (cancelBtn) cancelBtn.addEventListener("click", closeForm);
+    if (cancelBtn) cancelBtn.addEventListener("click", leaveForm);
 
     var citySelect = document.getElementById("nogaCity");
     if (citySelect) citySelect.addEventListener("change", toggleNewCityField);
@@ -784,9 +785,9 @@
         } else {
           await global.NogaApi.updateNoga(editingId, payload);
         }
-        closeForm();
+        editingId = null;
         await loadCities();
-        await loadAndRender();
+        await show();
       } catch (err) {
         global.NogaTelegram.notify(err.message || "Не удалось сохранить ногу");
       }
@@ -796,15 +797,13 @@
   async function show() {
     global.NogaViews.show("viewNogas");
     bindForm();
-    closeForm();
     await loadCities();
     await loadAndRender();
   }
 
-  /** Вход из меню «+»: экран уже с открытой формой новой ноги. */
+  /** Вход из меню «+»: отдельный экран создания. */
   async function openCreate() {
-    await show();
-    openForm(null);
+    await openForm(null);
   }
 
   function hide() {

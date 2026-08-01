@@ -4,7 +4,7 @@
   var ROLE_OPTIONS = [
     { value: "owner", label: "Owner" },
     { value: "right_hand", label: "Правая рука" },
-    { value: "admin", label: "Администратор" },
+    { value: "admin", label: "Админ" },
     { value: "noga", label: "Нога" },
   ];
 

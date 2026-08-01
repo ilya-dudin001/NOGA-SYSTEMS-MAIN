@@ -193,6 +193,7 @@ const $ = (id) => window.document.getElementById(id);
   window.NogaTelegram.notify = (message) => console.log("notify:", message);
 
   await window.NogaTrubki.openCreate();
+  assert($("viewTrubkaCreate").hidden === false, "открыт экран создания трубки");
   assert($("trubkaStatusField").value === "zacep", "первичный статус — «Зацеп»");
   assert(!$("trubkaStepOne").hidden && $("trubkaStepTwo").hidden, "открыт первый шаг");
 

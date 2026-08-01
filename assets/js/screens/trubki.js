@@ -56,6 +56,26 @@
     return pill;
   }
 
+  /* В таблице — обычный текст + цветная точка (не пилюля). */
+  var STATUS_DOT = {
+    zacep: "wait",
+    zabrali: "work",
+    vyplacheno: "paid",
+    srez: "left",
+    razgruzhaetsya: "payout",
+  };
+
+  function statusInline(value) {
+    var info = statusInfo(value);
+    var wrap = el("span", "trubki-table__status");
+    var tone = STATUS_DOT[value] || "wait";
+    var dot = el("span", "trubki-table__dot trubki-table__dot--" + tone);
+    dot.setAttribute("aria-hidden", "true");
+    wrap.appendChild(dot);
+    wrap.appendChild(document.createTextNode(info.label));
+    return wrap;
+  }
+
   function operationNumber(id) {
     var value = String(id);
     while (value.length < 6) value = "0" + value;
@@ -83,7 +103,7 @@
       row.tabIndex = 0;
       row.setAttribute("role", "button");
       var statusCell = el("td");
-      statusCell.appendChild(statusPill(trubka.status));
+      statusCell.appendChild(statusInline(trubka.status));
       row.appendChild(statusCell);
       row.appendChild(el("td", null, trubka.city_name));
       row.appendChild(
@@ -793,6 +813,7 @@
   }
 
   async function openForm() {
+    bindForm();
     var form = document.getElementById("trubkaForm");
     if (!form) return;
     if (!cities.length) await loadCities();
@@ -820,16 +841,15 @@
     );
     fillSelect("trubkaNoga", [], null, "Сначала выберите город");
     document.getElementById("trubkaAmount").value = "";
-    form.hidden = false;
     showWizardStep(1);
     hydrate(form);
-    form.scrollIntoView({ block: "nearest" });
+    if (global.NogaProfile && global.NogaProfile.hideBack) global.NogaProfile.hideBack();
+    global.NogaViews.show("viewTrubkaCreate");
   }
 
-  function closeForm() {
-    var form = document.getElementById("trubkaForm");
-    if (form) form.hidden = true;
+  function leaveForm() {
     showWizardStep(1);
+    show();
   }
 
   function setFieldError(controlId, state) {
@@ -854,7 +874,10 @@
     if (formBound) return;
     formBound = true;
 
-    if (openButton) openButton.addEventListener("click", openForm);
+    var backBtn = document.getElementById("trubkaCreateBack");
+    if (backBtn) backBtn.addEventListener("click", leaveForm);
+
+    if (openButton) openButton.addEventListener("click", openCreate);
     document.getElementById("btnTrubkaNext").addEventListener("click", async function () {
       var cityId = document.getElementById("trubkaCity").value;
       setFieldError("trubkaCity", !cityId);
@@ -864,7 +887,7 @@
     });
     document.getElementById("btnCancelTrubka").addEventListener("click", function () {
       if (wizardStep === 2) showWizardStep(1);
-      else closeForm();
+      else leaveForm();
     });
     document.getElementById("trubkaCity").addEventListener("change", function () {
       setFieldError("trubkaCity", false);
@@ -896,7 +919,7 @@
           amount: Number(amount),
           amount_currency: document.getElementById("trubkaCurrency").value,
         });
-        closeForm();
+        showWizardStep(1);
         await refreshDashboard();
         await openDetail(created.id);
       } catch (err) {
@@ -914,13 +937,11 @@
     cityCache = {};
     global.NogaNogas.release();
     bindForm();
-    closeForm();
     renderFilters();
     await loadAndRender();
   }
 
   async function openCreate() {
-    await show();
     await openForm();
   }
 
