@@ -9,6 +9,8 @@ USERS_DELETE = "users:delete"
 # Своё отображаемое имя. Есть у всех, кроме ноги: ей имя ставит тот, кто её завёл.
 PROFILE_RENAME = "profile:rename"
 DASHBOARD_GLOBAL = "dashboard:global"
+# Раздел «Статистика» в профиле: только owner и правая рука.
+STATS_READ = "stats:read"
 OPERATIONS_ALL = "operations:all"
 OPERATIONS_OWN = "operations:own"
 OPERATIONS_CONFIRM = "operations:confirm"
@@ -41,6 +43,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             USERS_DELETE,
             PROFILE_RENAME,
             DASHBOARD_GLOBAL,
+            STATS_READ,
             OPERATIONS_ALL,
             OPERATIONS_OWN,
             OPERATIONS_CONFIRM,
@@ -69,6 +72,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             USERS_READ,
             PROFILE_RENAME,
             DASHBOARD_GLOBAL,
+            STATS_READ,
             OPERATIONS_ALL,
             OPERATIONS_OWN,
             OPERATIONS_CONFIRM,

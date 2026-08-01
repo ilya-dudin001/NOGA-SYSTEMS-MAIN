@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import require_permission
-from app.auth.permissions import OPERATIONS_ALL, OPERATIONS_OWN, has_permission
+from app.auth.permissions import OPERATIONS_ALL, OPERATIONS_OWN, STATS_READ, has_permission
 from app.db import get_session
 from app.db.models import (
     City,
@@ -29,6 +29,7 @@ from app.schemas import (
     TrubkaRecalculationIn,
     TrubkaUpdateIn,
     TrubkaUsdtIn,
+    TrubkiPageOut,
 )
 from app.services import trubki as trubki_service
 from app.services.audit import write_audit
@@ -93,18 +94,49 @@ async def audit_and_event(
     )
 
 
-@router.get("", response_model=list[TrubkaOut])
+@router.get("", response_model=None)
 async def list_trubki(
     session: Annotated[AsyncSession, Depends(get_session)],
     actor: Annotated[User, Depends(require_permission(OPERATIONS_OWN))],
     status_filter: Annotated[Optional[TrubkaStatus], Query(alias="status")] = None,
     city_id: Optional[int] = Query(default=None),
+    # По умолчанию прячем трубки с отправленным отчётом (они остаются в БД).
+    include_reported: bool = Query(default=False),
     limit: Optional[int] = Query(default=None, ge=1, le=200),
-) -> list[TrubkaOut]:
+    offset: int = Query(default=0, ge=0),
+    # true → { items, total, limit, offset } для пагинации в статистике.
+    with_total: bool = Query(default=False),
+) -> list[TrubkaOut] | TrubkiPageOut:
+    # Полный архив (включая отправленные отчёты) — только раздел статистики.
+    if include_reported and not has_permission(actor.role, STATS_READ):
+        raise api_error(
+            status.HTTP_403_FORBIDDEN,
+            "FORBIDDEN",
+            "Нет доступа к архиву трубок",
+        )
     items = await trubki_service.load_all(
-        session, status=status_filter, city_id=city_id, limit=limit
+        session,
+        status=status_filter,
+        city_id=city_id,
+        include_reported=include_reported,
+        limit=limit,
+        offset=offset,
     )
-    return [trubki_service.to_out(item, can_manage=can_manage(actor)) for item in items]
+    mapped = [trubki_service.to_out(item, can_manage=can_manage(actor)) for item in items]
+    if not with_total:
+        return mapped
+    total = await trubki_service.count_all(
+        session,
+        status=status_filter,
+        city_id=city_id,
+        include_reported=include_reported,
+    )
+    return TrubkiPageOut(
+        items=mapped,
+        total=total,
+        limit=limit or len(mapped),
+        offset=offset,
+    )
 
 
 @router.get("/{trubka_id}", response_model=TrubkaOut)

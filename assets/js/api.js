@@ -428,15 +428,21 @@
       var query = options && options.detachCities ? "?detach_cities=true" : "";
       return request("/api/razgruzy/" + id + query, { method: "DELETE" });
     },
-    /** params: { status, city_id, limit } — всё необязательно. */
+    /** params: { status, city_id, limit, offset, include_reported, with_total } */
     listTrubki: function (params) {
       var query = [];
       Object.keys(params || {}).forEach(function (key) {
         var value = params[key];
         if (value === null || value === undefined || value === "") return;
+        if (value === false) return;
         query.push(encodeURIComponent(key) + "=" + encodeURIComponent(value));
       });
       return request("/api/trubki" + (query.length ? "?" + query.join("&") : ""));
+    },
+    /** Полный архив с total — для статистики. */
+    listTrubkiPage: function (params) {
+      var options = Object.assign({ include_reported: true, with_total: true }, params || {});
+      return this.listTrubki(options);
     },
     getTrubka: function (id) {
       return request("/api/trubki/" + id);

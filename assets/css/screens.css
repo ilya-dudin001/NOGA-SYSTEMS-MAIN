@@ -983,6 +983,75 @@
   color:var(--text-dim);
 }
 
+.stats-trubki-preview{
+  display:flex;
+  flex-direction:column;
+  gap:var(--em-space-3, 12px);
+}
+
+.stats-trubki-more{
+  margin-top:var(--em-space-2, 8px);
+}
+
+/* Строка архива: номер / статус / город·сумма / кнопка деталей */
+.stats-trubka-row{
+  grid-template-columns:1fr auto;
+  align-items:center;
+  cursor:default;
+}
+.stats-trubka-row:hover{
+  transform:none;
+  box-shadow:none;
+}
+.stats-trubka-row .em-oprow__meta{
+  grid-column:1;
+}
+.stats-trubka-row__open{
+  grid-column:2;
+  grid-row:1 / span 2;
+  align-self:center;
+  justify-self:end;
+}
+
+.stats-pager{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-bottom:18px;
+  padding:14px 16px;
+  border:1px solid var(--hairline);
+  border-radius:var(--radius-lg);
+  background:var(--surface, rgba(255,255,255,.03));
+}
+.stats-pager__size{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.stats-pager__size-label{
+  font-size:var(--fs-meta);
+  color:var(--text-dim);
+}
+.stats-pager__select{
+  width:auto;
+  min-width:88px;
+  min-height:44px;
+  padding:0 12px;
+}
+.stats-pager__meta{
+  margin:0;
+  font-size:var(--fs-hint);
+  color:var(--text-dim);
+}
+.stats-pager__nav{
+  display:flex;
+  gap:10px;
+}
+.stats-pager__nav .em-btn{
+  flex:1;
+}
+
 /* ============================================================
    Детали трубки
    ============================================================ */

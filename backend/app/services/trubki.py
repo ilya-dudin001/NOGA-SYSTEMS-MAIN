@@ -54,23 +54,63 @@ async def load(session: AsyncSession, trubka_id: int) -> Optional[Trubka]:
     return result.scalar_one_or_none()
 
 
+def _list_filters(
+    query,
+    *,
+    status: Optional[TrubkaStatus] = None,
+    city_id: Optional[int] = None,
+    include_reported: bool = False,
+):
+    """Общие WHERE для списка и счётчика. Без include_reported — только активные."""
+    if status is not None:
+        query = query.where(Trubka.status == status)
+    if city_id is not None:
+        query = query.where(Trubka.city_id == city_id)
+    if not include_reported:
+        query = query.where(Trubka.report_sent_at.is_(None))
+    return query
+
+
 async def load_all(
     session: AsyncSession,
     *,
     status: Optional[TrubkaStatus] = None,
     city_id: Optional[int] = None,
+    include_reported: bool = False,
     limit: Optional[int] = None,
+    offset: int = 0,
 ) -> Sequence[Trubka]:
     query = select(Trubka).options(*LOAD_OPTIONS)
-    if status is not None:
-        query = query.where(Trubka.status == status)
-    if city_id is not None:
-        query = query.where(Trubka.city_id == city_id)
+    query = _list_filters(
+        query,
+        status=status,
+        city_id=city_id,
+        include_reported=include_reported,
+    )
     query = query.order_by(Trubka.created_at.desc(), Trubka.id.desc())
+    if offset:
+        query = query.offset(offset)
     if limit:
         query = query.limit(limit)
     result = await session.execute(query)
     return result.scalars().all()
+
+
+async def count_all(
+    session: AsyncSession,
+    *,
+    status: Optional[TrubkaStatus] = None,
+    city_id: Optional[int] = None,
+    include_reported: bool = False,
+) -> int:
+    query = select(func.count()).select_from(Trubka)
+    query = _list_filters(
+        query,
+        status=status,
+        city_id=city_id,
+        include_reported=include_reported,
+    )
+    return await session.scalar(query) or 0
 
 
 async def count_for(
@@ -92,8 +132,11 @@ async def count_for(
 
 
 async def summary(session: AsyncSession) -> TrubkiSummaryOut:
+    """Счётчики активных трубок (отчёт ещё не отправлен) — для дашборда."""
     result = await session.execute(
-        select(Trubka.status, func.count()).group_by(Trubka.status)
+        select(Trubka.status, func.count())
+        .where(Trubka.report_sent_at.is_(None))
+        .group_by(Trubka.status)
     )
     counts = {status: count for status, count in result.all()}
     return TrubkiSummaryOut(

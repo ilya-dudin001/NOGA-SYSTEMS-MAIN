@@ -424,6 +424,33 @@
       <div id="statsBody"></div>
     </div>
 
+    <!-- ===== STATS TRUBKI ARCHIVE ===== -->
+    <div class="view" id="viewStatsTrubki" hidden>
+      <div class="users-toolbar">
+        <button class="btn-icon btn-back" id="statsTrubkiBack" type="button" title="Назад в статистику" aria-label="Назад в статистику">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5"/>
+            <path d="m11 6-6 6 6 6"/>
+          </svg>
+        </button>
+        <h2 class="users-toolbar__title">Все трубки</h2>
+      </div>
+
+      <div class="stats-pager" id="statsTrubkiPager">
+        <label class="stats-pager__size">
+          <span class="stats-pager__size-label">На странице</span>
+          <select class="em-input stats-pager__select" id="statsTrubkiPageSize" aria-label="Количество на странице"></select>
+        </label>
+        <p class="stats-pager__meta" id="statsTrubkiMeta"></p>
+        <div class="stats-pager__nav">
+          <button class="em-btn em-btn--ghost em-btn--sm" id="statsTrubkiPrev" type="button" disabled>Назад</button>
+          <button class="em-btn em-btn--ghost em-btn--sm" id="statsTrubkiNext" type="button" disabled>Вперёд</button>
+        </div>
+      </div>
+
+      <div id="statsTrubkiList"></div>
+    </div>
+
     <!-- ===== CHAT ROOMS ===== -->
     <div class="view" id="viewChatRooms" hidden>
       <div class="em-header" id="chatRoomsHeader">

@@ -271,14 +271,16 @@
       });
     }
 
-    items.push({
-      icon: "stats",
-      label: "Статистика",
-      view: "viewStats",
-      open: function () {
-        global.NogaStats.show();
-      },
-    });
+    if (can("stats:read")) {
+      items.push({
+        icon: "stats",
+        label: "Статистика",
+        view: "viewStats",
+        open: function () {
+          global.NogaStats.show();
+        },
+      });
+    }
 
     return items;
   }

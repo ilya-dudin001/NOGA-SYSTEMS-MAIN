@@ -11,6 +11,7 @@
     "viewTrubka",
     "viewProfile",
     "viewStats",
+    "viewStatsTrubki",
     "viewChatRooms",
     "viewChatRoom",
   ];

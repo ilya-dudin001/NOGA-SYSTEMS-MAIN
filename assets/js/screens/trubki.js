@@ -9,6 +9,7 @@
   var statusFilter = "";
   var detailId = null;
   var detailData = null;
+  var detailBack = null;
   var wizardStep = 1;
   var objectUrls = [];
   var recalculationDraft = "";
@@ -409,7 +410,14 @@
           }
           await global.NogaApi.sendTrubkaReport(trubka.id);
           usdtDraft = "";
+          await refreshDashboard();
+          try {
+            await loadAndRender();
+          } catch (err) {
+            /* список обновится при следующем заходе */
+          }
           await reloadDetail();
+          global.NogaTelegram.notify("Отчёт отправлен — трубка убрана из списка");
         } catch (err) {
           action.classList.remove("is-loading");
           global.NogaTelegram.notify(err.message || "Не удалось отправить отчёт");
@@ -642,10 +650,11 @@
     renderDetail(detailData);
   }
 
-  async function openDetail(id) {
+  async function openDetail(id, options) {
     bindDetail();
     detailId = id;
     detailData = null;
+    detailBack = (options && options.back) || null;
     recalculationDraft = "";
     usdtDraft = "";
     global.NogaViews.show("viewTrubka");
@@ -660,16 +669,29 @@
     }
   }
 
+  function leaveDetail() {
+    detailId = null;
+    detailData = null;
+    releaseBlobs();
+    var back = detailBack;
+    detailBack = null;
+    if (back === "stats" && global.NogaStats) {
+      global.NogaStats.show();
+      return;
+    }
+    if (back === "statsTrubki" && global.NogaStats) {
+      global.NogaStats.showAllTrubki();
+      return;
+    }
+    show();
+  }
+
   function bindDetail() {
     if (detailBound) return;
     detailBound = true;
     var back = document.getElementById("trubkaBack");
     if (back) {
-      back.addEventListener("click", function () {
-        detailId = null;
-        releaseBlobs();
-        show();
-      });
+      back.addEventListener("click", leaveDetail);
     }
   }
 

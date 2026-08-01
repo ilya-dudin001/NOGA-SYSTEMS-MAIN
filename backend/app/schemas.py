@@ -319,6 +319,15 @@ class TrubkiSummaryOut(BaseModel):
     razgruzhaetsya: int = 0
 
 
+class TrubkiPageOut(BaseModel):
+    """Список трубок с total — для пагинации в статистике."""
+
+    items: list[TrubkaOut] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 0
+    offset: int = 0
+
+
 class CitiesSummaryOut(BaseModel):
     total: int = 0
     working: int = 0

@@ -237,18 +237,49 @@ def main() -> None:
             assert actions[-1] == "report_sent", actions
             print("USDT, receipt, report and history ok")
 
+            # После отчёта трубка уходит из операционного списка, но остаётся в БД.
+            response = client.get("/api/trubki", headers=admin)
+            assert response.status_code == 200, response.text
+            assert response.json() == [], response.json()
+            response = client.get(f"/api/trubki/{trubka_id}", headers=admin)
+            assert response.status_code == 200, response.text
+            assert response.json()["id"] == trubka_id
+
+            response = client.get(
+                "/api/trubki?include_reported=true&with_total=true&limit=10&offset=0",
+                headers=owner,
+            )
+            assert response.status_code == 200, response.text
+            page = response.json()
+            assert page["total"] == 1, page
+            assert len(page["items"]) == 1
+            assert page["items"][0]["id"] == trubka_id
+
+            response = client.get(
+                "/api/trubki?include_reported=true",
+                headers=admin,
+            )
+            assert response.status_code == 403, response.text
+            print("report hides from ops list, archive stays for stats ok")
+
             response = client.get("/api/dashboard/summary", headers=owner)
             assert response.status_code == 200, response.text
             summary = response.json()["trubki"]
             assert summary == {
-                "total": 1,
+                "total": 0,
                 "zacep": 0,
                 "zabrali": 0,
-                "vyplacheno": 1,
+                "vyplacheno": 0,
                 "srez": 0,
                 "razgruzhaetsya": 0,
             }, summary
             print("new dashboard summary ok")
+
+            response = client.get("/api/me", headers=owner)
+            assert "stats:read" in response.json()["permissions"]
+            response = client.get("/api/me", headers=admin)
+            assert "stats:read" not in response.json()["permissions"]
+            print("stats:read only for owner/right_hand ok")
 
             response = client.delete(f"/api/trubki/{trubka_id}", headers=admin)
             assert response.status_code == 204, response.text
