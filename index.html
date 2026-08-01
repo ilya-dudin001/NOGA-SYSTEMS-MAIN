@@ -426,7 +426,7 @@
 
     <!-- ===== CHAT ROOMS ===== -->
     <div class="view" id="viewChatRooms" hidden>
-      <div class="em-header">
+      <div class="em-header" id="chatRoomsHeader">
         <button class="em-header__back" id="chatRoomsBack" type="button">
           <span data-em-icon="chevron-left"></span><span>Назад</span>
         </button>
@@ -437,7 +437,7 @@
           </button>
         </div>
       </div>
-      <section class="em-stack em-chat-shell" aria-labelledby="chatRoomsHeading">
+      <section class="em-stack em-chat-shell" id="chatRoomsBody" aria-labelledby="chatRoomsHeading">
         <h2 class="em-t-caps em-section__caps" id="chatRoomsHeading">Комнаты</h2>
         <div class="em-stack em-stack--tight" id="chatRoomsLoading" aria-busy="true">
           <div class="em-card"><div class="em-skeleton em-skeleton--title"></div><div class="em-skeleton em-skeleton--row"></div></div>
@@ -446,6 +446,17 @@
         <div class="em-oplist" id="chatRoomsList"></div>
         <div class="em-card" id="chatRoomsEmpty" hidden>
           <div class="em-empty">Комнат пока нет</div>
+        </div>
+      </section>
+      <section class="em-stack em-chat-shell" id="chatPeersPanel" hidden aria-labelledby="chatPeersHeading">
+        <h2 class="em-t-caps em-section__caps" id="chatPeersHeading">Новый чат</h2>
+        <div class="em-stack em-stack--tight" id="chatPeersLoading" hidden aria-busy="true">
+          <div class="em-card"><div class="em-skeleton em-skeleton--row"></div></div>
+          <div class="em-card"><div class="em-skeleton em-skeleton--row"></div></div>
+        </div>
+        <div class="em-oplist" id="chatPeersList"></div>
+        <div class="em-card" id="chatPeersEmpty" hidden>
+          <div class="em-empty">Нет доступных собеседников</div>
         </div>
       </section>
     </div>
@@ -460,18 +471,54 @@
         <div class="em-header__actions"></div>
       </div>
       <section class="em-chat-room" aria-labelledby="chatRoomTitle">
-        <div class="em-stack em-stack--tight" id="chatMessagesLoading" aria-busy="true" hidden>
-          <div class="em-card"><div class="em-skeleton em-skeleton--text"></div><div class="em-skeleton em-skeleton--row"></div></div>
-        </div>
-        <div class="em-chat-room__feed" id="chatMessages" aria-live="polite"></div>
-        <div class="em-card em-chat-room__empty" id="chatMessagesEmpty">
-          <div class="em-empty">Сообщений пока нет</div>
-        </div>
-        <div class="em-card em-card--flat em-chat-room__composer" aria-label="Отправка сообщений появится на следующем этапе">
-          <div class="em-control is-disabled">
-            <input class="em-input" type="text" placeholder="Сообщение" disabled>
-            <span class="em-control__suffix" data-em-icon="send"></span>
+        <div class="em-chat-room__thread" id="chatThread">
+          <button class="em-btn em-btn--ghost em-btn--sm em-chat-room__older" id="chatLoadOlder" type="button" hidden>Раньше</button>
+          <div class="em-stack em-stack--tight" id="chatMessagesLoading" aria-busy="true" hidden>
+            <div class="em-card"><div class="em-skeleton em-skeleton--text"></div><div class="em-skeleton em-skeleton--row"></div></div>
+            <div class="em-card"><div class="em-skeleton em-skeleton--text"></div><div class="em-skeleton em-skeleton--row"></div></div>
           </div>
+          <div class="em-chat-room__feed" id="chatMessages" aria-live="polite"></div>
+          <div class="em-card em-chat-room__empty" id="chatMessagesEmpty" hidden>
+            <div class="em-empty">Сообщений пока нет</div>
+          </div>
+        </div>
+        <button class="em-btn em-btn--ghost em-btn--sm em-chat-room__jump" id="chatJumpNew" type="button" hidden>Новые сообщения</button>
+        <div class="em-card em-card--flat em-chat-room__composer" id="chatComposer">
+          <div class="em-alert em-chat-reply" id="chatReplyBar" hidden>
+            <span data-em-icon="chat"></span>
+            <div class="em-chat-reply__body">
+              <div class="em-chat-reply__author em-ellipsis" id="chatReplyAuthor"></div>
+              <div class="em-chat-reply__preview em-ellipsis" id="chatReplyPreview"></div>
+            </div>
+            <button class="em-btn-icon em-btn-icon--muted" id="chatReplyClear" type="button" aria-label="Отменить ответ">
+              <span data-em-icon="close"></span>
+            </button>
+          </div>
+          <div class="em-chat-chips" id="chatMentionChips" hidden></div>
+          <div class="em-chat-files" id="chatFileList" hidden></div>
+          <div class="em-progress em-chat-progress" id="chatUploadProgress" hidden>
+            <div class="em-progress__bar" id="chatUploadBar"></div>
+          </div>
+          <div class="em-chat-compose-row">
+            <button class="em-btn-icon em-btn-icon--muted" id="chatAttachBtn" type="button" aria-label="Прикрепить файл">
+              <span data-em-icon="upload"></span>
+            </button>
+            <input id="chatFileInput" type="file" multiple hidden>
+            <div class="em-control em-chat-compose-field">
+              <textarea class="em-input" id="chatInput" rows="1" placeholder="Сообщение" aria-label="Текст сообщения"></textarea>
+            </div>
+            <button class="em-btn-icon em-btn-icon--muted" id="chatMentionBtn" type="button" aria-label="Упомянуть" hidden>
+              <span data-em-icon="person"></span>
+            </button>
+            <button class="em-btn-icon" id="chatSendBtn" type="button" aria-label="Отправить">
+              <span data-em-icon="send"></span>
+            </button>
+          </div>
+          <div class="em-card em-chat-mention-picker" id="chatMentionPicker" hidden>
+            <div class="em-t-caps em-section__caps">Упомянуть</div>
+            <div class="em-oplist" id="chatMentionList"></div>
+          </div>
+          <p class="em-t-caption em-chat-composer-hint" id="chatComposerHint" hidden>Нет права писать в чат</p>
         </div>
       </section>
     </div>

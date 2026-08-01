@@ -61,6 +61,45 @@
     global.alert(message);
   }
 
+  function getChatDeepLink() {
+    var params = new URLSearchParams(global.location.search);
+    var roomId = params.get("chat_room");
+    var messageId = params.get("chat_message");
+
+    var wa = getWebApp();
+    if ((!roomId || !messageId) && wa && wa.initDataUnsafe) {
+      var unsafe = wa.initDataUnsafe;
+      if (unsafe.start_param) {
+        /* startapp может прийти как chat_room_12_45 — не используем; params приоритетнее */
+      }
+    }
+    if (!roomId && params.get("tgWebAppStartParam")) {
+      /* deep link в основном через query webapp_url */
+    }
+
+    roomId = roomId ? Number(roomId) : null;
+    messageId = messageId ? Number(messageId) : null;
+    if (!roomId || isNaN(roomId)) return null;
+    return {
+      roomId: roomId,
+      messageId: messageId && !isNaN(messageId) ? messageId : null,
+    };
+  }
+
+  function clearChatDeepLink() {
+    try {
+      var url = new URL(global.location.href);
+      if (!url.searchParams.has("chat_room") && !url.searchParams.has("chat_message")) {
+        return;
+      }
+      url.searchParams.delete("chat_room");
+      url.searchParams.delete("chat_message");
+      global.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   global.NogaTelegram = {
     init: initTelegram,
     getInitData: getInitData,
@@ -68,5 +107,7 @@
     getWebApp: getWebApp,
     confirmAction: confirmAction,
     notify: notify,
+    getChatDeepLink: getChatDeepLink,
+    clearChatDeepLink: clearChatDeepLink,
   };
 })(window);
