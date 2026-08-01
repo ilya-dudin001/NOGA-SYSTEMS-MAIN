@@ -30,6 +30,11 @@ h1, h2, h3, h4, p, figure { margin: 0; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 img, svg, video { display: block; max-width: 100%; }
 
+/* [hidden] в UA-стилях слабее авторского display:flex/grid
+   (например .em-stack). Без !important атрибут hidden
+   визуально не работает — skeleton чата «залипал» после загрузки. */
+[hidden] { display: none !important; }
+
 button, input, select, textarea {
   font: inherit;
   color: inherit;
