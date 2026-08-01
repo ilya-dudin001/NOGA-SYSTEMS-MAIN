@@ -402,10 +402,17 @@
       return request("/api/cities" + (scope ? "?scope=" + scope : ""));
     },
     /** Подсказки названия города и валюта страны (опечатки → Photon). */
-    suggestCities: function (query, limit) {
+    suggestCities: function (query, limit, lang) {
       var q = encodeURIComponent(query || "");
       var lim = limit ? "&limit=" + Number(limit) : "";
-      return request("/api/cities/suggest?q=" + q + lim);
+      var locale =
+        lang ||
+        (global.NogaTelegram && global.NogaTelegram.getUiLang
+          ? global.NogaTelegram.getUiLang()
+          : "ru");
+      return request(
+        "/api/cities/suggest?q=" + q + lim + "&lang=" + encodeURIComponent(locale)
+      );
     },
     getCity: function (id) {
       return request("/api/cities/" + id);

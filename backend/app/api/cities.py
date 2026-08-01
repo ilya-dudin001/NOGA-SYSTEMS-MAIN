@@ -226,9 +226,10 @@ async def suggest_cities(
     _: Annotated[User, Depends(require_permission(CITIES_MANAGE))],
     q: str = Query(..., min_length=2, max_length=120),
     limit: int = Query(default=3, ge=1, le=5),
+    lang: str = Query(default="ru", max_length=16),
 ) -> list[CitySuggestOut]:
-    """Подсказки названий (Photon/Nominatim) и валюта страны для формы города."""
-    rows = await geocode_service.suggest(q, limit=limit)
+    """Подсказки названий (Photon + перевод Nominatim) и валюта страны."""
+    rows = await geocode_service.suggest(q, limit=limit, lang=lang)
     return [CitySuggestOut.model_validate(row) for row in rows]
 
 

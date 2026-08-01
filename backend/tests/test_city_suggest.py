@@ -87,10 +87,16 @@ def main() -> None:
     # Живой Photon (опечатка Tashke → Ташкент/Toshkent)
     import asyncio
 
-    rows = asyncio.run(geocode_service.suggest("Tashke", limit=3))
-    assert rows, "photon should return something for Tashke"
+    rows = asyncio.run(geocode_service.suggest("Tashke", limit=3, lang="ru"))
+    assert rows, "photon+nominatim should return something for Tashke"
+    assert any("Ташкент" in (r.get("name") or "") for r in rows), rows
     assert any(r.get("currency") == "UZS" for r in rows), rows
-    print("live photon typo suggest ok:", [r["label"] for r in rows])
+    print("live ru suggest ok:", [r["label"] for r in rows])
+
+    rows_en = asyncio.run(geocode_service.suggest("Tashke", limit=3, lang="en"))
+    assert rows_en, "en suggest empty"
+    assert any("Tashkent" in (r.get("name") or "") for r in rows_en), rows_en
+    print("live en suggest ok:", [r["label"] for r in rows_en])
 
     print("OK")
 

@@ -100,11 +100,33 @@
     }
   }
 
+  function getUiLang() {
+    var wa = getWebApp();
+    var code = "";
+    try {
+      if (wa && wa.initDataUnsafe && wa.initDataUnsafe.user) {
+        code = wa.initDataUnsafe.user.language_code || "";
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    if (!code && global.navigator) {
+      code = global.navigator.language || global.navigator.userLanguage || "";
+    }
+    code = String(code || "").toLowerCase();
+    if (code.indexOf("ru") === 0) return "ru";
+    if (code.indexOf("en") === 0) return "en";
+    /* Документ по умолчанию русский (index.html lang=ru). */
+    var htmlLang = (global.document && global.document.documentElement.lang) || "ru";
+    return String(htmlLang).toLowerCase().indexOf("en") === 0 ? "en" : "ru";
+  }
+
   global.NogaTelegram = {
     init: initTelegram,
     getInitData: getInitData,
     isTelegramContext: isTelegramContext,
     getWebApp: getWebApp,
+    getUiLang: getUiLang,
     confirmAction: confirmAction,
     notify: notify,
     getChatDeepLink: getChatDeepLink,
