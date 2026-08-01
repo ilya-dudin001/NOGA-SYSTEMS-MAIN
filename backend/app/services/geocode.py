@@ -1,23 +1,45 @@
-"""Публичный геокодинг городов РФ: Nominatim (OSM), запасной — Photon."""
+"""Публичный геокодинг: Nominatim / Photon.
+
+lookup() — координаты для карты РФ.
+suggest() — автодополнение городов (с опечатками) и валюта страны.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.models import City
+from app.db.models import City, Currency
 
 logger = logging.getLogger("noga.geocode")
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 PHOTON_URL = "https://photon.komoot.io/api/"
 USER_AGENT = "NOGA-Systems/1.0 (EM Operations dashboard; geography widget)"
+
+# ISO 3166-1 alpha-2 → валюта из справочника системы.
+COUNTRY_CURRENCY: dict[str, Currency] = {
+    "RU": Currency.RUB,
+    "UZ": Currency.UZS,
+    "KG": Currency.KGS,
+    "KZ": Currency.KZT,
+    "AZ": Currency.AZN,
+    "BY": Currency.BYN,
+    "MD": Currency.MDL,
+    # Приднестровье в OSM иногда отдельным кодом.
+    "PMR": Currency.PRB,
+    "US": Currency.USD,
+}
+
+PLACE_VALUES = frozenset(
+    {"city", "town", "village", "municipality", "hamlet", "suburb", "neighbourhood"}
+)
 
 # Nominatim: не чаще 1 запроса в секунду.
 _last_nominatim_at = 0.0
@@ -43,6 +65,151 @@ async def ensure_schema(conn) -> None:  # noqa: ANN001
                 "NOT NULL DEFAULT 0"
             )
         )
+
+
+def currency_for_country(country_code: Optional[str]) -> Optional[Currency]:
+    if not country_code:
+        return None
+    return COUNTRY_CURRENCY.get(country_code.strip().upper())
+
+
+async def suggest(query: str, *, limit: int = 3) -> list[dict[str, Any]]:
+    """1–3 варианта города по строке (Photon терпим к опечаткам).
+
+    Каждый элемент: name, country, country_code, currency, label.
+    """
+    settings = get_settings()
+    if not settings.geocode_enabled:
+        return []
+    cleaned = " ".join(query.split())
+    if len(cleaned) < 2:
+        return []
+    limit = max(1, min(limit, 5))
+
+    rows = await _photon_suggest(cleaned, fetch=max(limit * 4, 8))
+    if not rows:
+        rows = await _nominatim_suggest(cleaned, fetch=max(limit * 3, 6))
+
+    # Сначала страны из нашего справочника валют (СНГ и т.п.).
+    rows.sort(
+        key=lambda row: (
+            0 if currency_for_country(row.get("country_code")) else 1,
+            (row.get("name") or "").casefold(),
+        )
+    )
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        name = row.get("name") or ""
+        code = (row.get("country_code") or "").upper()
+        key = f"{name.casefold()}|{code}"
+        if not name or key in seen:
+            continue
+        seen.add(key)
+        currency = currency_for_country(code)
+        country = row.get("country") or ""
+        label = name if not country else f"{name} · {country}"
+        out.append(
+            {
+                "name": name,
+                "country": country or None,
+                "country_code": code or None,
+                "currency": currency.value if currency else None,
+                "label": label,
+            }
+        )
+        if len(out) >= limit:
+            break
+    return out
+
+
+async def _photon_suggest(query: str, *, fetch: int) -> list[dict[str, Any]]:
+    params: list[tuple[str, str]] = [
+        ("q", query),
+        ("limit", str(fetch)),
+        ("lang", "default"),
+        ("osm_tag", "place:city"),
+        ("osm_tag", "place:town"),
+        ("osm_tag", "place:village"),
+    ]
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            res = await client.get(
+                PHOTON_URL, params=params, headers={"User-Agent": USER_AGENT}
+            )
+            if res.status_code != 200:
+                logger.warning("photon suggest status=%s q=%s", res.status_code, query)
+                return []
+            features = (res.json() or {}).get("features") or []
+    except Exception:
+        logger.exception("photon suggest failed q=%s", query)
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for feature in features:
+        props = feature.get("properties") or {}
+        osm_value = (props.get("osm_value") or props.get("type") or "").lower()
+        if osm_value and osm_value not in PLACE_VALUES and props.get("osm_key") != "place":
+            continue
+        name = props.get("name") or props.get("city") or props.get("town")
+        if not name:
+            continue
+        rows.append(
+            {
+                "name": str(name).strip(),
+                "country": (props.get("country") or "").strip() or None,
+                "country_code": (props.get("countrycode") or "").strip().upper() or None,
+            }
+        )
+    return rows
+
+
+async def _nominatim_suggest(query: str, *, fetch: int) -> list[dict[str, Any]]:
+    await _throttle_nominatim()
+    params = {
+        "q": query,
+        "format": "json",
+        "addressdetails": "1",
+        "limit": str(fetch),
+        "accept-language": "ru",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            res = await client.get(
+                NOMINATIM_URL, params=params, headers={"User-Agent": USER_AGENT}
+            )
+            if res.status_code != 200:
+                return []
+            data = res.json() or []
+    except Exception:
+        logger.exception("nominatim suggest failed q=%s", query)
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for item in data:
+        kind = (item.get("type") or item.get("class") or "").lower()
+        if kind not in PLACE_VALUES and item.get("class") != "place":
+            continue
+        address = item.get("address") or {}
+        name = (
+            address.get("city")
+            or address.get("town")
+            or address.get("village")
+            or address.get("municipality")
+            or (item.get("name") or "").split(",")[0]
+        )
+        if not name:
+            continue
+        code = (address.get("country_code") or "").upper()
+        rows.append(
+            {
+                "name": str(name).strip(),
+                "country": (address.get("country") or "").strip() or None,
+                "country_code": code or None,
+            }
+        )
+    return rows
 
 
 async def _throttle_nominatim() -> None:
@@ -95,7 +262,6 @@ async def _nominatim(name: str) -> Optional[tuple[float, float]]:
         logger.exception("nominatim failed name=%s", name)
         return None
     if not rows:
-        # Иногда помогает явное «Россия».
         await _throttle_nominatim()
         try:
             async with httpx.AsyncClient(timeout=12.0) as client:
@@ -141,7 +307,6 @@ async def _photon(name: str) -> Optional[tuple[float, float]]:
     try:
         coords = features[0]["geometry"]["coordinates"]
         lon, lat = float(coords[0]), float(coords[1])
-        # Photon без country filter — отсекаем явный мусор вне РФ.
         if not (41.0 <= lat <= 82.0 and (19.0 <= lon <= 180.0 or -180.0 <= lon <= -169.0)):
             return None
         return lat, lon
@@ -173,9 +338,7 @@ def clear_coords(city: City) -> None:
     city.geocode_failed = False
 
 
-async def fill_missing(
-    session: AsyncSession, *, limit: int = 5
-) -> int:
+async def fill_missing(session: AsyncSession, *, limit: int = 5) -> int:
     """Догеокодировать до limit городов без координат. Возвращает число попыток."""
     settings = get_settings()
     if not settings.geocode_enabled:

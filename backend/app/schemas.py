@@ -338,6 +338,16 @@ class GeographyCityOut(BaseModel):
     lon: Optional[float] = None
 
 
+class CitySuggestOut(BaseModel):
+    """Подсказка названия города + валюта страны (для формы создания)."""
+
+    name: str
+    country: Optional[str] = None
+    country_code: Optional[str] = None
+    currency: Optional[Currency] = None
+    label: str
+
+
 class CitiesSummaryOut(BaseModel):
     total: int = 0
     working: int = 0

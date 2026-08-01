@@ -247,9 +247,11 @@
       </div>
 
       <form class="form-card" id="cityForm">
-        <div class="field">
+        <div class="field city-suggest">
           <label for="cityName">Название</label>
-          <input id="cityName" type="text" required placeholder="Тула">
+          <input id="cityName" type="text" required placeholder="Тула" autocomplete="off" autocapitalize="words">
+          <ul class="city-suggest__list" id="citySuggestList" hidden role="listbox" aria-label="Подсказки городов"></ul>
+          <p class="city-suggest__hint" id="citySuggestHint" hidden></p>
         </div>
         <div class="field">
           <label for="cityStatus">Статус</label>

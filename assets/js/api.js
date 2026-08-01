@@ -401,6 +401,12 @@
     listCities: function (scope) {
       return request("/api/cities" + (scope ? "?scope=" + scope : ""));
     },
+    /** Подсказки названия города и валюта страны (опечатки → Photon). */
+    suggestCities: function (query, limit) {
+      var q = encodeURIComponent(query || "");
+      var lim = limit ? "&limit=" + Number(limit) : "";
+      return request("/api/cities/suggest?q=" + q + lim);
+    },
     getCity: function (id) {
       return request("/api/cities/" + id);
     },

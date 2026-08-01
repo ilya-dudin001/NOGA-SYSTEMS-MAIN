@@ -9,6 +9,11 @@
   var formBound = false;
   // own — свой участок, working — общая витрина городов в работе.
   var mode = "own";
+  var suggestTimer = null;
+  var suggestSeq = 0;
+  var suggestItems = [];
+  var suggestActive = -1;
+  var currencyTouched = false;
 
   function canManage() {
     return global.NogaRoles.can("cities:manage");
@@ -535,6 +540,166 @@
     });
   }
 
+  function hideSuggest() {
+    var list = document.getElementById("citySuggestList");
+    if (list) {
+      list.hidden = true;
+      list.innerHTML = "";
+    }
+    suggestItems = [];
+    suggestActive = -1;
+  }
+
+  function setSuggestHint(text) {
+    var hint = document.getElementById("citySuggestHint");
+    if (!hint) return;
+    if (!text) {
+      hint.hidden = true;
+      hint.textContent = "";
+      return;
+    }
+    hint.hidden = false;
+    hint.textContent = text;
+  }
+
+  function applyCurrency(code, country) {
+    var select = document.getElementById("cityCurrency");
+    if (!select || !code) return;
+    var has = false;
+    Array.prototype.forEach.call(select.options, function (opt) {
+      if (opt.value === code) has = true;
+    });
+    if (!has) return;
+    select.value = code;
+    var info = global.NogaDict.currency(code);
+    var label = info ? info.label : code;
+    setSuggestHint(
+      country
+        ? "Валюта страны: " + label + " (" + country + ")"
+        : "Валюта страны: " + label
+    );
+  }
+
+  function pickSuggest(item) {
+    if (!item) return;
+    var input = document.getElementById("cityName");
+    if (input) input.value = item.name;
+    hideSuggest();
+    if (item.currency && (!currencyTouched || editingId === null)) {
+      currencyTouched = false;
+      applyCurrency(item.currency, item.country);
+    } else if (item.country) {
+      setSuggestHint(item.country);
+    }
+  }
+
+  function renderSuggest(items) {
+    var list = document.getElementById("citySuggestList");
+    if (!list) return;
+    suggestItems = items || [];
+    suggestActive = suggestItems.length ? 0 : -1;
+    list.innerHTML = "";
+    if (!suggestItems.length) {
+      list.hidden = true;
+      return;
+    }
+    suggestItems.forEach(function (item, index) {
+      var li = el("li", "city-suggest__item" + (index === 0 ? " is-active" : ""));
+      li.setAttribute("role", "option");
+      li.setAttribute("aria-selected", index === 0 ? "true" : "false");
+      li.textContent = item.label || item.name;
+      li.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+        pickSuggest(item);
+      });
+      list.appendChild(li);
+    });
+    list.hidden = false;
+  }
+
+  function highlightSuggest(index) {
+    var list = document.getElementById("citySuggestList");
+    if (!list || !suggestItems.length) return;
+    suggestActive = (index + suggestItems.length) % suggestItems.length;
+    var nodes = list.querySelectorAll(".city-suggest__item");
+    Array.prototype.forEach.call(nodes, function (node, i) {
+      var on = i === suggestActive;
+      node.classList.toggle("is-active", on);
+      node.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
+  async function runSuggest(query) {
+    var seq = ++suggestSeq;
+    var cleaned = (query || "").trim();
+    if (cleaned.length < 2) {
+      hideSuggest();
+      return;
+    }
+    try {
+      var rows = await global.NogaApi.suggestCities(cleaned, 3);
+      if (seq !== suggestSeq) return;
+      renderSuggest(rows || []);
+      /* При создании сразу подставляем валюту по лучшему совпадению. */
+      if (
+        editingId === null &&
+        !currencyTouched &&
+        rows &&
+        rows.length &&
+        rows[0].currency
+      ) {
+        applyCurrency(rows[0].currency, rows[0].country);
+      }
+    } catch (err) {
+      if (seq !== suggestSeq) return;
+      hideSuggest();
+    }
+  }
+
+  function scheduleSuggest() {
+    if (suggestTimer) clearTimeout(suggestTimer);
+    suggestTimer = setTimeout(function () {
+      var input = document.getElementById("cityName");
+      runSuggest(input ? input.value : "");
+    }, 320);
+  }
+
+  function bindSuggest() {
+    var input = document.getElementById("cityName");
+    var currency = document.getElementById("cityCurrency");
+    if (!input) return;
+
+    input.addEventListener("input", function () {
+      scheduleSuggest();
+    });
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "ArrowDown") {
+        if (!suggestItems.length) return;
+        event.preventDefault();
+        highlightSuggest(suggestActive + 1);
+      } else if (event.key === "ArrowUp") {
+        if (!suggestItems.length) return;
+        event.preventDefault();
+        highlightSuggest(suggestActive - 1);
+      } else if (event.key === "Enter" && suggestItems.length && suggestActive >= 0) {
+        event.preventDefault();
+        pickSuggest(suggestItems[suggestActive]);
+      } else if (event.key === "Escape") {
+        hideSuggest();
+      }
+    });
+    input.addEventListener("blur", function () {
+      setTimeout(hideSuggest, 150);
+    });
+
+    if (currency) {
+      currency.addEventListener("change", function () {
+        currencyTouched = true;
+        setSuggestHint("");
+      });
+    }
+  }
+
   async function loadRazgruzy() {
     if (!canSeeRazgruzy()) {
       razgruzy = [];
@@ -692,6 +857,9 @@
 
     editingId = city ? city.id : null;
     editingCity = city || null;
+    currencyTouched = Boolean(city && city.min_amount_currency);
+    hideSuggest();
+    setSuggestHint("");
     document.getElementById("cityFormTitle").textContent = city
       ? "Изменить город"
       : "Новый город";
@@ -719,6 +887,9 @@
   }
 
   function leaveForm() {
+    if (suggestTimer) clearTimeout(suggestTimer);
+    hideSuggest();
+    setSuggestHint("");
     editingId = null;
     editingCity = null;
     show({ mode: mode });
@@ -758,6 +929,8 @@
 
     var cancelBtn = document.getElementById("btnCancelCity");
     if (cancelBtn) cancelBtn.addEventListener("click", leaveForm);
+
+    bindSuggest();
 
     var form = document.getElementById("cityForm");
     if (!form) return;

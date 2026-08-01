@@ -19,7 +19,13 @@ from app.auth.permissions import (
 )
 from app.db import get_session
 from app.db.models import City, CityStatus, Noga, Razgruz, User
-from app.schemas import CityCreateIn, CityDetailOut, CityOut, CityUpdateIn
+from app.schemas import (
+    CityCreateIn,
+    CityDetailOut,
+    CityOut,
+    CitySuggestOut,
+    CityUpdateIn,
+)
 from app.services import cities as cities_service
 from app.services import geocode as geocode_service
 from app.services import nogas as nogas_service
@@ -213,6 +219,17 @@ async def list_cities(
         )
         for city in cities
     ]
+
+
+@router.get("/suggest", response_model=list[CitySuggestOut])
+async def suggest_cities(
+    _: Annotated[User, Depends(require_permission(CITIES_MANAGE))],
+    q: str = Query(..., min_length=2, max_length=120),
+    limit: int = Query(default=3, ge=1, le=5),
+) -> list[CitySuggestOut]:
+    """Подсказки названий (Photon/Nominatim) и валюта страны для формы города."""
+    rows = await geocode_service.suggest(q, limit=limit)
+    return [CitySuggestOut.model_validate(row) for row in rows]
 
 
 @router.get("/{city_id}", response_model=CityDetailOut)
