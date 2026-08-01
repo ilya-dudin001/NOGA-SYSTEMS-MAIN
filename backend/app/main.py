@@ -22,7 +22,9 @@ from app.config import get_settings
 from app.db import SessionLocal, engine
 from app.db import Base
 from app.db.bootstrap import bootstrap_chat_rooms, bootstrap_owners
+from app.services import chat as chat_service
 from app.services import nogas as nogas_service
+from app.services.chat_broker import ChatBroker, ChatRateLimiter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,8 +48,31 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await bootstrap_chat_rooms(session)
 
     app.state.settings = settings
+    app.state.chat_broker = ChatBroker(settings.chat_sse_queue_size)
+    app.state.chat_rate_limiter = ChatRateLimiter()
     bot = None
     poll_task: asyncio.Task | None = None
+    chat_cleanup_task: asyncio.Task | None = None
+
+    async def _chat_cleanup_worker() -> None:
+        while True:
+            try:
+                async with SessionLocal() as session:
+                    deleted = await chat_service.cleanup_expired_events(
+                        session, settings.chat_event_retention_days
+                    )
+                if deleted:
+                    logger.info("chat.events.cleanup deleted=%s", deleted)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("chat.events.cleanup failed")
+            await asyncio.sleep(60 * 60)
+
+    if settings.chat_enabled:
+        chat_cleanup_task = asyncio.create_task(
+            _chat_cleanup_worker(), name="chat-event-cleanup"
+        )
 
     if settings.bot_polling_enabled:
         bot = create_bot(settings)
@@ -71,12 +96,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
-        if poll_task is not None:
-            poll_task.cancel()
+        tasks = [task for task in (poll_task, chat_cleanup_task) if task is not None]
+        for task in tasks:
+            task.cancel()
+        for task in tasks:
             try:
-                await poll_task
+                await task
             except asyncio.CancelledError:
                 pass
+        await app.state.chat_broker.close()
         if bot is not None:
             await bot.session.close()
         await engine.dispose()

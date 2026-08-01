@@ -6,11 +6,11 @@ import logging
 import shutil
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-from sqlalchemy import Select, and_, func, inspect as sa_inspect, or_, select
+from sqlalchemy import Select, and_, delete, func, inspect as sa_inspect, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -51,6 +51,7 @@ DELETED_PREVIEW = "Сообщение удалено"
 CHUNK_BYTES = 1024 * 1024
 CHAT_STORAGE_PREFIX = "chat"
 CHAT_STAGING_PREFIX = "chat/_staging"
+SESSION_EVENT_IDS_KEY = "committed_chat_event_ids"
 
 # Подменяемые в тестах лимиты (не создавать 100 МБ fixture).
 _UPLOAD_MAX_TOTAL_BYTES_OVERRIDE: Optional[int] = None
@@ -514,7 +515,147 @@ async def append_event(
     )
     session.add(event)
     await session.flush()
+    session.info.setdefault(SESSION_EVENT_IDS_KEY, []).append(event.id)
     return event
+
+
+def consume_committed_event_ids(session: AsyncSession) -> list[int]:
+    """Забирает ids после успешного commit для публикации в in-memory broker."""
+    return list(session.info.pop(SESSION_EVENT_IDS_KEY, []))
+
+
+def discard_pending_event_ids(session: AsyncSession) -> None:
+    session.info.pop(SESSION_EVENT_IDS_KEY, None)
+
+
+async def load_stream_user(session: AsyncSession, user_id: int) -> Optional[User]:
+    user = await session.scalar(select(User).where(User.id == user_id))
+    if user is None or not is_chat_eligible(user):
+        return None
+    return user
+
+
+async def stream_access(
+    session: AsyncSession, user_id: int, room_id: Optional[int] = None
+) -> tuple[Optional[User], set[int]]:
+    user = await load_stream_user(session, user_id)
+    if user is None:
+        return None, set()
+    room_ids = set(await accessible_room_ids(session, user))
+    if room_id is not None and room_id not in room_ids:
+        raise ChatError("CHAT_ROOM_FORBIDDEN", "Нет доступа к этой комнате")
+    return user, ({room_id} if room_id is not None else room_ids)
+
+
+def _event_visibility(
+    user_id: int, room_ids: set[int]
+) -> Any:
+    return and_(
+        ChatEvent.room_id.in_(room_ids),
+        or_(
+            ChatEvent.target_user_id == user_id,
+            ChatEvent.target_user_id.is_(None),
+        ),
+    )
+
+
+async def stream_events_after(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    room_ids: set[int],
+    after_id: int,
+    limit: int = 500,
+) -> list[ChatEvent]:
+    if not room_ids:
+        return []
+    stmt = (
+        select(ChatEvent)
+        .where(
+            ChatEvent.id > after_id,
+            _event_visibility(user_id, room_ids),
+        )
+        .order_by(ChatEvent.id.asc())
+        .limit(limit)
+    )
+    return list((await session.execute(stmt)).scalars().all())
+
+
+async def latest_stream_event_id(
+    session: AsyncSession, *, user_id: int, room_ids: set[int]
+) -> int:
+    if not room_ids:
+        return 0
+    value = await session.scalar(
+        select(func.max(ChatEvent.id)).where(_event_visibility(user_id, room_ids))
+    )
+    return int(value or 0)
+
+
+async def stream_event_by_id(
+    session: AsyncSession,
+    *,
+    event_id: int,
+    user_id: int,
+    room_ids: set[int],
+) -> Optional[ChatEvent]:
+    if not room_ids:
+        return None
+    return await session.scalar(
+        select(ChatEvent).where(
+            ChatEvent.id == event_id,
+            _event_visibility(user_id, room_ids),
+        )
+    )
+
+
+async def event_bounds(session: AsyncSession) -> tuple[Optional[int], Optional[int]]:
+    row = (
+        await session.execute(
+            select(func.min(ChatEvent.id), func.max(ChatEvent.id))
+        )
+    ).one()
+    earliest, latest = row
+    return (
+        int(earliest) if earliest is not None else None,
+        int(latest) if latest is not None else None,
+    )
+
+
+def event_envelope(event: ChatEvent, actor: User) -> dict[str, Any]:
+    data = dict(event.payload or {})
+    if event.type == "message.created" and isinstance(data.get("message"), dict):
+        message = dict(data["message"])
+        author = dict(message.get("author") or {})
+        author_id = author.get("id")
+        author["is_current_user"] = author_id is not None and author_id == actor.id
+        message["author"] = author
+        message["can_delete"] = (
+            has_permission(actor.role, CHAT_DELETE_ANY)
+            or (
+                has_permission(actor.role, CHAT_DELETE_OWN)
+                and author_id is not None
+                and author_id == actor.id
+            )
+        )
+        data["message"] = message
+    created_at = event.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    return {
+        "event_id": event.id,
+        "type": event.type,
+        "room_id": event.room_id,
+        "data": data,
+        "created_at": created_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+
+
+async def cleanup_expired_events(session: AsyncSession, retention_days: int) -> int:
+    cutoff = _utc_now() - timedelta(days=retention_days)
+    result = await session.execute(delete(ChatEvent).where(ChatEvent.created_at < cutoff))
+    await session.commit()
+    return int(result.rowcount or 0)
 
 
 async def latest_event_id_for_user(session: AsyncSession, actor: User) -> Optional[int]:

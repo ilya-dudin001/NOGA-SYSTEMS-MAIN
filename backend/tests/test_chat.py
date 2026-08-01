@@ -25,6 +25,9 @@ os.environ["DEV_AUTH_ENABLED"] = "true"
 os.environ["DEV_AUTH_SECRET"] = "dev-only-secret"
 os.environ["OWNER_TELEGRAM_IDS"] = "111111111"
 os.environ["CHAT_ENABLED"] = "true"
+os.environ["CHAT_RATE_MESSAGES_PER_MINUTE"] = "1000"
+os.environ["CHAT_RATE_UPLOADS_PER_10_MINUTES"] = "100"
+os.environ["CHAT_RATE_DIRECTS_PER_MINUTE"] = "1000"
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
@@ -166,6 +169,7 @@ def main() -> None:
         for method, path, kwargs in (
             ("get", "/api/chat/rooms", {}),
             ("get", "/api/chat/peers", {}),
+            ("get", "/api/chat/stream", {}),
             ("post", "/api/chat/direct", {"json": {"peer_user_id": owner_me["id"]}}),
             ("get", "/api/chat/mentions", {}),
         ):

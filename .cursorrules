@@ -1,2 +1,7 @@
+---
+description: Cursor project rules.
+alwaysApply: true
+---
+
 When Cursor auto-generates a Git commit message for this repository, always write the commit message in Russian.
 Пиши сообщения коммитов на русском языке.

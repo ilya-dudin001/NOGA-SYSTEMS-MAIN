@@ -73,6 +73,12 @@ class Settings(BaseSettings):
     chat_rate_uploads_per_10_minutes: int = Field(
         default=5, ge=1, le=100, alias="CHAT_RATE_UPLOADS_PER_10_MINUTES"
     )
+    chat_rate_directs_per_minute: int = Field(
+        default=20, ge=1, le=1000, alias="CHAT_RATE_DIRECTS_PER_MINUTE"
+    )
+    chat_sse_max_streams_per_user: int = Field(
+        default=3, ge=1, le=20, alias="CHAT_SSE_MAX_STREAMS_PER_USER"
+    )
 
     @field_validator(
         "bot_polling_enabled",
