@@ -1108,12 +1108,22 @@
   grid-column: 1 / -1;
 }
 
+/* Комната: без таббара, композер на всю ширину у низа экрана */
+.screen.screen--chat-room {
+  padding-bottom: 0;
+}
+
 .em-chat-room {
   display: flex;
   flex-direction: column;
   gap: var(--em-space-2);
   min-height: calc(100dvh - var(--em-nav-h) - var(--em-space-9) - var(--em-space-8));
 }
+.screen--chat-room .em-chat-room {
+  min-height: calc(100dvh - var(--em-header-h) - var(--em-space-4));
+  gap: 0;
+}
+
 .em-chat-room__thread {
   position: relative;
   flex: 1 1 auto;
@@ -1127,6 +1137,11 @@
   padding-bottom: var(--em-space-2);
   -webkit-overflow-scrolling: touch;
 }
+.screen--chat-room .em-chat-room__thread {
+  max-height: calc(100dvh - var(--em-header-h) - 120px);
+  padding-bottom: var(--em-space-3);
+}
+
 .em-chat-room__feed {
   display: flex;
   flex-direction: column;
@@ -1148,12 +1163,25 @@
 
 .em-chat-room__composer {
   position: sticky;
-  bottom: calc(var(--em-nav-h) + var(--em-space-2));
-  margin-top: auto;
+  bottom: 0;
   z-index: var(--em-z-sheet);
   display: flex;
   flex-direction: column;
   gap: var(--em-space-2);
+  /* fluid: на всю ширину экрана, выходим из gutter .screen */
+  margin-left: calc(-1 * var(--gutter));
+  margin-right: calc(-1 * var(--gutter));
+  margin-top: auto;
+  width: auto;
+  max-width: none;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  padding: var(--em-space-3) var(--em-gutter);
+  padding-bottom: calc(var(--em-space-3) + env(safe-area-inset-bottom, 0px));
+  background: var(--em-surface);
+  box-shadow: var(--em-shadow-nav);
 }
 
 .em-chat-reply {
@@ -1220,12 +1248,19 @@
 .em-chat-compose-row {
   display: flex;
   align-items: flex-end;
-  gap: var(--em-space-2);
+  gap: var(--em-space-1);
+  width: 100%;
+}
+.em-chat-compose-row > .em-btn-icon {
+  flex: 0 0 auto;
 }
 .em-chat-compose-field {
   flex: 1 1 auto;
   min-width: 0;
   align-items: stretch;
+  /* поле съедает оставшуюся ширину; внутренний отступ компактнее */
+  padding-left: var(--em-space-3);
+  padding-right: var(--em-space-3);
 }
 .em-chat-compose-field .em-input {
   resize: none;
@@ -1234,6 +1269,11 @@
   padding-top: var(--em-space-3);
   padding-bottom: var(--em-space-3);
   line-height: var(--em-lh-normal);
+  width: 100%;
+}
+/* Иконки композера чуть плотнее DS-базы 1.6 */
+.em-chat-room__composer .em-btn-icon svg {
+  stroke-width: 2;
 }
 .em-chat-composer-hint {
   margin: 0;

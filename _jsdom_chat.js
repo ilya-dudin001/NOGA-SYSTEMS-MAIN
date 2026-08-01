@@ -366,6 +366,8 @@ const $ = (id) => window.document.getElementById(id);
   assert(calls.some((c) => c.url.includes("/api/chat/stream")), "глобальный SSE стартует при доступе");
   assert($("bellCount").textContent === "2", "unread badge числовой");
   assert($("viewChatRoom").hidden === false, "deep link открывает комнату");
+  assert($("tabbar").hidden === true, "в комнате таббар скрыт");
+  assert($("appMain").classList.contains("screen--chat-room"), "экран в режиме комнаты");
   assert($("chatMessages").textContent.includes("Проверьте"), "история комнаты загружена");
   assert($("chatMessages").textContent.includes("@Owner"), "mention в ленте через textContent");
   assert(!$("chatMessages").innerHTML.includes("<img"), "вложения не рендерятся inline");
@@ -373,6 +375,8 @@ const $ = (id) => window.document.getElementById(id);
   await window.NogaChat.show({ from: "home" });
   await wait(30);
   assert($("viewChatRooms").hidden === false, "открыт список комнат");
+  assert($("tabbar").hidden === false, "в списке комнат таббар виден");
+  assert(!$("appMain").classList.contains("screen--chat-room"), "класс комнаты снят");
   assert($("chatRoomsList").querySelectorAll("[data-room-id]").length >= 2, "системные и direct карточки");
 
   $("chatNewDirect").click();
@@ -392,6 +396,8 @@ const $ = (id) => window.document.getElementById(id);
   await window.NogaChat.openRoom(1);
   await wait(40);
   assert($("chatMessages").querySelectorAll("[data-message-id]").length >= 2, "лента сообщений");
+  assert($("tabbar").hidden === true, "повторный вход в комнату прячет таббар");
+  assert($("chatComposer").classList.contains("em-chat-room__composer"), "композер на месте");
 
   $("chatInput").value = "Ответ с файлом";
   const replyBtn = Array.prototype.find.call(
@@ -404,6 +410,11 @@ const $ = (id) => window.document.getElementById(id);
   $("chatMentionBtn").click();
   await wait(20);
   assert(!$("chatMentionPicker").hidden, "mention picker открыт");
+  $("chatThread").click();
+  assert($("chatMentionPicker").hidden === true, "клик по ленте закрывает mention picker");
+  $("chatMentionBtn").click();
+  await wait(20);
+  assert(!$("chatMentionPicker").hidden, "mention picker открыт снова");
   const mentionPeer = $("chatMentionList").querySelector("button");
   mentionPeer.click();
   assert($("chatMentionChips").textContent.includes("@"), "mention chip добавлен");

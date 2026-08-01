@@ -380,6 +380,21 @@
     if (older) older.hidden = true;
   }
 
+  /* В комнате таббар мешает композеру у низа экрана — прячем.
+     В списке комнат таббар остаётся. */
+  function setRoomChrome(inRoom) {
+    var tabbar = document.getElementById("tabbar");
+    var screen = document.getElementById("appMain");
+    if (tabbar) tabbar.hidden = Boolean(inRoom);
+    if (screen) {
+      if (inRoom) screen.classList.add("screen--chat-room");
+      else screen.classList.remove("screen--chat-room");
+    }
+    if (inRoom && global.NogaCreateMenu && typeof global.NogaCreateMenu.close === "function") {
+      global.NogaCreateMenu.close();
+    }
+  }
+
   function isRoomVisible() {
     var view = document.getElementById("viewChatRoom");
     return Boolean(view && !view.hidden && currentRoomId);
@@ -1152,6 +1167,7 @@
       var roomsView = document.getElementById("viewChatRooms");
       var roomView = document.getElementById("viewChatRoom");
       if ((roomsView && !roomsView.hidden) || (roomView && !roomView.hidden)) {
+        setRoomChrome(false);
         global.NogaViews.show("viewHome");
         global.NogaRoles.activateTab("home");
       }
@@ -1231,6 +1247,7 @@
     setComposerEnabled(canWrite());
     clearComposerState();
     bindRoomChrome();
+    setRoomChrome(true);
     global.NogaViews.show("viewChatRoom");
     ensureStream();
     await loadHistory({ aroundId: pendingMessageId });
@@ -1253,6 +1270,7 @@
     showPeers(false);
     bind();
     applyGate();
+    setRoomChrome(false);
     global.NogaViews.show("viewChatRooms");
     loadRooms();
   }
@@ -1340,6 +1358,7 @@
     stopStream();
     abortUpload();
     leaveRoomState();
+    setRoomChrome(false);
     releaseBlobs();
     currentRoomId = null;
     roomsCache = [];
