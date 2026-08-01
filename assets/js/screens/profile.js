@@ -26,6 +26,9 @@
     stats:
       '<path d="M3.5 20.5h17"/>' +
       '<path d="M6.5 17.5v-5"/><path d="M12 17.5v-10"/><path d="M17.5 17.5v-7"/>',
+    chat:
+      '<path d="M4 5.2h16v11.6H9l-5 3.6z"/>' +
+      '<path d="M8 9.2h8M8 12.8h5.4"/>',
     chevron: '<path d="m9 6 6 6-6 6"/>',
   };
 
@@ -195,6 +198,23 @@
    */
   function menuItems(user) {
     var items = [];
+
+    if (
+      user &&
+      user.features &&
+      user.features.chat &&
+      can("chat:read") &&
+      global.NogaChat
+    ) {
+      items.push({
+        icon: "chat",
+        label: "Чат",
+        view: "viewChatRooms",
+        open: function () {
+          global.NogaChat.show({ from: "profile" });
+        },
+      });
+    }
 
     if (can("users:manage")) {
       items.push({

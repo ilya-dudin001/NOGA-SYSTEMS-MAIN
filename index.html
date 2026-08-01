@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0B0B0B">
 <title>NOGA — Дашборд</title>
 <link rel="stylesheet" href="design-system/tokens.css">
+<link rel="stylesheet" href="design-system/base.css">
 <link rel="stylesheet" href="design-system/components.css">
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/app.css">
@@ -59,12 +60,9 @@
           <img class="logo" src="assets/img/logo.png" alt="NOGA Systems" width="42" height="42">
           <span class="topbar__role" id="greetingRole"></span>
         </div>
-        <button class="bell has-alert" id="bell" type="button" aria-label="Уведомления">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-          <span class="badge" aria-hidden="true"></span>
+        <button class="em-btn-icon em-bell topbar__chat" id="bell" type="button" aria-label="Чат" hidden>
+          <span data-em-icon="bell"></span>
+          <span class="em-bell__count em-num" id="bellCount" aria-hidden="true" hidden>0</span>
         </button>
       </header>
 
@@ -426,6 +424,58 @@
       <div id="statsBody"></div>
     </div>
 
+    <!-- ===== CHAT ROOMS ===== -->
+    <div class="view" id="viewChatRooms" hidden>
+      <div class="em-header">
+        <button class="em-header__back" id="chatRoomsBack" type="button">
+          <span data-em-icon="chevron-left"></span><span>Назад</span>
+        </button>
+        <div class="em-header__title">Чат</div>
+        <div class="em-header__actions">
+          <button class="em-btn-icon" id="chatNewDirect" type="button" aria-label="Новый чат" hidden>
+            <span data-em-icon="plus"></span>
+          </button>
+        </div>
+      </div>
+      <section class="em-stack em-chat-shell" aria-labelledby="chatRoomsHeading">
+        <h2 class="em-t-caps em-section__caps" id="chatRoomsHeading">Комнаты</h2>
+        <div class="em-stack em-stack--tight" id="chatRoomsLoading" aria-busy="true">
+          <div class="em-card"><div class="em-skeleton em-skeleton--title"></div><div class="em-skeleton em-skeleton--row"></div></div>
+          <div class="em-card"><div class="em-skeleton em-skeleton--title"></div><div class="em-skeleton em-skeleton--row"></div></div>
+        </div>
+        <div class="em-oplist" id="chatRoomsList"></div>
+        <div class="em-card" id="chatRoomsEmpty" hidden>
+          <div class="em-empty">Комнат пока нет</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== CHAT ROOM ===== -->
+    <div class="view" id="viewChatRoom" hidden>
+      <div class="em-header">
+        <button class="em-header__back" id="chatRoomBack" type="button">
+          <span data-em-icon="chevron-left"></span><span>Чаты</span>
+        </button>
+        <div class="em-header__title em-ellipsis" id="chatRoomTitle">Комната</div>
+        <div class="em-header__actions"></div>
+      </div>
+      <section class="em-chat-room" aria-labelledby="chatRoomTitle">
+        <div class="em-stack em-stack--tight" id="chatMessagesLoading" aria-busy="true" hidden>
+          <div class="em-card"><div class="em-skeleton em-skeleton--text"></div><div class="em-skeleton em-skeleton--row"></div></div>
+        </div>
+        <div class="em-chat-room__feed" id="chatMessages" aria-live="polite"></div>
+        <div class="em-card em-chat-room__empty" id="chatMessagesEmpty">
+          <div class="em-empty">Сообщений пока нет</div>
+        </div>
+        <div class="em-card em-card--flat em-chat-room__composer" aria-label="Отправка сообщений появится на следующем этапе">
+          <div class="em-control is-disabled">
+            <input class="em-input" type="text" placeholder="Сообщение" disabled>
+            <span class="em-control__suffix" data-em-icon="send"></span>
+          </div>
+        </div>
+      </section>
+    </div>
+
   </main>
 
   <nav class="tabbar" id="tabbar" aria-label="Основная навигация" hidden>
@@ -493,6 +543,7 @@
 <script src="assets/js/screens/razgruzy.js"></script>
 <script src="assets/js/screens/trubki.js"></script>
 <script src="assets/js/screens/stats.js"></script>
+<script src="assets/js/screens/chat.js"></script>
 <script src="assets/js/screens/profile.js"></script>
 <script src="assets/js/screens/create-menu.js"></script>
 <script src="assets/js/auth.js"></script>

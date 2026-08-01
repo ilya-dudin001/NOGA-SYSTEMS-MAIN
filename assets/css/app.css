@@ -150,6 +150,36 @@ body{
 }
 .bell.has-alert .badge{ opacity:1; transform:scale(1); }
 
+/* Колокольчик чата (design-system): позиция в topbar + числовой unread */
+.topbar__chat.em-bell{
+  position:absolute;
+  top:var(--em-space-2);
+  right:0;
+  z-index:1;
+}
+.em-bell__count{
+  position:absolute;
+  top:var(--em-space-1);
+  right:var(--em-space-1);
+  min-width:var(--em-space-5);
+  height:var(--em-space-5);
+  padding:0 var(--em-space-1);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:var(--em-radius-pill);
+  background:var(--em-work-dot);
+  color:var(--em-text-on-gold);
+  font-size:var(--em-fs-caption);
+  font-weight:var(--em-fw-semibold);
+  line-height:1;
+  box-shadow:0 0 0 2px var(--em-bg);
+  pointer-events:none;
+}
+.em-bell.has-alert .em-bell__count[hidden]{
+  display:none;
+}
+
 /* ============================================================
    ПЛИТКИ СТАТИСТИКИ — сетка 2 × N: в три колонки подписи не читались
    ============================================================ */

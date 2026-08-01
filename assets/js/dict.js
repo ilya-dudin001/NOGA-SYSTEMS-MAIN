@@ -151,6 +151,14 @@
     );
   }
 
+  /** 15:40 — для превью в списке чатов */
+  function formatTime(iso) {
+    if (!iso) return "—";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  }
+
   /** 3.5 → «3,5 %» */
   function formatPercent(value) {
     var n = Number(value) || 0;
@@ -187,6 +195,7 @@
     formatCompactAmount: formatCompactAmount,
     formatDate: formatDate,
     formatDateTime: formatDateTime,
+    formatTime: formatTime,
     formatPercent: formatPercent,
     formatSize: formatSize,
   };

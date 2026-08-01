@@ -36,6 +36,9 @@ backend/data/
 .DS_Store
 Thumbs.db
 
+# Frontend test deps (jsdom)
+node_modules/
+
 # Logs
 *.log
 backend/logs/

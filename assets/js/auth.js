@@ -47,6 +47,10 @@
     global.NogaRoles.applyTabbar();
     global.NogaViews.show("viewHome");
 
+    if (global.NogaChat && global.NogaChat.syncAccess) {
+      global.NogaChat.syncAccess();
+    }
+
     try {
       var summary = await global.NogaApi.dashboardSummary();
       global.NogaDashboard.applySummary(summary);
@@ -84,6 +88,7 @@
     global.NogaTelegram.init();
     global.NogaDashboard.bindChrome();
     global.NogaApi.setUnauthorizedHandler(function () {
+      if (global.NogaChat && global.NogaChat.release) global.NogaChat.release();
       global.NogaApi.setToken(null);
       global.NogaNoAccess.show("UNAUTHORIZED", "Сессия истекла. Откройте приложение снова.");
     });

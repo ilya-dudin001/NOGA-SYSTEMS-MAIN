@@ -100,6 +100,261 @@
     return await res.blob();
   }
 
+  function queryString(params) {
+    var query = [];
+    Object.keys(params || {}).forEach(function (key) {
+      var value = params[key];
+      if (value === null || value === undefined || value === "") return;
+      query.push(encodeURIComponent(key) + "=" + encodeURIComponent(value));
+    });
+    return query.length ? "?" + query.join("&") : "";
+  }
+
+  /** Multipart чата через XHR: Promise дополнен abort(). */
+  function sendChatMessage(roomId, content, replyToId, files, onProgress) {
+    var xhr = new XMLHttpRequest();
+    var form = new FormData();
+    form.append("content", JSON.stringify(content || []));
+    if (replyToId !== null && replyToId !== undefined) {
+      form.append("reply_to_id", String(replyToId));
+    }
+    Array.prototype.forEach.call(files || [], function (file) {
+      form.append("files", file, file.name);
+    });
+
+    var promise = new Promise(function (resolve, reject) {
+      xhr.open("POST", apiBase() + "/api/chat/rooms/" + roomId + "/messages");
+      xhr.setRequestHeader("Accept", "application/json");
+      if (token) xhr.setRequestHeader("Authorization", "Bearer " + token);
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = function (event) {
+          onProgress({
+            loaded: event.loaded || 0,
+            total: event.total || 0,
+            percent: event.lengthComputable && event.total
+              ? Math.round((event.loaded / event.total) * 100)
+              : null,
+          });
+        };
+      }
+      xhr.onload = function () {
+        var data = parseBody(xhr.responseText);
+        if (xhr.status === 401 && onUnauthorized) onUnauthorized();
+        if (xhr.status < 200 || xhr.status >= 300) {
+          reject(toApiError(xhr, data));
+          return;
+        }
+        resolve(data);
+      };
+      xhr.onerror = function () {
+        reject(new ApiError(0, "NETWORK_ERROR", "Не удалось отправить сообщение", null));
+      };
+      xhr.onabort = function () {
+        var error = new Error("Загрузка отменена");
+        error.name = "AbortError";
+        reject(error);
+      };
+      xhr.send(form);
+    });
+    promise.abort = function () {
+      xhr.abort();
+    };
+    return promise;
+  }
+
+  function createSseParser(onEvent) {
+    var buffer = "";
+    var frame = { id: null, event: "message", data: [] };
+
+    function dispatch() {
+      if (!frame.data.length) {
+        frame = { id: null, event: "message", data: [] };
+        return;
+      }
+      var raw = frame.data.join("\n");
+      var data;
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        data = raw;
+      }
+      onEvent({
+        id: frame.id,
+        event: frame.event || "message",
+        data: data,
+      });
+      frame = { id: null, event: "message", data: [] };
+    }
+
+    function line(value) {
+      if (value === "") {
+        dispatch();
+        return;
+      }
+      if (value.charAt(0) === ":") return;
+      var colon = value.indexOf(":");
+      var field = colon === -1 ? value : value.slice(0, colon);
+      var fieldValue = colon === -1 ? "" : value.slice(colon + 1);
+      if (fieldValue.charAt(0) === " ") fieldValue = fieldValue.slice(1);
+      if (field === "id") frame.id = fieldValue;
+      if (field === "event") frame.event = fieldValue;
+      if (field === "data") frame.data.push(fieldValue);
+    }
+
+    return {
+      push: function (chunk) {
+        buffer += String(chunk || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        var index;
+        while ((index = buffer.indexOf("\n")) !== -1) {
+          line(buffer.slice(0, index));
+          buffer = buffer.slice(index + 1);
+        }
+      },
+      finish: function () {
+        if (buffer) line(buffer);
+        buffer = "";
+        dispatch();
+      },
+    };
+  }
+
+  /**
+   * Durable SSE через fetch + ReadableStream.
+   * options: roomId, lastEventId, onEvent, onError, onState, reconnectDelays.
+   */
+  function openChatStream(options) {
+    options = options || {};
+    var aborted = false;
+    var controller = null;
+    var timer = null;
+    var cursor = options.lastEventId;
+    var attempt = 0;
+    var delays = options.reconnectDelays || [1000, 2000, 5000, 10000, 30000];
+
+    function state(value) {
+      if (options.onState) options.onState(value);
+    }
+
+    function delayForAttempt() {
+      var index = Math.min(attempt, delays.length - 1);
+      var delay = Number(delays[index] || 0);
+      if (attempt >= delays.length && delay > 0) {
+        delay = Math.round(delay * (0.8 + Math.random() * 0.4));
+      }
+      attempt += 1;
+      return delay;
+    }
+
+    function schedule() {
+      if (aborted || timer) return;
+      state("reconnecting");
+      timer = setTimeout(function () {
+        timer = null;
+        connect();
+      }, delayForAttempt());
+    }
+
+    async function connect() {
+      if (aborted) return;
+      controller = new AbortController();
+      var headers = { Accept: "text/event-stream" };
+      if (token) headers.Authorization = "Bearer " + token;
+      if (cursor !== null && cursor !== undefined && cursor !== "") {
+        headers["Last-Event-ID"] = String(cursor);
+      }
+      var path = "/api/chat/stream" + queryString({ room_id: options.roomId });
+      state("connecting");
+      try {
+        var response = await fetch(apiBase() + path, {
+          headers: headers,
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (response.status === 401) {
+          aborted = true;
+          if (onUnauthorized) onUnauthorized();
+          state("unauthorized");
+          return;
+        }
+        if (response.status === 403) {
+          aborted = true;
+          if (options.onError) {
+            options.onError(toApiError(response, parseBody(await response.text())));
+          }
+          state("forbidden");
+          return;
+        }
+        if (!response.ok) {
+          throw toApiError(response, parseBody(await response.text()));
+        }
+        if (!response.body || !response.body.getReader) {
+          throw new Error("ReadableStream недоступен");
+        }
+
+        state("open");
+        attempt = 0;
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder("utf-8");
+        var parser = createSseParser(function (frame) {
+          if (frame.id !== null && frame.id !== "") cursor = frame.id;
+          if (frame.data && frame.data.event_id !== null && frame.data.event_id !== undefined) {
+            cursor = frame.data.event_id;
+          }
+          if (options.onEvent) options.onEvent(frame.data, frame);
+        });
+        while (!aborted) {
+          var part = await reader.read();
+          if (part.done) break;
+          parser.push(decoder.decode(part.value, { stream: true }));
+        }
+        parser.push(decoder.decode());
+        parser.finish();
+        if (!aborted) schedule();
+      } catch (error) {
+        if (aborted || (error && error.name === "AbortError")) return;
+        if (options.onError) options.onError(error);
+        schedule();
+      }
+    }
+
+    function reconnectNow() {
+      if (aborted) return;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (controller) controller.abort();
+      connect();
+    }
+
+    function onOnline() {
+      reconnectNow();
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "visible") reconnectNow();
+    }
+
+    global.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisibility);
+    connect();
+
+    return {
+      abort: function () {
+        aborted = true;
+        if (timer) clearTimeout(timer);
+        timer = null;
+        if (controller) controller.abort();
+        global.removeEventListener("online", onOnline);
+        document.removeEventListener("visibilitychange", onVisibility);
+        state("closed");
+      },
+      getLastEventId: function () {
+        return cursor;
+      },
+    };
+  }
+
   global.NogaApi = {
     setToken: setToken,
     getToken: getToken,
@@ -246,5 +501,44 @@
     deleteNogaFile: function (nogaId, fileId) {
       return request("/api/nogas/" + nogaId + "/files/" + fileId, { method: "DELETE" });
     },
+    chatRooms: function () {
+      return request("/api/chat/rooms");
+    },
+    chatPeers: function () {
+      return request("/api/chat/peers");
+    },
+    createChatDirect: function (peerUserId) {
+      return request("/api/chat/direct", {
+        method: "POST",
+        body: { peer_user_id: Number(peerUserId) },
+      });
+    },
+    chatMessages: function (roomId, params) {
+      return request("/api/chat/rooms/" + roomId + "/messages" + queryString(params));
+    },
+    sendChatMessage: sendChatMessage,
+    deleteChatMessage: function (messageId) {
+      return request("/api/chat/messages/" + messageId, { method: "DELETE" });
+    },
+    updateChatRead: function (roomId, messageId) {
+      return request("/api/chat/rooms/" + roomId + "/read", {
+        method: "PATCH",
+        body: { last_read_message_id: Number(messageId) },
+      });
+    },
+    chatMentions: function (unreadOnly, limit) {
+      return request(
+        "/api/chat/mentions" +
+          queryString({ unread_only: unreadOnly ? "true" : "", limit: limit })
+      );
+    },
+    readChatMention: function (mentionId) {
+      return request("/api/chat/mentions/" + mentionId + "/read", { method: "PATCH" });
+    },
+    chatAttachmentBlob: function (attachmentId) {
+      return fetchBlob("/api/chat/attachments/" + attachmentId);
+    },
+    openChatStream: openChatStream,
+    createSseParser: createSseParser,
   };
 })(window);

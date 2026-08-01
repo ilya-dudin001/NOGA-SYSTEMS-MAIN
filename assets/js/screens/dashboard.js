@@ -59,12 +59,7 @@
       });
     });
 
-    var bell = document.getElementById("bell");
-    if (bell) {
-      bell.addEventListener("click", function () {
-        bell.classList.toggle("has-alert");
-      });
-    }
+    /* Колокольчик открывает чат — обработчик в NogaChat.bind(). */
   }
 
   global.NogaDashboard = {

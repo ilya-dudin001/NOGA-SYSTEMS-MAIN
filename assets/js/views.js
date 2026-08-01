@@ -11,6 +11,8 @@
     "viewTrubka",
     "viewProfile",
     "viewStats",
+    "viewChatRooms",
+    "viewChatRoom",
   ];
 
   function show(id) {

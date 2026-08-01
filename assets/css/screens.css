@@ -1024,3 +1024,48 @@
   border-radius:var(--radius);
   background:#0E0E0E;
 }
+
+/* ============================================================
+   ЧАТ — layout-оболочка (только --em-* токены)
+   Строки комнат: .em-oplist / .em-oprow из design-system
+   ============================================================ */
+.em-chat-shell {
+  padding: 0 0 var(--em-space-6);
+}
+
+.em-chat-room-row .em-oprow__id {
+  letter-spacing: normal;
+}
+.em-chat-room-row .em-oprow__meta {
+  grid-column: 1 / -1;
+}
+
+.em-chat-room {
+  display: flex;
+  flex-direction: column;
+  gap: var(--em-space-3);
+  min-height: calc(100dvh - var(--em-nav-h) - var(--em-space-9) - var(--em-space-8));
+}
+.em-chat-room__feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--em-space-2);
+  flex: 1 1 auto;
+  min-height: var(--em-space-9);
+}
+.em-chat-room__empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.em-chat-room__composer {
+  position: sticky;
+  bottom: calc(var(--em-nav-h) + var(--em-space-3));
+  margin-top: auto;
+  z-index: var(--em-z-sheet);
+}
+.em-chat-room__composer .em-control.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
