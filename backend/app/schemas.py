@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.db.models import (
     ChatRoomKind,
@@ -9,6 +10,7 @@ from app.db.models import (
     Currency,
     NogaFileKind,
     TrubkaDelivery,
+    TrubkaFileKind,
     TrubkaStatus,
     UserRole,
     UserStatus,
@@ -210,6 +212,38 @@ class NogaUpdateIn(BaseModel):
     telegrams: Optional[list[str]] = Field(default=None, max_length=20)
 
 
+MANUAL_TRUBKA_STATUSES = {
+    TrubkaStatus.zacep,
+    TrubkaStatus.zabrali,
+    TrubkaStatus.vyplacheno,
+    TrubkaStatus.srez,
+}
+
+
+def validate_manual_trubka_status(value: Optional[TrubkaStatus]) -> Optional[TrubkaStatus]:
+    if value is not None and value not in MANUAL_TRUBKA_STATUSES:
+        raise ValueError("Статус «Разгружается» выставляется автоматически")
+    return value
+
+
+class TrubkaFileOut(BaseModel):
+    id: int
+    kind: TrubkaFileKind
+    original_name: str
+    content_type: str
+    size_bytes: int
+    created_at: datetime
+    uploaded_by_name: Optional[str] = None
+
+
+class TrubkaEventOut(BaseModel):
+    id: int
+    actor_name: str
+    action: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+
 class TrubkaOut(BaseModel):
     id: int
     status: TrubkaStatus
@@ -223,9 +257,16 @@ class TrubkaOut(BaseModel):
     noga_owner_name: Optional[str] = None
     razgruz_id: Optional[int] = None
     razgruz_name: Optional[str] = None
-    customer_name: str
-    customer_address: str
-    delivery: TrubkaDelivery
+    customer_name: Optional[str] = None
+    customer_address: Optional[str] = None
+    delivery: Optional[TrubkaDelivery] = None
+    recalculation_amount: Optional[int] = None
+    noga_payout: Optional[int] = None
+    remainder: Optional[int] = None
+    usdt_received: Optional[Decimal] = None
+    report_sent_at: Optional[datetime] = None
+    files: list[TrubkaFileOut] = Field(default_factory=list)
+    history: list[TrubkaEventOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
     created_by_name: Optional[str] = None
@@ -239,9 +280,11 @@ class TrubkaCreateIn(BaseModel):
     razgruz_id: Optional[int] = None
     amount: int = Field(..., ge=0)
     amount_currency: Currency = Currency.RUB
-    customer_name: str = Field(..., min_length=1, max_length=255)
-    customer_address: str = Field(..., min_length=1, max_length=500)
-    delivery: TrubkaDelivery = TrubkaDelivery.zahod
+    customer_name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    customer_address: Optional[str] = Field(default=None, min_length=1, max_length=500)
+    delivery: Optional[TrubkaDelivery] = None
+
+    _manual_status = field_validator("status")(validate_manual_trubka_status)
 
 
 class TrubkaUpdateIn(BaseModel):
@@ -256,14 +299,24 @@ class TrubkaUpdateIn(BaseModel):
     customer_address: Optional[str] = Field(default=None, min_length=1, max_length=500)
     delivery: Optional[TrubkaDelivery] = None
 
+    _manual_status = field_validator("status")(validate_manual_trubka_status)
+
+
+class TrubkaRecalculationIn(BaseModel):
+    amount: int = Field(..., ge=0)
+
+
+class TrubkaUsdtIn(BaseModel):
+    amount: Decimal = Field(..., ge=0, max_digits=20, decimal_places=8)
+
 
 class TrubkiSummaryOut(BaseModel):
     total: int = 0
     zacep: int = 0
-    vedut: int = 0
-    srez: int = 0
     zabrali: int = 0
-    razgruzheno: int = 0
+    vyplacheno: int = 0
+    srez: int = 0
+    razgruzhaetsya: int = 0
 
 
 class CitiesSummaryOut(BaseModel):

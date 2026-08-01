@@ -60,10 +60,10 @@
     var byStatus = block("Трубки", [
       statCard(format(trubki.total), "Всего", { gold: true }),
       statCard(format(trubki.zacep), "Зацеп"),
-      statCard(format(trubki.vedut), "Ведут"),
-      statCard(format(trubki.srez), "Срез"),
       statCard(format(trubki.zabrali), "Забрали"),
-      statCard(format(trubki.razgruzheno), "Разгружено"),
+      statCard(format(trubki.razgruzhaetsya), "Разгружается"),
+      statCard(format(trubki.vyplacheno), "Выплачено"),
+      statCard(format(trubki.srez), "Срез"),
     ]);
     byStatus.appendChild(
       el("p", "stats-block__hint", "Счётчики общие по системе, за всё время")

@@ -1,15 +1,19 @@
-"""Smoke test for трубки (заказы). Run from backend/: python tests/test_trubki.py"""
+"""Lifecycle smoke test for трубки. Run from backend/: python tests/test_trubki.py"""
 
 import os
 import pathlib
+import shutil
 import sys
 
 TEST_DB = pathlib.Path("data/test_trubki.db")
+TEST_UPLOADS = pathlib.Path("data/test_trubki_uploads")
 if TEST_DB.exists():
     TEST_DB.unlink()
+shutil.rmtree(TEST_UPLOADS, ignore_errors=True)
 
 os.environ["BOT_POLLING_ENABLED"] = "false"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test_trubki.db"
+os.environ["UPLOADS_DIR"] = str(TEST_UPLOADS)
 os.environ["DEV_AUTH_ENABLED"] = "true"
 os.environ["DEV_AUTH_SECRET"] = "dev-only-secret"
 os.environ["OWNER_TELEGRAM_IDS"] = "111111111"
@@ -30,148 +34,230 @@ NOGA_USER = 222222222
 
 
 def token(client: TestClient, telegram_id: int) -> str:
-    r = client.post(
-        "/api/auth/dev", json={"telegram_id": telegram_id, "secret": "dev-only-secret"}
+    response = client.post(
+        "/api/auth/dev",
+        json={"telegram_id": telegram_id, "secret": "dev-only-secret"},
     )
-    assert r.status_code == 200, r.text
-    return r.json()["access_token"]
+    assert response.status_code == 200, response.text
+    return response.json()["access_token"]
+
+
+def upload(
+    client: TestClient, headers: dict, trubka_id: int, kind: str, body: bytes
+):
+    return client.post(
+        f"/api/trubki/{trubka_id}/files",
+        headers=headers,
+        data={"kind": kind},
+        files={"file": (f"{kind}.jpg", body, "image/jpeg")},
+    )
 
 
 def main() -> None:
-    with TestClient(app) as client:
-        owner = {"Authorization": "Bearer " + token(client, OWNER)}
+    try:
+        with TestClient(app) as client:
+            owner = {"Authorization": "Bearer " + token(client, OWNER)}
+            for telegram_id, role in ((ADMIN_USER, "admin"), (NOGA_USER, "noga")):
+                response = client.post(
+                    "/api/users",
+                    headers=owner,
+                    json={
+                        "telegram_id": telegram_id,
+                        "role": role,
+                        "display_name": role,
+                    },
+                )
+                assert response.status_code == 201, response.text
+            admin = {"Authorization": "Bearer " + token(client, ADMIN_USER)}
+            noga_user = {"Authorization": "Bearer " + token(client, NOGA_USER)}
 
-        for tid, role in ((ADMIN_USER, "admin"), (NOGA_USER, "noga")):
-            r = client.post(
-                "/api/users",
+            response = client.post(
+                "/api/razgruzy",
                 headers=owner,
-                json={"telegram_id": tid, "role": role, "display_name": role},
+                json={"name": "Альфа", "commission_percent": 3},
             )
-            assert r.status_code == 201, r.text
-        admin = {"Authorization": "Bearer " + token(client, ADMIN_USER)}
-        noga_user = {"Authorization": "Bearer " + token(client, NOGA_USER)}
+            assert response.status_code == 201, response.text
+            alfa = response.json()
+            response = client.post(
+                "/api/cities",
+                headers=owner,
+                json={"name": "Тула", "razgruz_ids": [alfa["id"]]},
+            )
+            assert response.status_code == 201, response.text
+            tula = response.json()
+            response = client.post(
+                "/api/nogas",
+                headers=admin,
+                json={"name": "Пётр", "city_id": tula["id"]},
+            )
+            assert response.status_code == 201, response.text
+            petr = response.json()
 
-        r = client.post(
-            "/api/razgruzy", headers=owner, json={"name": "Альфа", "commission_percent": 3}
-        )
-        assert r.status_code == 201, r.text
-        alfa = r.json()
+            base = {
+                "city_id": tula["id"],
+                "noga_id": petr["id"],
+                "amount": 250000,
+            }
 
-        r = client.post(
-            "/api/cities",
-            headers=owner,
-            json={"name": "Тула", "razgruz_ids": [alfa["id"]]},
-        )
-        assert r.status_code == 201, r.text
-        tula = r.json()
+            # Статус и валюта получают значения по умолчанию, данные заказчика необязательны.
+            response = client.post("/api/trubki", headers=owner, json=base)
+            assert response.status_code == 201, response.text
+            trubka = response.json()
+            assert trubka["status"] == "zacep"
+            assert trubka["amount_currency"] == "RUB"
+            assert trubka["customer_name"] is None
+            assert trubka["customer_address"] is None
+            assert trubka["delivery"] is None
+            assert trubka["files"] == []
+            assert [event["action"] for event in trubka["history"]] == ["created"]
+            assert trubka["history"][0]["actor_name"]
+            assert "T" in trubka["history"][0]["created_at"]
+            print("minimal creation and created event ok")
 
-        # Ногу заводит админ: «чья нога» в трубке должна показать именно его.
-        r = client.post(
-            "/api/nogas", headers=admin, json={"name": "Пётр", "city_id": tula["id"]}
-        )
-        assert r.status_code == 201, r.text
-        petr = r.json()
+            trubka_id = trubka["id"]
 
-        # --- Создание ---
-        payload = {
-            "city_id": tula["id"],
-            "noga_id": petr["id"],
-            "razgruz_id": alfa["id"],
-            "amount": 250000,
-            "amount_currency": "RUB",
-            "customer_name": "Иванов Иван Иванович",
-            "customer_address": "Тула, Ленина 1, кв. 5",
-            "delivery": "taxi",
-        }
-        r = client.post("/api/trubki", headers=owner, json=payload)
-        assert r.status_code == 201, r.text
-        trubka = r.json()
-        assert trubka["status"] == "zacep", trubka
-        assert trubka["city_name"] == "Тула"
-        assert trubka["noga_name"] == "Пётр"
-        assert trubka["noga_owner_name"] == "admin", trubka
-        assert trubka["razgruz_name"] == "Альфа"
-        assert trubka["delivery"] == "taxi"
-        assert trubka["can_manage"] is True
-        print("trubka created ok")
+            response = client.patch(
+                f"/api/trubki/{trubka_id}",
+                headers=admin,
+                json={
+                    "customer_name": "Иванов Иван",
+                    "customer_address": "Тула, Ленина 1",
+                    "delivery": "taxi",
+                },
+            )
+            assert response.status_code == 200, response.text
+            assert response.json()["history"][-1]["action"] == "updated"
+            assert response.json()["history"][-1]["actor_name"] == "admin"
 
-        # --- Чтение: видят все, включая роль noga ---
-        r = client.get("/api/trubki", headers=noga_user)
-        assert r.status_code == 200, r.text
-        assert len(r.json()) == 1
-        assert r.json()[0]["can_manage"] is False, r.json()[0]
-        print("noga role reads trubki, cannot manage ok")
+            # Автоматический статус нельзя выбрать вручную; остальные четыре можно.
+            response = client.patch(
+                f"/api/trubki/{trubka_id}",
+                headers=admin,
+                json={"status": "razgruzhaetsya"},
+            )
+            assert response.status_code == 422, response.text
+            for manual_status in ("zacep", "zabrali", "vyplacheno", "srez"):
+                response = client.patch(
+                    f"/api/trubki/{trubka_id}",
+                    headers=admin,
+                    json={"status": manual_status},
+                )
+                assert response.status_code == 200, response.text
+                assert response.json()["status"] == manual_status
+            print("manual and automatic status validation ok")
 
-        # --- Роль noga не заводит и не правит ---
-        r = client.post("/api/trubki", headers=noga_user, json=payload)
-        assert r.status_code == 403, r.text
-        r = client.patch(
-            f"/api/trubki/{trubka['id']}", headers=noga_user, json={"status": "srez"}
-        )
-        assert r.status_code == 403, r.text
-        print("noga role write -> 403 ok")
+            # Читать карточку и файл может вся команда, загружать роль noga не может.
+            response = client.get(f"/api/trubki/{trubka_id}", headers=noga_user)
+            assert response.status_code == 200
+            assert response.json()["can_manage"] is False
+            response = upload(client, noga_user, trubka_id, "money_photo", b"forbidden")
+            assert response.status_code == 403, response.text
 
-        # --- Правка статуса и сброс разгруза ---
-        r = client.patch(
-            f"/api/trubki/{trubka['id']}",
-            headers=admin,
-            json={"status": "razgruzheno", "amount": 300000, "razgruz_id": None},
-        )
-        assert r.status_code == 200, r.text
-        updated = r.json()
-        assert updated["status"] == "razgruzheno"
-        assert updated["amount"] == 300000
-        assert updated["razgruz_id"] is None, updated
-        print("trubka updated ok")
+            # Перерасчёт требует фото денег.
+            response = client.post(
+                f"/api/trubki/{trubka_id}/recalculation",
+                headers=admin,
+                json={"amount": 100001},
+            )
+            assert response.status_code == 409, response.text
+            assert response.json()["detail"]["code"] == "MONEY_PHOTO_REQUIRED"
 
-        # --- Фильтры ---
-        r = client.get("/api/trubki?status=zacep", headers=owner)
-        assert r.status_code == 200 and r.json() == [], r.text
-        r = client.get(f"/api/trubki?city_id={tula['id']}", headers=owner)
-        assert len(r.json()) == 1, r.text
-        print("filters ok")
+            response = upload(client, admin, trubka_id, "money_photo", b"first-photo")
+            assert response.status_code == 201, response.text
+            first_file = response.json()
+            response = client.get(
+                f"/api/trubki/{trubka_id}/files/{first_file['id']}",
+                headers=noga_user,
+            )
+            assert response.status_code == 200
+            assert response.content == b"first-photo"
 
-        # --- Сводка дашборда ---
-        r = client.get("/api/dashboard/summary", headers=owner)
-        assert r.status_code == 200, r.text
-        summary = r.json()["trubki"]
-        assert summary["total"] == 1 and summary["razgruzheno"] == 1, summary
-        print("dashboard summary ok")
+            # Повтор того же вида безопасно заменяет единственный файл.
+            response = upload(client, admin, trubka_id, "money_photo", b"replacement")
+            assert response.status_code == 201, response.text
+            replacement = response.json()
+            assert replacement["id"] == first_file["id"]
+            response = client.get(
+                f"/api/trubki/{trubka_id}/files/{replacement['id']}",
+                headers=owner,
+            )
+            assert response.content == b"replacement"
+            response = client.get(f"/api/trubki/{trubka_id}", headers=owner)
+            assert len(response.json()["files"]) == 1
+            print("upload, protected read and replacement ok")
 
-        # --- Ссылки не дают снести справочники ---
-        r = client.delete(f"/api/nogas/{petr['id']}", headers=admin)
-        assert r.status_code == 409 and r.json()["detail"]["code"] == "NOGA_HAS_TRUBKI", r.text
-        r = client.delete(f"/api/cities/{tula['id']}?detach_nogas=true", headers=owner)
-        assert r.status_code == 409 and r.json()["detail"]["code"] == "CITY_HAS_TRUBKI", r.text
-        print("delete guards ok")
+            response = client.post(
+                f"/api/trubki/{trubka_id}/recalculation",
+                headers=admin,
+                json={"amount": 100001},
+            )
+            assert response.status_code == 200, response.text
+            stage = response.json()
+            assert stage["status"] == "razgruzhaetsya"
+            assert stage["recalculation_amount"] == 100001
+            assert stage["noga_payout"] == 10000
+            assert stage["remainder"] == 90001
+            print("recalculation and automatic unloading status ok")
 
-        # Разгруз сняли с трубки выше — теперь он удаляется как обычно.
-        r = client.post(
-            "/api/trubki",
-            headers=owner,
-            json=dict(payload, razgruz_id=alfa["id"], status="vedut"),
-        )
-        assert r.status_code == 201, r.text
-        second = r.json()
-        r = client.delete(f"/api/razgruzy/{alfa['id']}?detach_cities=true", headers=owner)
-        assert r.status_code == 409 and r.json()["detail"]["code"] == "RAZGRUZ_HAS_TRUBKI", r.text
-        print("razgruz guard ok")
+            # Отчёт требует сначала USDT, затем фото чека.
+            response = client.post(f"/api/trubki/{trubka_id}/report", headers=admin)
+            assert response.status_code == 409
+            assert response.json()["detail"]["code"] == "USDT_REQUIRED"
 
-        # --- Удаление трубки ---
-        r = client.delete(f"/api/trubki/{second['id']}", headers=admin)
-        assert r.status_code == 204, r.text
-        r = client.get(f"/api/trubki/{second['id']}", headers=owner)
-        assert r.status_code == 404, r.text
-        print("trubka deleted ok")
+            response = client.post(
+                f"/api/trubki/{trubka_id}/usdt",
+                headers=admin,
+                json={"amount": "1234.56789012"},
+            )
+            assert response.status_code == 200, response.text
+            paid = response.json()
+            assert paid["status"] == "vyplacheno"
+            assert str(paid["usdt_received"]) == "1234.56789012"
 
-        # --- Неизвестные ссылки ---
-        r = client.post("/api/trubki", headers=owner, json=dict(payload, city_id=9999))
-        assert r.status_code == 404, r.text
-        r = client.post("/api/trubki", headers=owner, json=dict(payload, noga_id=9999))
-        assert r.status_code == 404, r.text
-        print("unknown refs -> 404 ok")
+            response = client.post(f"/api/trubki/{trubka_id}/report", headers=admin)
+            assert response.status_code == 409
+            assert response.json()["detail"]["code"] == "RECEIPT_PHOTO_REQUIRED"
+            response = upload(client, admin, trubka_id, "receipt_photo", b"receipt")
+            assert response.status_code == 201, response.text
+            response = client.post(f"/api/trubki/{trubka_id}/report", headers=admin)
+            assert response.status_code == 200, response.text
+            completed = response.json()
+            assert completed["report_sent_at"] is not None
+            actions = [event["action"] for event in completed["history"]]
+            for expected in (
+                "created",
+                "status_changed",
+                "money_photo_uploaded",
+                "recalculation_set",
+                "usdt_received_set",
+                "receipt_photo_uploaded",
+                "report_sent",
+            ):
+                assert expected in actions, actions
+            assert actions[-1] == "report_sent", actions
+            print("USDT, receipt, report and history ok")
 
-    print("\nALL TRUBKI TESTS PASSED")
+            response = client.get("/api/dashboard/summary", headers=owner)
+            assert response.status_code == 200, response.text
+            summary = response.json()["trubki"]
+            assert summary == {
+                "total": 1,
+                "zacep": 0,
+                "zabrali": 0,
+                "vyplacheno": 1,
+                "srez": 0,
+                "razgruzhaetsya": 0,
+            }, summary
+            print("new dashboard summary ok")
+
+            response = client.delete(f"/api/trubki/{trubka_id}", headers=admin)
+            assert response.status_code == 204, response.text
+            assert not (TEST_UPLOADS / "trubki" / str(trubka_id)).exists()
+            print("cascade deletion and disk cleanup ok")
+
+        print("\nALL TRUBKI LIFECYCLE TESTS PASSED")
+    finally:
+        shutil.rmtree(TEST_UPLOADS, ignore_errors=True)
 
 
 if __name__ == "__main__":

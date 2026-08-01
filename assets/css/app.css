@@ -278,49 +278,6 @@ body{
 .trubki-table__amount{ font-weight:600; font-variant-numeric:tabular-nums; }
 .trubki-table__owner{ color:var(--text-dim); }
 
-/* Стадии трубки: цвет несёт смысл, поэтому подпись всегда рядом */
-.trubka-status{
-  display:inline-flex;
-  align-items:center;
-  padding:5px 10px;
-  border-radius:999px;
-  border:1px solid transparent;
-  font-size:var(--fs-hint);
-  font-weight:600;
-  letter-spacing:.1px;
-  white-space:nowrap;
-}
-.trubka-status--zacep{
-  color:#C8EE96;
-  background:rgba(168,224,99,.16);
-  border-color:rgba(168,224,99,.34);
-}
-.trubka-status--vedut{
-  color:#5DE49A;
-  background:rgba(22,163,74,.22);
-  border-color:rgba(22,163,74,.45);
-}
-.trubka-status--srez{
-  color:#FF9A9D;
-  background:rgba(239,68,68,.18);
-  border-color:rgba(239,68,68,.4);
-}
-.trubka-status--zabrali{
-  color:#9CC5FF;
-  background:rgba(59,130,246,.2);
-  border-color:rgba(59,130,246,.42);
-}
-.trubka-status--razgruzheno{
-  color:#241B05;
-  background:linear-gradient(135deg, #F3DE9C 0%, var(--gold) 48%, #A67C1E 100%);
-  border-color:rgba(233,203,116,.6);
-  box-shadow:0 0 14px rgba(212,175,55,.28);
-}
-.trubka-status--lg{
-  padding:9px 18px;
-  font-size:var(--fs-body);
-}
-
 .btn-all{
   display:block;
   width:100%;

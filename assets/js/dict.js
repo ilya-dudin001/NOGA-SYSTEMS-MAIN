@@ -56,14 +56,16 @@
     },
   ];
 
-  /* Стадии трубки. Порядок тот же, что в жизни заказа. */
-  var TRUBKA_STATUSES = [
-    { value: "zacep", label: "Зацеп", cls: "trubka-status--zacep" },
-    { value: "vedut", label: "Ведут", cls: "trubka-status--vedut" },
-    { value: "srez", label: "Срез", cls: "trubka-status--srez" },
-    { value: "zabrali", label: "Забрали", cls: "trubka-status--zabrali" },
-    { value: "razgruzheno", label: "Разгружено", cls: "trubka-status--razgruzheno" },
+  /* Ручные статусы трубки. «Разгружается» выставляется только автоматически. */
+  var TRUBKA_MANUAL_STATUSES = [
+    { value: "zacep", label: "Зацеп", cls: "em-pill--wait" },
+    { value: "zabrali", label: "Забрали", cls: "em-pill--work" },
+    { value: "vyplacheno", label: "Выплачено", cls: "em-pill--paid" },
+    { value: "srez", label: "Срез", cls: "em-pill--left" },
   ];
+  var TRUBKA_STATUSES = TRUBKA_MANUAL_STATUSES.concat([
+    { value: "razgruzhaetsya", label: "Разгружается", cls: "em-pill--payout" },
+  ]);
 
   /* Как посылка попала к ноге. */
   var TRUBKA_DELIVERIES = [
@@ -172,6 +174,7 @@
     CURRENCIES: CURRENCIES,
     NOGA_FILE_KINDS: NOGA_FILE_KINDS,
     TRUBKA_STATUSES: TRUBKA_STATUSES,
+    TRUBKA_MANUAL_STATUSES: TRUBKA_MANUAL_STATUSES,
     TRUBKA_DELIVERIES: TRUBKA_DELIVERIES,
     cityStatus: cityStatus,
     currency: currency,

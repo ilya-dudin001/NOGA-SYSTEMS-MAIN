@@ -111,14 +111,19 @@ noga_files    noga_id → nogas ON DELETE CASCADE, kind, stored_path, original_n
 razgruzy      name UNIQUE, commission_percent, contact, is_active, created_by_id
 city_razgruzy city_id → cities, razgruz_id → razgruzy        UNIQUE (city_id, razgruz_id)
 trubki        status, city_id → cities, noga_id → nogas, razgruz_id → razgruzy (NULLABLE),
-              amount, amount_currency, customer_name, customer_address, delivery,
-              created_by_id, created_at, updated_at
+              amount, amount_currency, customer_name/customer_address/delivery (NULLABLE),
+              recalculation_amount, usdt_received, report_sent_at, created_by_id, timestamps
+trubka_files  trubka_id → trubki ON DELETE CASCADE, kind, stored_path, original_name,
+              content_type, size_bytes, uploaded_by_id            UNIQUE (trubka_id, kind)
+trubka_events trubka_id → trubki ON DELETE CASCADE, actor_user_id, actor_name,
+              action, payload JSON, created_at
 audit_log     actor_user_id (nullable), action, target_type, target_id, payload JSON
 auth_attempts telegram_id, success, reason
 ```
 
 Enum'ы (`user_role`, `user_status`, `city_status`, `currency`, `noga_file_kind`,
-`trubka_status`, `trubka_delivery`) объявлены `native_enum=False` — хранятся строками.
+`trubka_status`, `trubka_delivery`, `trubka_file_kind`) объявлены `native_enum=False` —
+хранятся строками.
 
 - `city_status`: `working` (в работе), `paused` (стоп временно), `stopped` (стоп полностью).
   У города **нет** `is_active` — миграция 003 заменила флаг на статус.
@@ -139,13 +144,19 @@ Enum'ы (`user_role`, `user_status`, `city_status`, `currency`, `noga_file_kind`
   `face_video` (короткое видео). Файлов на каждый вид может быть несколько.
 - `phones` и `telegrams` — JSON-массивы строк: их всегда **переприсваивают** новым списком,
   а не мутируют, иначе SQLAlchemy не заметит изменения.
-- `trubka_status`: `zacep` (Зацеп), `vedut` (Ведут), `srez` (Срез), `zabrali` (Забрали),
-  `razgruzheno` (Разгружено) — стадии от первого контакта до разгруза; статус по умолчанию
-  `zacep`, поле проиндексировано (по нему фильтруют список).
+- Ручные `trubka_status`: `zacep` (Зацеп), `zabrali` (Забрали), `vyplacheno`
+  (Выплачено), `srez` (Срез). `razgruzhaetsya` (Разгружается) выставляется только
+  автоматически после пересчёта и фото денег; сумма захода USDT автоматически ставит
+  `vyplacheno`. Статус по умолчанию — `zacep`, поле проиндексировано.
 - `trubka_delivery`: `zahod` (нога сама заходит на адрес) и `taxi` (заказчик отправляет
-  посылку такси). Ровно один из двух вариантов, поле обязательное.
+  посылку такси). Вместе с ФИО и адресом поле необязательное и заполняется позже.
 - Город и нога у трубки обязательны, разгруз — нет (его выбирают позже). Сумма хранится
   парой `amount` + `amount_currency` из того же справочника валют, что и порог города.
+- `recalculation_amount` — сумма пересчёта. Выплата ноге всегда 10%, остаток вычисляется
+  в API и не хранится отдельно. `usdt_received` допускает дробную часть.
+- `trubka_files`: ровно одно фото каждого вида (`money_photo`, `receipt_photo`), повторная
+  загрузка заменяет файл. `trubka_events` — неизменяемая подробная история с именем актора,
+  временем, действием и payload; она является основой будущей отчётности.
 - Город, ногу и разгруз нельзя удалить, пока на них висит трубка: `DELETE` отдаёт 409 с
   `CITY_HAS_TRUBKI` / `NOGA_HAS_TRUBKI` / `RAZGRUZ_HAS_TRUBKI` (`trubki_service.count_for`).
   Обхода вроде `?detach_nogas=true` здесь нет — заказ без города или ноги бессмыслен.
@@ -168,7 +179,7 @@ backend/app/
                      trubki, audit
   bot/               create_bot/create_dispatcher/run_polling, middlewares, handlers/{start,users_cmd}
 alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 004_noga_personal,
-                     005_noga_city_history, 006_trubki
+                     005_noga_city_history, 006_trubki, 007_chat, 008_trubka_lifecycle
 ```
 
 Файлы ног лежат не в БД, а на диске: `UPLOADS_DIR` (по умолчанию `./data/uploads`),
@@ -176,6 +187,8 @@ alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 00
 корня загрузок, чтобы каталог можно было переносить. Каталог создаётся в lifespan
 (`nogas_service.ensure_uploads_dir`). Лимиты и списки расширений — в `services/nogas.py`
 (картинки 25 МБ, видео 200 МБ; тело читается чанками, при превышении файл удаляется).
+Фото этапов трубки лежат там же по пути `trubki/{trubka_id}/{uuid}{ext}` и используют
+тот же лимит изображений 25 МБ.
 
 Конвенции:
 
@@ -204,6 +217,8 @@ alembic/versions/    001_initial, 002_cities_nogas, 003_city_status_razgruzy, 00
 | GET/POST | `/api/razgruzy`, PATCH/DELETE `/api/razgruzy/{id}` | `razgruz:read` / `razgruz:manage` |
 | GET | `/api/trubki`, `/api/trubki/{id}` | `operations:own` |
 | POST/PATCH/DELETE | `/api/trubki`, `/api/trubki/{id}` | `operations:all` |
+| POST | `/api/trubki/{id}/recalculation`, `/usdt`, `/report`, `/files` | `operations:all` |
+| GET | `/api/trubki/{id}/files/{file_id}` | `operations:own` |
 | GET | `/api/dashboard/summary` | авторизация; оборот — нули, блоки `cities` и `trubki` живые |
 | GET | `/api/health` | — |
 
@@ -550,30 +565,21 @@ FAB «+» в центре таббара открывает вылетающее
   последних заказов таблицей «Статус / Город / Сумма / Нога / Чья нога», счётчик всего
   в углу и кнопка «Все трубки». Наполняет `renderDashboard()` из `applySummary`.
 - **Экран списка** (`viewTrubki`) — та же таблица целиком плюс полоса фильтров по статусу
-  (`.tabs--scroll`, шесть кнопок со «Все») и форма создания/правки.
-- **Страница трубки** (`viewTrubka`) — шапка со статусом, суммой и городом, строки заказа,
-  блок «Заказчик» (ФИО, адрес, «Заход на адрес» / «Такси»), карта, карточка ноги и
-  «Удалить трубку». Кнопка карандаша в шапке открывает ту же форму с `fromDetail: true` —
-  после сохранения возвращает не в список, а обратно в детали.
+  (`.tabs--scroll`) и двухшаговая форма создания.
+- **Страница трубки** (`viewTrubka`) — номер `EM-000125`, статус, город и нога; блок
+  пересчёта с моментальными вычислениями выплаты ноге 10% и остатка; фото денег; затем
+  сумма захода USDT и фото чека; кнопки этапов «Пересчёт» → «Отправить отчёт».
+  Необязательные ФИО, адрес и способ передачи скрыты под дропдауном «Данные клиента».
+  Ниже — краткая история с раскрытием актора и полной даты каждого действия.
 
-Строка таблицы кликабельна целиком (`openDetail(id)`), статус — `.trubka-status` с
-модификатором из `NogaDict.TRUBKA_STATUSES` (`--zacep` салатовый, `--vedut` зелёный,
-`--srez` красный, `--zabrali` синий, `--razgruzheno` золотой градиент). Цвета — токены
-`--trubka-*` в `tokens.css`.
+Строка таблицы кликабельна целиком (`openDetail(id)`). Все новые детали и форма используют
+компоненты `em-*` и токены из `design-system/`; ручной выбор берётся из
+`NogaDict.TRUBKA_MANUAL_STATUSES`, автоматический статус есть только в общем справочнике.
 
-Карта — обычный iframe `maps.google.com/maps?q=<адрес>&output=embed`, **без API-ключа**
-и без биллинга; точка ставится по строке адреса, поэтому кривой адрес просто покажет
-неточное место. Под картой — ссылка «Открыть в Google Картах» на случай, если WebView
-не отрисует фрейм. Подробности ноги в деталях рисует `NogaNogas.renderCard(noga_id, host)`
-— тот же readonly-блок, что и в городе, с личными данными по `nogas:personal`.
-
-Форма одна на создание и правку (`openForm(trubka, options)`). Ноги и разгрузы в ней
-зависят от выбранного города: `fillCityDependent` берёт `GET /api/cities/{id}` (ответы
-кэшируются в `cityDetail`) и подставляет ноги этого города и привязанные к нему разгрузы.
-Смена города сбрасывает обе подстановки — заказ не должен ссылаться на ногу из другого
-города. Разгруз необязателен («не выбран»), способ передачи — сегментированный
-переключатель на два положения. Проверки перед отправкой (город, нога, сумма, ФИО, адрес)
-дублируют серверные и говорят по-русски через `NogaTelegram.notify`.
+Создание состоит из двух экранов внутри формы: статус (по умолчанию «Зацеп») + город,
+затем сумма + нога выбранного города. После POST сразу открывается страница трубки.
+Пересчёт можно подтвердить только вместе с фото денег; отчёт — только после суммы USDT
+и фото чека. Фронт считает 10% немедленно для обратной связи, сервер повторяет вычисление.
 
 ## Состояние на сейчас
 

@@ -192,6 +192,30 @@
     updateTrubka: function (id, payload) {
       return request("/api/trubki/" + id, { method: "PATCH", body: payload });
     },
+    setTrubkaRecalculation: function (id, amount) {
+      return request("/api/trubki/" + id + "/recalculation", {
+        method: "POST",
+        body: { amount: Number(amount) },
+      });
+    },
+    setTrubkaUsdt: function (id, amount) {
+      return request("/api/trubki/" + id + "/usdt", {
+        method: "POST",
+        body: { amount: Number(amount) },
+      });
+    },
+    sendTrubkaReport: function (id) {
+      return request("/api/trubki/" + id + "/report", { method: "POST" });
+    },
+    uploadTrubkaFile: function (id, kind, file) {
+      var form = new FormData();
+      form.append("kind", kind);
+      form.append("file", file, file.name);
+      return upload("/api/trubki/" + id + "/files", form);
+    },
+    trubkaFileBlob: function (id, fileId) {
+      return fetchBlob("/api/trubki/" + id + "/files/" + fileId);
+    },
     deleteTrubka: function (id) {
       return request("/api/trubki/" + id, { method: "DELETE" });
     },

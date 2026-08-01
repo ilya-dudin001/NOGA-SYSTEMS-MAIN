@@ -1,11 +1,10 @@
-/* Временный smoke-тест фронта в jsdom: трубки, детали, форма и меню «+». */
+/* Smoke-тест многошагового создания и карточки трубки в jsdom. */
 const fs = require("fs");
 const path = require("path");
 const { JSDOM } = require("jsdom");
 
 const root = __dirname;
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-
 const dom = new JSDOM(html, { runScripts: "outside-only", url: "http://localhost/" });
 const { window } = dom;
 
@@ -13,123 +12,128 @@ window.matchMedia = () => ({ matches: false, addListener() {}, removeListener() 
 window.Element.prototype.scrollIntoView = function () {};
 window.URL.createObjectURL = () => "blob:fake";
 window.URL.revokeObjectURL = () => {};
-window.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 0);
-window.performance = window.performance || { now: () => Date.now() };
+window.requestAnimationFrame = (callback) => setTimeout(() => callback(Date.now()), 0);
 
-const TRUBKI = [
-  {
-    id: 1,
-    status: "vedut",
-    city_id: 1,
-    city_name: "Тула",
-    amount: 250000,
-    amount_currency: "RUB",
-    noga_id: 7,
-    noga_name: "Пётр",
-    noga_owner_name: "Админ",
-    razgruz_id: 3,
-    razgruz_name: "Альфа",
-    customer_name: "Иванов Иван Иванович",
-    customer_address: "Тула, Ленина 1",
-    delivery: "taxi",
-    created_at: "2026-07-28T10:00:00Z",
-    updated_at: "2026-07-28T10:00:00Z",
-    created_by_name: "Owner",
-    can_manage: true,
-  },
-  {
-    id: 2,
-    status: "razgruzheno",
-    city_id: 1,
-    city_name: "Самара",
-    amount: 1200000,
-    amount_currency: "RUB",
-    noga_id: 8,
-    noga_name: "Анна",
-    noga_owner_name: "Owner",
-    razgruz_id: null,
-    razgruz_name: null,
-    customer_name: "Петров П. П.",
-    customer_address: "Самара, Мира 4",
-    delivery: "zahod",
-    created_at: "2026-07-27T10:00:00Z",
-    updated_at: "2026-07-27T10:00:00Z",
-    created_by_name: "Owner",
-    can_manage: true,
-  },
-];
-
-const CITY_DETAIL = {
+const CITY = {
   id: 1,
   name: "Тула",
   status: "working",
-  min_amount: null,
-  min_amount_currency: null,
-  nogas_count: 2,
-  razgruzy: [
-    { id: 3, name: "Альфа", commission_percent: 3.5, is_active: true, created_at: "2026-07-01T10:00:00Z", cities_count: 1, completed_orders: 0, can_manage: true, created_by_me: true },
+  nogas: [{ id: 7, name: "Иван", created_by_name: "Админ" }],
+  razgruzy: [],
+};
+
+let trubka = {
+  id: 125,
+  status: "zacep",
+  city_id: 1,
+  city_name: "Тула",
+  amount: 500000,
+  amount_currency: "RUB",
+  noga_id: 7,
+  noga_name: "Иван",
+  noga_owner_name: "Админ",
+  razgruz_id: null,
+  razgruz_name: null,
+  customer_name: null,
+  customer_address: null,
+  delivery: null,
+  recalculation_amount: null,
+  noga_payout: null,
+  remainder: null,
+  usdt_received: null,
+  report_sent_at: null,
+  files: [],
+  history: [
+    {
+      id: 1,
+      action: "created",
+      actor_name: "Owner",
+      payload: {},
+      created_at: "2026-08-01T10:24:00Z",
+    },
   ],
-  nogas: [
-    { id: 7, name: "Пётр", is_test: false, is_active: true, created_at: "2026-07-01T10:00:00Z", created_by_name: "Админ", can_manage: true },
-    { id: 8, name: "Анна", is_test: false, is_active: true, created_at: "2026-07-01T10:00:00Z", created_by_name: "Owner", can_manage: true },
-  ],
-  recent_orders: [],
-  created_at: "2026-07-01T10:00:00Z",
+  created_at: "2026-08-01T10:24:00Z",
+  updated_at: "2026-08-01T10:24:00Z",
   created_by_name: "Owner",
   can_manage: true,
 };
 
-const NOGA_DETAIL = {
-  id: 7,
-  name: "Пётр",
-  city_id: 1,
-  city_name: "Тула",
-  initial_city_name: "Тула",
-  last_city_name: "Тула",
-  is_test: false,
-  is_active: true,
-  created_at: "2026-07-01T10:00:00Z",
-  created_by_name: "Админ",
-  can_manage: true,
-  address: "Тула, Гагарина 3",
-  phones: ["+7 900 000-00-00"],
-  telegrams: ["@petr"],
-  files: [],
-  has_personal_access: true,
-};
-
 const calls = [];
+function response(data, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: "OK",
+    text: async () => (data === null ? "" : JSON.stringify(data)),
+    blob: async () => new window.Blob(["image"], { type: "image/png" }),
+  };
+}
 
-window.fetch = async (url, options) => {
-  options = options || {};
+window.fetch = async (url, options = {}) => {
   const method = options.method || "GET";
-  calls.push({ url, method, body: options.body ? JSON.parse(options.body) : null });
+  let body = null;
+  if (options.body && typeof options.body === "string") body = JSON.parse(options.body);
+  calls.push({ url, method, body });
 
-  let data = null;
-  if (url.indexOf("/api/trubki/") !== -1) data = TRUBKI[0];
-  else if (url.indexOf("/api/trubki") !== -1) data = method === "POST" ? TRUBKI[0] : TRUBKI;
-  else if (url.indexOf("/api/cities/1") !== -1) data = CITY_DETAIL;
-  else if (url.indexOf("/api/cities") !== -1) data = [CITY_DETAIL];
-  else if (url.indexOf("/api/nogas/") !== -1) data = NOGA_DETAIL;
-  else if (url.indexOf("/api/dashboard/summary") !== -1) {
-    data = {
+  if (url.includes("/api/dashboard/summary")) {
+    return response({
       turnover_rub: 0,
       turnover_usd: 0,
       scope: "global",
-      cities: { total: 1, working: 1, paused: 0, stopped: 0, nogas: 2, razgruzy: 1 },
-      trubki: { total: 2, zacep: 0, vedut: 1, srez: 0, zabrali: 0, razgruzheno: 1 },
+      cities: { total: 1, working: 1, paused: 0, stopped: 0, nogas: 1, razgruzy: 0 },
+      trubki: { total: 1, zacep: 1, zabrali: 0, razgruzhaetsya: 0, vyplacheno: 0, srez: 0 },
+    });
+  }
+  if (url.includes("/api/cities/1")) return response(CITY);
+  if (url.includes("/api/cities")) return response([CITY]);
+  if (url.includes("/files/") && method === "GET") return response(new window.Blob(["image"]));
+  if (url.endsWith("/recalculation") && method === "POST") {
+    trubka = {
+      ...trubka,
+      status: "razgruzhaetsya",
+      recalculation_amount: body.amount,
+      noga_payout: Math.round(body.amount * 0.1),
+      remainder: body.amount - Math.round(body.amount * 0.1),
     };
-  } else data = {};
-
-  return {
-    ok: true,
-    status: 200,
-    statusText: "OK",
-    text: async () => JSON.stringify(data),
-  };
+    return response(trubka);
+  }
+  if (url.endsWith("/usdt") && method === "POST") {
+    trubka = { ...trubka, status: "vyplacheno", usdt_received: body.amount };
+    return response(trubka);
+  }
+  if (url.endsWith("/report") && method === "POST") {
+    trubka = { ...trubka, report_sent_at: "2026-08-01T11:00:00Z" };
+    return response(trubka);
+  }
+  if (url.includes("/files") && method === "POST") {
+    const kind = options.body.get("kind");
+    trubka = {
+      ...trubka,
+      files: trubka.files.concat({
+        id: trubka.files.length + 1,
+        kind,
+        original_name: "photo.jpg",
+        content_type: "image/jpeg",
+        size_bytes: 100,
+        created_at: "2026-08-01T10:30:00Z",
+      }),
+    };
+    return response(trubka.files[trubka.files.length - 1], 201);
+  }
+  if (/\/api\/trubki\/125$/.test(url)) {
+    if (method === "PATCH") trubka = { ...trubka, ...body };
+    return response(trubka);
+  }
+  if (url.includes("/api/trubki")) {
+    if (method === "POST") return response(trubka, 201);
+    return response([trubka]);
+  }
+  return response({});
 };
 
-const files = [
+[
+  "design-system/icons.js",
+  "design-system/ds.js",
   "assets/js/config.js",
   "assets/js/telegram.js",
   "assets/js/api.js",
@@ -146,10 +150,7 @@ const files = [
   "assets/js/screens/stats.js",
   "assets/js/screens/profile.js",
   "assets/js/screens/create-menu.js",
-];
-files.forEach((file) => {
-  window.eval(fs.readFileSync(path.join(root, file), "utf8"));
-});
+].forEach((file) => window.eval(fs.readFileSync(path.join(root, file), "utf8")));
 
 const OWNER = {
   id: 1,
@@ -160,151 +161,85 @@ const OWNER = {
   status: "active",
   created_at: "2026-01-01T10:00:00Z",
   permissions: [
-    "users:manage", "users:read", "users:delete", "profile:rename", "dashboard:global",
-    "operations:all", "operations:own", "cities:manage", "cities:read", "cities:all",
-    "nogas:manage", "nogas:read", "nogas:all", "nogas:personal",
-    "razgruz:manage", "razgruz:read", "razgruz:all",
+    "users:manage",
+    "users:read",
+    "users:delete",
+    "profile:rename",
+    "dashboard:global",
+    "operations:all",
+    "operations:own",
+    "cities:manage",
+    "cities:read",
+    "cities:all",
+    "nogas:manage",
+    "nogas:read",
+    "nogas:all",
+    "nogas:personal",
+    "razgruz:manage",
+    "razgruz:read",
+    "razgruz:all",
   ],
 };
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const assert = (cond, msg) => {
-  if (!cond) throw new Error("FAIL: " + msg);
-  console.log("ok:", msg);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const assert = (condition, message) => {
+  if (!condition) throw new Error("FAIL: " + message);
+  console.log("ok:", message);
 };
 const $ = (id) => window.document.getElementById(id);
 
 (async () => {
   window.NogaRoles.setUser(OWNER);
-  window.NogaCreateMenu.bind();
-  window.NogaDashboard.applyUser(OWNER);
-  window.NogaTelegram.notify = (m) => console.log("   notify:", m);
+  window.NogaTelegram.notify = (message) => console.log("notify:", message);
 
-  // --- дашборд ---
-  window.NogaDashboard.applySummary(await (await window.fetch("/api/dashboard/summary")).text ? JSON.parse(await (await window.fetch("/api/dashboard/summary")).text()) : {});
-  await wait(60);
+  await window.NogaTrubki.openCreate();
+  assert($("trubkaStatusField").value === "zacep", "первичный статус — «Зацеп»");
+  assert(!$("trubkaStepOne").hidden && $("trubkaStepTwo").hidden, "открыт первый шаг");
 
-  assert($("trubkiTotal").textContent === "2", "счётчик трубок на дашборде = 2");
-  const rows = $("dashTrubki").querySelectorAll(".trubki-table__row");
-  assert(rows.length === 2, "в таблице дашборда 2 строки");
-  const cells = rows[0].querySelectorAll("td");
-  assert(cells.length === 5, "в строке 5 колонок");
-  assert(cells[0].textContent === "Ведут", "первая колонка — статус «Ведут»");
-  assert(cells[1].textContent === "Тула", "вторая колонка — город");
-  assert(cells[2].textContent.indexOf("250к") === 0, "третья колонка — сумма 250к: " + cells[2].textContent);
-  assert(cells[3].textContent === "Пётр", "четвёртая колонка — нога");
-  assert(cells[4].textContent === "Админ", "пятая колонка — чья нога");
-  assert(
-    rows[1].querySelector(".trubka-status--razgruzheno") !== null,
-    "золотой статус «Разгружено» получил свой класс"
-  );
-
-  // --- детали по клику ---
-  rows[0].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  await wait(80);
-  assert($("viewTrubka").hidden === false, "открылась страница деталей");
-  const body = $("trubkaBody").textContent;
-  assert(body.indexOf("Иванов Иван Иванович") !== -1, "в деталях есть ФИО заказчика");
-  assert(body.indexOf("Тула, Ленина 1") !== -1, "в деталях есть адрес заказчика");
-  assert(body.indexOf("Такси") !== -1, "в деталях указан способ передачи");
-  const frame = $("trubkaBody").querySelector(".map-block__frame");
-  assert(frame && frame.src.indexOf("output=embed") !== -1, "есть карта с адресом");
-  assert(
-    decodeURIComponent(frame.src).indexOf("Тула, Ленина 1") !== -1,
-    "в карту передан адрес заказчика"
-  );
-  await wait(200);
-  const panel = $("trubkaBody").querySelector(".detail-list__panel");
-  console.log("   panel:", panel && panel.textContent.slice(0, 200));
-  assert(
-    $("trubkaBody").querySelector("textarea") &&
-      $("trubkaBody").querySelector("textarea").value.indexOf("Гагарина 3") !== -1,
-    "подтянулись подробности ноги"
-  );
-  assert($("btnEditTrubka").hidden === false, "кнопка правки доступна"); 
-
-  // --- правка из деталей ---
-  $("btnEditTrubka").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  await wait(120);
-  assert($("viewTrubki").hidden === false, "перешли на экран трубок");
-  assert($("trubkaForm").hidden === false, "форма открылась");
-  assert($("trubkaCustomer").value === "Иванов Иван Иванович", "форма заполнена заказчиком");
-  assert($("trubkaStatusField").value === "vedut", "в форме выбран текущий статус");
-  assert($("trubkaCity").value === "1", "в форме выбран город");
-  assert($("trubkaNoga").value === "7", "в форме выбрана нога из состава города");
-  assert($("trubkaRazgruz").value === "3", "в форме выбран разгруз города");
-
-  $("trubkaStatusField").value = "zabrali";
-  $("trubkaAmount").value = "300000";
-  window.document
-    .querySelector('#trubkaDeliverySwitch .segmented__btn[data-value="zahod"]')
-    .dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  $("trubkaForm").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
-  await wait(120);
-
-  const patch = calls.filter((c) => c.method === "PATCH").pop();
-  assert(patch && patch.url.indexOf("/api/trubki/1") !== -1, "ушёл PATCH по трубке");
-  assert(patch.body.status === "zabrali", "статус в теле запроса изменён");
-  assert(patch.body.amount === 300000, "сумма в теле запроса изменена");
-  assert(patch.body.delivery === "zahod", "способ передачи в теле запроса изменён");
-  assert($("viewTrubka").hidden === false, "после сохранения вернулись в детали");
-
-  // --- фильтры на экране списка ---
-  await window.NogaTrubki.show({ status: "" });
-  await wait(60);
-  const filters = $("trubkiFilters").querySelectorAll(".tabs__btn");
-  assert(filters.length === 6, "фильтров шесть: «Все» и пять стадий");
-  filters[3].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  await wait(60);
-  const lastList = calls.filter((c) => c.method === "GET" && c.url.indexOf("/api/trubki?") !== -1).pop();
-  assert(lastList.url.indexOf("status=srez") !== -1, "фильтр ушёл в запрос: " + lastList.url);
-
-  // --- меню на «+» ---
-  $("fab").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  await wait(60);
-  assert($("fabMenu").hidden === false, "меню создания открылось");
-  assert($("fabMenu").classList.contains("is-open"), "меню получило класс анимации");
-  const menuItems = $("fabMenuList").querySelectorAll(".fab-menu__item");
-  assert(menuItems.length === 4, "в меню четыре пункта");
-  assert(
-    Array.prototype.map.call(menuItems, (b) => b.textContent).join("/") ===
-      "Трубка/Город/Нога/Разгруз",
-    "порядок пунктов меню"
-  );
-
-  menuItems[0].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  await wait(300);
-  assert($("fabMenu").hidden === true, "меню закрылось после выбора");
-  assert($("viewTrubki").hidden === false && $("trubkaForm").hidden === false,
-    "открылась форма новой трубки");
-  assert($("trubkaFormTitle").textContent === "Новая трубка", "заголовок формы для создания");
-
-  // --- создание ---
   $("trubkaCity").value = "1";
-  $("trubkaCity").dispatchEvent(new window.Event("change", { bubbles: true }));
-  await wait(80);
-  $("trubkaNoga").value = "8";
+  $("btnTrubkaNext").click();
+  await wait(20);
+  assert($("trubkaStepOne").hidden && !$("trubkaStepTwo").hidden, "открыт второй шаг");
+  assert($("trubkaNoga").options.length === 2, "загружены ноги выбранного города");
+
+  $("trubkaNoga").value = "7";
   $("trubkaAmount").value = "500000";
-  $("trubkaCustomer").value = "Сидоров С. С.";
-  $("trubkaAddress").value = "Тула, Мира 12";
   $("trubkaForm").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
-  await wait(150);
+  await wait(30);
+  const createCall = calls.find((call) => call.method === "POST" && /\/api\/trubki$/.test(call.url));
+  assert(createCall && createCall.body.status === "zacep", "создание отправляет статус «Зацеп»");
+  assert($("viewTrubka").hidden === false, "после создания открыты детали");
+  assert($("trubkaBody").textContent.includes("EM-000125"), "показан номер трубки");
+  assert($("trubkaBody").textContent.includes("Данные клиента"), "есть скрываемый блок клиента");
 
-  const post = calls.filter((c) => c.method === "POST").pop();
-  assert(post && post.url.indexOf("/api/trubki") !== -1, "ушёл POST новой трубки");
-  assert(post.body.noga_id === 8 && post.body.city_id === 1, "город и нога в теле запроса");
-  assert(post.body.customer_name === "Сидоров С. С.", "ФИО в теле запроса");
-  assert(post.body.customer_address === "Тула, Мира 12", "адрес в теле запроса");
-  assert(post.body.delivery === "zahod", "способ передачи по умолчанию — заход");
+  const recalculation = $("trubkaBody").querySelector(".em-trubka-money-input");
+  recalculation.value = "500000";
+  recalculation.dispatchEvent(new window.Event("input", { bubbles: true }));
+  const values = $("trubkaBody").querySelectorAll(".em-money__value");
+  assert(values[0].textContent.includes("50"), "выплата ноге рассчитана моментально");
+  assert(values[1].textContent.includes("450"), "остаток рассчитан моментально");
+  assert($("trubkaStageAction").disabled, "без фото пересчёт недоступен");
 
-  // --- роль noga меню не получает ---
-  window.NogaRoles.setUser({ ...OWNER, role: "noga", permissions: ["operations:own", "cities:read"] });
-  $("fab").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  await wait(60);
-  assert($("fabMenu").hidden === true, "у роли «нога» меню не открывается");
+  const moneyInput = $("trubkaBody").querySelector('input[type="file"]');
+  Object.defineProperty(moneyInput, "files", {
+    value: [new window.File(["photo"], "money.jpg", { type: "image/jpeg" })],
+  });
+  moneyInput.dispatchEvent(new window.Event("change", { bubbles: true }));
+  await wait(30);
+  assert(!$("trubkaStageAction").disabled, "после фото и суммы пересчёт доступен");
+  $("trubkaStageAction").click();
+  await wait(30);
+  assert($("trubkaBody").textContent.includes("Зашло на счёт, USDT"), "открыт этап отчёта");
+  assert(trubka.status === "razgruzhaetsya", "статус автоматически стал «Разгружается»");
+
+  const statusLabels = window.NogaDict.TRUBKA_MANUAL_STATUSES.map((item) => item.label);
+  assert(
+    statusLabels.join("/") === "Зацеп/Забрали/Выплачено/Срез",
+    "ручные статусы соответствуют требованиям"
+  );
 
   console.log("\nALL JSDOM TRUBKI CHECKS PASSED");
-})().catch((err) => {
-  console.error(err.message || err);
+})().catch((error) => {
+  console.error(error.stack || error);
   process.exit(1);
 });

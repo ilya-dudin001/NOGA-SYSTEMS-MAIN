@@ -1,0 +1,195 @@
+/* Многошаговое создание и детали трубки. Все визуальные значения берутся из EM Design System. */
+.em-trubka-wizard {
+  margin-bottom: var(--em-space-5);
+}
+
+.em-trubka-wizard[hidden],
+.em-trubka-wizard [hidden] {
+  display: none !important;
+}
+
+.em-trubka-wizard__head,
+.em-trubka-detail__head,
+.em-trubka-detail__title-row,
+.em-trubka-history__head,
+.em-trubka-client__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--em-space-3);
+}
+
+.em-trubka-wizard__step,
+.em-trubka-detail__number,
+.em-trubka-detail__meta,
+.em-trubka-client__hint,
+.em-trubka-history__details {
+  margin: var(--em-space-1) 0 0;
+  color: var(--em-text-muted);
+  font-size: var(--em-fs-meta);
+}
+
+.em-trubka-wizard__dots {
+  display: flex;
+  gap: var(--em-space-2);
+}
+
+.em-trubka-wizard__dots span {
+  width: var(--em-space-2);
+  height: var(--em-space-2);
+  border-radius: var(--em-radius-pill);
+  background: var(--em-text-dim);
+  transition:
+    width var(--em-dur-2) var(--em-ease-out),
+    background var(--em-dur-2) var(--em-ease-out);
+}
+
+.em-trubka-wizard__dots span.is-active {
+  width: var(--em-space-6);
+  background: var(--em-gold-400);
+}
+
+.em-trubka-wizard__currency {
+  flex: 0 0 auto;
+  width: auto;
+  color: var(--em-gold-300);
+  font-size: var(--em-fs-meta);
+}
+
+.em-trubka-wizard__actions {
+  display: flex;
+  gap: var(--em-space-2);
+  margin-top: var(--em-space-5);
+}
+
+.em-trubka-wizard__primary {
+  flex: 1 1 auto;
+}
+
+.em-trubka-detail {
+  color: var(--em-text);
+  font-family: var(--em-font);
+}
+
+.em-trubka-detail__head {
+  align-items: flex-start;
+  margin-bottom: var(--em-space-4);
+}
+
+.em-trubka-detail__title {
+  margin: 0;
+  color: var(--em-gold-300);
+  font-size: var(--em-fs-title);
+  font-weight: var(--em-fw-semibold);
+}
+
+.em-trubka-detail__identity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--em-space-2);
+  margin-bottom: var(--em-space-5);
+}
+
+.em-trubka-detail__status-select {
+  min-height: var(--em-icon-badge);
+  padding: 0 var(--em-space-3);
+  border: var(--em-line) solid var(--em-work-bd);
+  border-radius: var(--em-radius-pill);
+  background: var(--em-work-fill);
+  color: var(--em-work-strong);
+  font-size: var(--em-fs-caption);
+  font-weight: var(--em-fw-semibold);
+}
+
+.em-trubka-detail__section {
+  margin-top: var(--em-space-5);
+}
+
+.em-trubka-money-input {
+  width: min(100%, calc(var(--em-frame) / 2));
+  min-height: var(--em-control-h);
+  padding: 0 var(--em-space-3);
+  border: var(--em-line) solid var(--em-border);
+  border-radius: var(--em-radius-md);
+  background: var(--em-surface-2);
+  color: var(--em-gold-100);
+  font: inherit;
+  font-size: var(--em-fs-amount);
+  font-weight: var(--em-fw-semibold);
+}
+
+.em-trubka-money-input:focus-visible {
+  border-color: var(--em-gold-400);
+  box-shadow: var(--em-glow-focus);
+}
+
+.em-trubka-photo-card {
+  margin-top: var(--em-space-3);
+}
+
+.em-trubka-photo-card .em-upload {
+  justify-content: space-between;
+}
+
+.em-trubka-photo-card .em-upload__meta {
+  flex: 1 1 auto;
+}
+
+.em-trubka-photo-card .em-upload__preview {
+  width: var(--em-nav-h);
+  height: var(--em-nav-h);
+}
+
+.em-trubka-action {
+  margin-top: var(--em-space-3);
+}
+
+.em-trubka-client {
+  margin-top: var(--em-space-5);
+}
+
+.em-trubka-client__summary {
+  min-height: var(--em-tap-min);
+  color: var(--em-gold-300);
+  cursor: pointer;
+  list-style: none;
+}
+
+.em-trubka-client__summary::-webkit-details-marker {
+  display: none;
+}
+
+.em-trubka-client__body {
+  padding-top: var(--em-space-3);
+}
+
+.em-trubka-client__actions {
+  margin-top: var(--em-space-4);
+}
+
+.em-trubka-history__head {
+  margin-bottom: var(--em-space-4);
+}
+
+.em-trubka-history__toggle {
+  color: var(--em-gold-400);
+  font-size: var(--em-fs-meta);
+}
+
+.em-trubka-history__details {
+  display: none;
+}
+
+.em-trubka-history.is-expanded .em-trubka-history__details {
+  display: block;
+}
+
+.em-trubka-danger {
+  margin-top: var(--em-space-6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .em-trubka-wizard__dots span {
+    transition: none;
+  }
+}

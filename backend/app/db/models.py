@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Optional
 
 from sqlalchemy import (
@@ -64,13 +65,13 @@ class NogaFileKind(str, enum.Enum):
 
 
 class TrubkaStatus(str, enum.Enum):
-    """Стадии трубки (заказа) от зацепа до разгруза."""
+    """Ручные и автоматические стадии трубки."""
 
     zacep = "zacep"  # Зацеп
-    vedut = "vedut"  # Ведут
-    srez = "srez"  # Срез
     zabrali = "zabrali"  # Забрали
-    razgruzheno = "razgruzheno"  # Разгружено
+    vyplacheno = "vyplacheno"  # Выплачено
+    srez = "srez"  # Срез
+    razgruzhaetsya = "razgruzhaetsya"  # Разгружается, ставится workflow автоматически
 
 
 class TrubkaDelivery(str, enum.Enum):
@@ -78,6 +79,13 @@ class TrubkaDelivery(str, enum.Enum):
 
     zahod = "zahod"  # нога сама заходит на адрес
     taxi = "taxi"  # заказчик отправляет такси
+
+
+class TrubkaFileKind(str, enum.Enum):
+    """Фотографии, подтверждающие этапы обработки трубки."""
+
+    money_photo = "money_photo"
+    receipt_photo = "receipt_photo"
 
 
 class Currency(str, enum.Enum):
@@ -524,12 +532,16 @@ class Trubka(Base):
         nullable=False,
         default=Currency.RUB,
     )
-    customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    customer_address: Mapped[str] = mapped_column(String(500), nullable=False)
-    delivery: Mapped[TrubkaDelivery] = mapped_column(
+    customer_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    customer_address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    delivery: Mapped[Optional[TrubkaDelivery]] = mapped_column(
         Enum(TrubkaDelivery, name="trubka_delivery", native_enum=False),
-        nullable=False,
-        default=TrubkaDelivery.zahod,
+        nullable=True,
+    )
+    recalculation_amount: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    usdt_received: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 8), nullable=True)
+    report_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     created_by_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
@@ -547,6 +559,72 @@ class Trubka(Base):
     created_by: Mapped[Optional["User"]] = relationship(
         foreign_keys=[created_by_id], lazy="raise"
     )
+    files: Mapped[list["TrubkaFile"]] = relationship(
+        back_populates="trubka",
+        lazy="raise",
+        cascade="all, delete-orphan",
+        order_by="TrubkaFile.created_at",
+    )
+    events: Mapped[list["TrubkaEvent"]] = relationship(
+        back_populates="trubka",
+        lazy="raise",
+        cascade="all, delete-orphan",
+        order_by="TrubkaEvent.created_at, TrubkaEvent.id",
+    )
+
+
+class TrubkaFile(Base):
+    """Файл этапа трубки: на диске лежит тело, в БД — метаданные."""
+
+    __tablename__ = "trubka_files"
+    __table_args__ = (
+        UniqueConstraint("trubka_id", "kind", name="uq_trubka_file_kind"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    trubka_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("trubki.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[TrubkaFileKind] = mapped_column(
+        Enum(TrubkaFileKind, name="trubka_file_kind", native_enum=False), nullable=False
+    )
+    stored_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    uploaded_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    trubka: Mapped["Trubka"] = relationship(back_populates="files", lazy="raise")
+    uploaded_by: Mapped[Optional["User"]] = relationship(lazy="raise")
+
+
+class TrubkaEvent(Base):
+    """Неизменяемая история жизненного цикла трубки."""
+
+    __tablename__ = "trubka_events"
+    __table_args__ = (Index("ix_trubka_events_trubka_id_id", "trubka_id", "id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    trubka_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("trubki.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    actor_user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    actor_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    trubka: Mapped["Trubka"] = relationship(back_populates="events", lazy="raise")
+    actor: Mapped[Optional["User"]] = relationship(lazy="raise")
 
 
 class AuditLog(Base):

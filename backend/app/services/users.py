@@ -24,6 +24,8 @@ from app.db.models import (
     ChatRead,
     ChatRoomMember,
     ChatTelegramStatus,
+    TrubkaEvent,
+    TrubkaFile,
     User,
     UserRole,
     UserStatus,
@@ -189,6 +191,16 @@ async def delete_user_account(
         update(ChatAttachment)
         .where(ChatAttachment.uploaded_by_id == target.id)
         .values(uploaded_by_id=None)
+    )
+    await session.execute(
+        update(TrubkaFile)
+        .where(TrubkaFile.uploaded_by_id == target.id)
+        .values(uploaded_by_id=None)
+    )
+    await session.execute(
+        update(TrubkaEvent)
+        .where(TrubkaEvent.actor_user_id == target.id)
+        .values(actor_user_id=None)
     )
     # Историю уже завершённых доставок сохраняем. Отменяются только ещё
     # не отправленные уведомления, затем user_id снимается со всех упоминаний.

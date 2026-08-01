@@ -22,12 +22,6 @@
   --green:         #22C55E;
   --red:           #EF4444;
 
-  /* Стадии трубки: салатовый → зелёный → красный / синий → золото */
-  --trubka-zacep:  #A8E063;
-  --trubka-vedut:  #16A34A;
-  --trubka-srez:   #EF4444;
-  --trubka-zabrali:#3B82F6;
-
   --hairline:      rgba(255, 255, 255, .06);
   --shadow-card:   0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.55);
   --shadow-hero:   0 18px 40px rgba(0,0,0,.65), 0 0 0 1px rgba(212,175,55,.16);

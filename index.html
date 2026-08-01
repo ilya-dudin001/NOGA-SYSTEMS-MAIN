@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="theme-color" content="#0B0B0B">
 <title>NOGA — Дашборд</title>
+<link rel="stylesheet" href="design-system/tokens.css">
+<link rel="stylesheet" href="design-system/components.css">
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/app.css">
 <link rel="stylesheet" href="assets/css/screens.css">
+<link rel="stylesheet" href="assets/css/trubki-workflow.css">
 <script>window.__NOGA_CONFIG__ = { apiBase: "https://noga-api.duckdns.org" };</script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -288,53 +291,58 @@
 
       <div class="tabs tabs--scroll" id="trubkiFilters" role="tablist"></div>
 
-      <form class="form-card" id="trubkaForm" hidden>
-        <p class="form-card__title" id="trubkaFormTitle">Новая трубка</p>
-        <div class="field">
-          <label for="trubkaStatusField">Статус</label>
-          <select id="trubkaStatusField"></select>
-        </div>
-        <div class="field">
-          <label for="trubkaCity">Город</label>
-          <select id="trubkaCity"></select>
-        </div>
-        <div class="field">
-          <label for="trubkaNoga">Нога</label>
-          <select id="trubkaNoga"></select>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="trubkaAmount">Сумма</label>
-            <input id="trubkaAmount" type="number" min="0" step="1" inputmode="numeric" placeholder="250000">
+      <form class="em-card em-card--gold em-trubka-wizard" id="trubkaForm" hidden>
+        <div class="em-trubka-wizard__head">
+          <div>
+            <p class="em-card__title" id="trubkaFormTitle">Новая трубка</p>
+            <p class="em-trubka-wizard__step" id="trubkaStepLabel">Шаг 1 из 2</p>
           </div>
-          <div class="field">
-            <label for="trubkaCurrency">Валюта</label>
-            <select id="trubkaCurrency"></select>
+          <div class="em-trubka-wizard__dots" aria-hidden="true">
+            <span class="is-active"></span><span></span>
           </div>
         </div>
-        <div class="field">
-          <label for="trubkaRazgruz">Разгруз</label>
-          <select id="trubkaRazgruz"></select>
-        </div>
-        <div class="field">
-          <label for="trubkaCustomer">ФИО заказчика</label>
-          <input id="trubkaCustomer" type="text" placeholder="Иванов Иван Иванович">
-        </div>
-        <div class="field">
-          <label for="trubkaAddress">Адрес заказчика</label>
-          <textarea id="trubkaAddress" rows="2" placeholder="Город, улица, дом, квартира"></textarea>
-        </div>
-        <div class="field">
-          <label>Как забрали посылку</label>
-          <div class="segmented" id="trubkaDeliverySwitch" role="group" aria-label="Способ передачи">
-            <button class="segmented__btn is-active" type="button" data-value="zahod" aria-pressed="true">Заход на адрес</button>
-            <button class="segmented__btn" type="button" data-value="taxi" aria-pressed="false">Такси</button>
+
+        <section id="trubkaStepOne">
+          <div class="em-field">
+            <label class="em-label" for="trubkaStatusField">Статус</label>
+            <div class="em-control em-control--select">
+              <select class="em-select" id="trubkaStatusField"></select>
+              <span class="em-control__suffix" data-em-icon="chevron-down"></span>
+            </div>
           </div>
-          <input id="trubkaDelivery" type="hidden" value="zahod">
-        </div>
-        <div class="form-actions">
-          <button class="btn-all" id="btnCancelTrubka" type="button">Отмена</button>
-          <button class="btn-gold" type="submit" style="flex:1">Сохранить</button>
+          <div class="em-field">
+            <label class="em-label" for="trubkaCity">Город<span class="em-label__req">*</span></label>
+            <div class="em-control em-control--select">
+              <select class="em-select" id="trubkaCity"></select>
+              <span class="em-control__suffix" data-em-icon="chevron-down"></span>
+            </div>
+            <div class="em-error-text">Выберите город</div>
+          </div>
+        </section>
+
+        <section id="trubkaStepTwo" hidden>
+          <div class="em-field">
+            <label class="em-label" for="trubkaAmount">Сумма<span class="em-label__req">*</span></label>
+            <div class="em-control em-control--amount">
+              <input class="em-input em-num" id="trubkaAmount" type="number" min="0" step="1" inputmode="numeric" placeholder="250 000">
+              <select class="em-select em-trubka-wizard__currency" id="trubkaCurrency" aria-label="Валюта"></select>
+            </div>
+            <div class="em-error-text">Укажите сумму</div>
+          </div>
+          <div class="em-field">
+            <label class="em-label" for="trubkaNoga">Нога<span class="em-label__req">*</span></label>
+            <div class="em-control em-control--select">
+              <select class="em-select" id="trubkaNoga"></select>
+              <span class="em-control__suffix" data-em-icon="chevron-down"></span>
+            </div>
+            <div class="em-error-text">Выберите ногу</div>
+          </div>
+        </section>
+
+        <div class="em-trubka-wizard__actions">
+          <button class="em-btn em-btn--ghost" id="btnCancelTrubka" type="button">Отмена</button>
+          <button class="em-btn em-btn--primary em-trubka-wizard__primary" id="btnTrubkaNext" type="button">Далее</button>
+          <button class="em-btn em-btn--primary em-trubka-wizard__primary" id="btnSaveTrubka" type="submit" hidden>Создать трубку</button>
         </div>
       </form>
 
@@ -351,7 +359,6 @@
           </svg>
         </button>
         <h2 class="users-toolbar__title">Трубка</h2>
-        <button class="btn-gold" id="btnEditTrubka" type="button" hidden>Изменить</button>
       </div>
 
       <div id="trubkaBody"></div>
@@ -471,6 +478,8 @@
 </div>
 
 <script src="assets/js/config.js"></script>
+<script src="design-system/icons.js"></script>
+<script src="design-system/ds.js"></script>
 <script src="assets/js/telegram.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/roles.js"></script>
