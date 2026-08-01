@@ -257,14 +257,20 @@
           <label for="cityStatus">Статус</label>
           <select id="cityStatus"></select>
         </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="cityMinAmount">Запуск от суммы</label>
-            <input id="cityMinAmount" type="number" min="0" step="1" inputmode="numeric" placeholder="200000">
-          </div>
-          <div class="field">
-            <label for="cityCurrency">Валюта</label>
-            <select id="cityCurrency"></select>
+        <div class="field city-threshold">
+          <label class="city-threshold__check" for="cityThresholdEnabled">
+            <input id="cityThresholdEnabled" type="checkbox">
+            <span>Запуск от суммы</span>
+          </label>
+          <div class="field-row city-threshold__fields" id="cityThresholdFields" hidden>
+            <div class="field">
+              <label for="cityMinAmount">Сумма</label>
+              <input id="cityMinAmount" type="number" min="0" step="1" inputmode="numeric" placeholder="200000">
+            </div>
+            <div class="field">
+              <label for="cityCurrency">Валюта</label>
+              <select id="cityCurrency"></select>
+            </div>
           </div>
         </div>
         <div class="field" id="cityRazgruzyField">

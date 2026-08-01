@@ -408,6 +408,34 @@
   flex:1;
   min-width:0;
 }
+.city-threshold__check{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:var(--em-tap-min, 44px);
+  margin:0;
+  font-size:var(--fs-strong);
+  font-weight:500;
+  color:#E8E4DC;
+  cursor:pointer;
+  user-select:none;
+}
+.city-threshold__check input{
+  width:20px;
+  height:20px;
+  margin:0;
+  flex:0 0 auto;
+  accent-color:var(--gold);
+}
+.city-threshold__fields{
+  margin-top:12px;
+}
+.city-threshold__fields[hidden]{
+  display:none !important;
+}
+.city-threshold__fields .field{
+  margin-bottom:0;
+}
 
 .status-pill{
   flex:0 0 auto;

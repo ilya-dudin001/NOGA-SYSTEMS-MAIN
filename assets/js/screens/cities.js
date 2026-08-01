@@ -848,6 +848,20 @@
     });
   }
 
+  function syncThresholdFields() {
+    var enabled = document.getElementById("cityThresholdEnabled");
+    var fields = document.getElementById("cityThresholdFields");
+    if (!fields) return;
+    var on = Boolean(enabled && enabled.checked);
+    fields.hidden = !on;
+  }
+
+  function setThresholdEnabled(on) {
+    var enabled = document.getElementById("cityThresholdEnabled");
+    if (enabled) enabled.checked = Boolean(on);
+    syncThresholdFields();
+  }
+
   async function openForm(city) {
     bindForm();
     await loadRazgruzy();
@@ -869,6 +883,14 @@
       city && city.min_amount !== null && city.min_amount !== undefined ? city.min_amount : "";
     document.getElementById("cityCurrency").value =
       city && city.min_amount_currency ? city.min_amount_currency : "";
+    setThresholdEnabled(
+      Boolean(
+        city &&
+          city.min_amount !== null &&
+          city.min_amount !== undefined &&
+          city.min_amount_currency
+      )
+    );
 
     if (city && city.razgruzy) {
       fillRazgruzChecklist(
@@ -902,18 +924,30 @@
       return null;
     }
 
-    var rawAmount = document.getElementById("cityMinAmount").value.trim();
-    var currency = document.getElementById("cityCurrency").value;
-    if (rawAmount && !currency) {
-      global.NogaTelegram.notify("Выберите валюту для суммы запуска");
-      return null;
+    var thresholdOn = Boolean(
+      document.getElementById("cityThresholdEnabled") &&
+        document.getElementById("cityThresholdEnabled").checked
+    );
+    var rawAmount = "";
+    var currency = "";
+    if (thresholdOn) {
+      rawAmount = document.getElementById("cityMinAmount").value.trim();
+      currency = document.getElementById("cityCurrency").value;
+      if (!rawAmount) {
+        global.NogaTelegram.notify("Укажите сумму запуска");
+        return null;
+      }
+      if (!currency) {
+        global.NogaTelegram.notify("Выберите валюту для суммы запуска");
+        return null;
+      }
     }
 
     var payload = {
       name: name,
       status: document.getElementById("cityStatus").value,
-      min_amount: rawAmount ? Number(rawAmount) : null,
-      min_amount_currency: rawAmount ? currency : null,
+      min_amount: thresholdOn ? Number(rawAmount) : null,
+      min_amount_currency: thresholdOn ? currency : null,
     };
     if (canSeeRazgruzy()) payload.razgruz_ids = selectedRazgruzIds();
     if (canManageNogas()) payload.noga_ids = checkedIds("cityNogas");
@@ -929,6 +963,9 @@
 
     var cancelBtn = document.getElementById("btnCancelCity");
     if (cancelBtn) cancelBtn.addEventListener("click", leaveForm);
+
+    var threshold = document.getElementById("cityThresholdEnabled");
+    if (threshold) threshold.addEventListener("change", syncThresholdFields);
 
     bindSuggest();
 
