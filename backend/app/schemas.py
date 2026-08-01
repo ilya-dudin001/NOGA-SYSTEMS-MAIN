@@ -4,6 +4,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.db.models import (
+    ChatRoomKind,
     CityStatus,
     Currency,
     NogaFileKind,
@@ -28,9 +29,14 @@ class UserOut(BaseModel):
     last_seen_at: Optional[datetime] = None
 
 
+class FeaturesOut(BaseModel):
+    chat: bool = False
+
+
 class MeOut(UserOut):
     permissions: list[str]
     role_label: str
+    features: FeaturesOut = Field(default_factory=FeaturesOut)
 
 
 class AuthTelegramIn(BaseModel):
@@ -287,3 +293,113 @@ class DashboardSummaryOut(BaseModel):
 class ErrorOut(BaseModel):
     code: str
     message: str
+
+
+# --- Chat ---
+
+
+class ChatPeerBriefOut(BaseModel):
+    id: int
+    display_name: str
+    username: Optional[str] = None
+    role: UserRole
+
+
+class ChatLastMessageOut(BaseModel):
+    id: int
+    author_name: str
+    preview: str
+    has_attachments: bool = False
+    created_at: datetime
+
+
+class ChatRoomOut(BaseModel):
+    id: int
+    kind: ChatRoomKind
+    slug: Optional[str] = None
+    title: Optional[str] = None
+    peer: Optional[ChatPeerBriefOut] = None
+    unread_count: int = 0
+    unread_mentions: int = 0
+    last_message: Optional[ChatLastMessageOut] = None
+
+
+class ChatRoomsListOut(BaseModel):
+    latest_event_id: Optional[int] = None
+    total_unread: int = 0
+    total_unread_mentions: int = 0
+    rooms: list[ChatRoomOut] = Field(default_factory=list)
+
+
+class ChatPeerOut(BaseModel):
+    id: int
+    display_name: str
+    username: Optional[str] = None
+    role: UserRole
+    role_label: str
+    room_id: Optional[int] = None
+
+
+class ChatDirectCreateIn(BaseModel):
+    peer_user_id: int = Field(..., gt=0)
+
+
+class ChatAuthorOut(BaseModel):
+    id: Optional[int] = None
+    display_name: str
+    is_current_user: bool = False
+
+
+class ChatReplyOut(BaseModel):
+    id: int
+    author_name: str
+    preview: str
+    is_deleted: bool = False
+
+
+class ChatAttachmentOut(BaseModel):
+    id: int
+    original_name: str
+    content_type: str
+    size_bytes: int
+
+
+class ChatMessageOut(BaseModel):
+    id: int
+    room_id: int
+    author: ChatAuthorOut
+    content: list[dict[str, Any]] = Field(default_factory=list)
+    reply: Optional[ChatReplyOut] = None
+    attachments: list[ChatAttachmentOut] = Field(default_factory=list)
+    is_deleted: bool = False
+    can_delete: bool = False
+    created_at: datetime
+
+
+class ChatReadUpdateIn(BaseModel):
+    last_read_message_id: int = Field(..., gt=0)
+
+
+class ChatReadOut(BaseModel):
+    room_id: int
+    last_read_message_id: Optional[int] = None
+    unread_count: int = 0
+    unread_mentions: int = 0
+
+
+class ChatMentionOut(BaseModel):
+    id: int
+    room_id: int
+    room_title: Optional[str] = None
+    message_id: int
+    author_name: str
+    preview: str
+    created_at: datetime
+    read_at: Optional[datetime] = None
+
+
+class ChatMentionReadOut(BaseModel):
+    id: int
+    room_id: int
+    message_id: int
+    read_at: Optional[datetime] = None

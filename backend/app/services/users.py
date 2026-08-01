@@ -2,18 +2,33 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.initdata import TelegramUser
 from app.auth.permissions import (
+    CHAT_READ,
     ROLE_LABELS_RU,
     USERS_DELETE,
     has_permission,
     permissions_for,
 )
-from app.db.models import AuditLog, AuthAttempt, User, UserRole, UserStatus
-from app.schemas import MeOut
+from app.config import get_settings
+from app.db.models import (
+    AuditLog,
+    AuthAttempt,
+    ChatAttachment,
+    ChatEvent,
+    ChatMention,
+    ChatMessage,
+    ChatRead,
+    ChatRoomMember,
+    ChatTelegramStatus,
+    User,
+    UserRole,
+    UserStatus,
+)
+from app.schemas import FeaturesOut, MeOut
 from app.services.audit import write_audit
 
 
@@ -30,6 +45,9 @@ def user_to_me(user: User) -> MeOut:
         last_seen_at=user.last_seen_at,
         permissions=permissions_for(user.role),
         role_label=ROLE_LABELS_RU.get(user.role, user.role.value),
+        features=FeaturesOut(
+            chat=get_settings().chat_enabled and has_permission(user.role, CHAT_READ)
+        ),
     )
 
 
@@ -156,6 +174,50 @@ async def delete_user_account(
     )
     await session.execute(
         update(AuditLog).where(AuditLog.actor_user_id == target.id).values(actor_user_id=None)
+    )
+    await session.execute(
+        update(ChatMessage)
+        .where(ChatMessage.author_id == target.id)
+        .values(author_id=None)
+    )
+    await session.execute(
+        update(ChatMessage)
+        .where(ChatMessage.deleted_by_id == target.id)
+        .values(deleted_by_id=None)
+    )
+    await session.execute(
+        update(ChatAttachment)
+        .where(ChatAttachment.uploaded_by_id == target.id)
+        .values(uploaded_by_id=None)
+    )
+    # Историю уже завершённых доставок сохраняем. Отменяются только ещё
+    # не отправленные уведомления, затем user_id снимается со всех упоминаний.
+    await session.execute(
+        update(ChatMention)
+        .where(
+            ChatMention.user_id == target.id,
+            ChatMention.telegram_status.in_(
+                (ChatTelegramStatus.pending, ChatTelegramStatus.retry)
+            ),
+        )
+        .values(
+            telegram_status=ChatTelegramStatus.cancelled,
+            telegram_next_retry_at=None,
+            telegram_locked_at=None,
+        )
+    )
+    await session.execute(
+        update(ChatMention)
+        .where(ChatMention.user_id == target.id)
+        .values(user_id=None)
+    )
+    await session.execute(delete(ChatRead).where(ChatRead.user_id == target.id))
+    await session.execute(
+        delete(ChatRoomMember).where(ChatRoomMember.user_id == target.id)
+    )
+    # Targeted events must be deleted, not made public by setting target_user_id to NULL.
+    await session.execute(
+        delete(ChatEvent).where(ChatEvent.target_user_id == target.id)
     )
 
     await write_audit(

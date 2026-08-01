@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import auth as auth_api
+from app.api import chat as chat_api
 from app.api import cities as cities_api
 from app.api import dashboard as dashboard_api
 from app.api import me as me_api
@@ -20,7 +21,7 @@ from app.bot import create_bot, create_dispatcher, ensure_data_dir, run_polling
 from app.config import get_settings
 from app.db import SessionLocal, engine
 from app.db import Base
-from app.db.bootstrap import bootstrap_owners
+from app.db.bootstrap import bootstrap_chat_rooms, bootstrap_owners
 from app.services import nogas as nogas_service
 
 logging.basicConfig(
@@ -42,6 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     async with SessionLocal() as session:
         await bootstrap_owners(session, settings)
+        await bootstrap_chat_rooms(session)
 
     app.state.settings = settings
     bot = None
@@ -100,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(nogas_api.router)
     app.include_router(razgruzy_api.router)
     app.include_router(trubki_api.router)
+    app.include_router(chat_api.router)
     app.include_router(dashboard_api.router)
 
     @app.get("/api/health")

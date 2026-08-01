@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -30,6 +31,20 @@ class UserRole(str, enum.Enum):
 class UserStatus(str, enum.Enum):
     active = "active"
     blocked = "blocked"
+
+
+class ChatRoomKind(str, enum.Enum):
+    system = "system"
+    direct = "direct"
+
+
+class ChatTelegramStatus(str, enum.Enum):
+    pending = "pending"
+    sending = "sending"
+    sent = "sent"
+    retry = "retry"
+    failed = "failed"
+    cancelled = "cancelled"
 
 
 class CityStatus(str, enum.Enum):
@@ -107,6 +122,224 @@ class User(Base):
     last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_by: Mapped[Optional["User"]] = relationship(remote_side=[id], foreign_keys=[created_by_id])
+
+
+class ChatRoom(Base):
+    __tablename__ = "chat_rooms"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    kind: Mapped[ChatRoomKind] = mapped_column(
+        Enum(ChatRoomKind, name="chat_room_kind", native_enum=False),
+        nullable=False,
+        index=True,
+    )
+    slug: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True)
+    title: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    direct_key: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    members: Mapped[list["ChatRoomMember"]] = relationship(
+        back_populates="room", lazy="raise", cascade="all, delete-orphan"
+    )
+    messages: Mapped[list["ChatMessage"]] = relationship(
+        back_populates="room", lazy="raise", cascade="all, delete-orphan"
+    )
+
+
+class ChatRoomMember(Base):
+    __tablename__ = "chat_room_members"
+    __table_args__ = (
+        UniqueConstraint("room_id", "user_id", name="uq_chat_room_member"),
+        Index("ix_chat_room_members_user_room", "user_id", "room_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    room_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("chat_rooms.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    room: Mapped["ChatRoom"] = relationship(back_populates="members", lazy="raise")
+    user: Mapped["User"] = relationship(lazy="raise")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    __table_args__ = (Index("ix_chat_messages_room_id_id", "room_id", "id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    room_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("chat_rooms.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    author_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    author_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[Optional[str]] = mapped_column(String(4000), nullable=True)
+    content: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    reply_to_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deleted_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    room: Mapped["ChatRoom"] = relationship(back_populates="messages", lazy="raise")
+    author: Mapped[Optional["User"]] = relationship(
+        foreign_keys=[author_id], lazy="raise"
+    )
+    deleted_by: Mapped[Optional["User"]] = relationship(
+        foreign_keys=[deleted_by_id], lazy="raise"
+    )
+    reply_to: Mapped[Optional["ChatMessage"]] = relationship(
+        remote_side=[id], foreign_keys=[reply_to_id], lazy="raise"
+    )
+    attachments: Mapped[list["ChatAttachment"]] = relationship(
+        back_populates="message", lazy="raise", cascade="all, delete-orphan"
+    )
+    mentions: Mapped[list["ChatMention"]] = relationship(
+        back_populates="message", lazy="raise", cascade="all, delete-orphan"
+    )
+
+
+class ChatAttachment(Base):
+    __tablename__ = "chat_attachments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    message_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    stored_path: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    uploaded_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    message: Mapped["ChatMessage"] = relationship(back_populates="attachments", lazy="raise")
+    uploaded_by: Mapped[Optional["User"]] = relationship(
+        foreign_keys=[uploaded_by_id], lazy="raise"
+    )
+
+
+class ChatMention(Base):
+    __tablename__ = "chat_mentions"
+    __table_args__ = (
+        UniqueConstraint("message_id", "user_id", name="uq_chat_mention_message_user"),
+        Index("ix_chat_mentions_user_read", "user_id", "read_at"),
+        Index(
+            "ix_chat_mentions_telegram_due",
+            "telegram_status",
+            "telegram_next_retry_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    message_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    user_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    read_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    telegram_status: Mapped[ChatTelegramStatus] = mapped_column(
+        Enum(ChatTelegramStatus, name="chat_telegram_status", native_enum=False),
+        nullable=False,
+        default=ChatTelegramStatus.pending,
+    )
+    telegram_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    telegram_next_retry_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    telegram_locked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    telegram_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    telegram_last_error: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    message: Mapped["ChatMessage"] = relationship(back_populates="mentions", lazy="raise")
+    user: Mapped[Optional["User"]] = relationship(lazy="raise")
+
+
+class ChatRead(Base):
+    __tablename__ = "chat_reads"
+    __table_args__ = (
+        UniqueConstraint("room_id", "user_id", name="uq_chat_read_room_user"),
+        Index("ix_chat_reads_user_room", "user_id", "room_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    room_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("chat_rooms.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    last_read_message_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    room: Mapped["ChatRoom"] = relationship(lazy="raise")
+    user: Mapped["User"] = relationship(lazy="raise")
+    last_read_message: Mapped[Optional["ChatMessage"]] = relationship(lazy="raise")
+
+
+class ChatEvent(Base):
+    __tablename__ = "chat_events"
+    __table_args__ = (
+        Index("ix_chat_events_room_id_id", "room_id", "id"),
+        Index("ix_chat_events_target_user_id_id", "target_user_id", "id"),
+    )
+
+    # SQLite autoincrement requires exactly INTEGER PRIMARY KEY.
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    room_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("chat_rooms.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    target_user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+    room: Mapped[Optional["ChatRoom"]] = relationship(lazy="raise")
+    target_user: Mapped[Optional["User"]] = relationship(lazy="raise")
 
 
 class City(Base):
