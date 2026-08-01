@@ -7,7 +7,10 @@ suggest() — автодополнение городов (с опечаткам
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import time
+from pathlib import Path
 from typing import Any, Optional
 
 import httpx
@@ -18,6 +21,29 @@ from app.config import get_settings
 from app.db.models import City, Currency
 
 logger = logging.getLogger("noga.geocode")
+
+# #region agent log
+_DEBUG_LOG = Path(__file__).resolve().parents[3] / "debug-f4f2dd.log"
+
+
+def _agent_log(hypothesis_id: str, location: str, message: str, data: dict[str, Any]) -> None:
+    try:
+        payload = {
+            "sessionId": "f4f2dd",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+            "runId": "post-fix",
+        }
+        with _DEBUG_LOG.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+# #endregion
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_LOOKUP_URL = "https://nominatim.openstreetmap.org/lookup"
@@ -123,6 +149,89 @@ def _pick_localized_name(item: dict[str, Any], lang: str) -> Optional[str]:
     return str(name).strip() if name else None
 
 
+def _norm_place_token(value: str) -> str:
+    """Схлопывает дефисы/пробелы для сравнения «Алма-ата» ↔ «Алматы»."""
+    out: list[str] = []
+    for ch in value.casefold():
+        if ch.isalnum():
+            out.append(ch)
+    return "".join(out)
+
+
+def _match_score(name: str, query: str) -> float:
+    """0..1: насколько имя похоже на запрос (без учёта ранга геокодера)."""
+    n = _norm_place_token(name)
+    q = _norm_place_token(query)
+    if not n or not q:
+        return 0.0
+    if n == q:
+        return 1.0
+    if n.startswith(q) or q.startswith(n):
+        return 0.9
+    common = 0
+    for a, b in zip(n, q):
+        if a != b:
+            break
+        common += 1
+    return common / max(len(n), len(q))
+
+
+def _is_city_like(item: dict[str, Any]) -> bool:
+    """place=* или admin-граница города (у Алматы class=boundary, addresstype=city)."""
+    kind = (item.get("type") or "").lower()
+    cls = (item.get("class") or "").lower()
+    address_type = (item.get("addresstype") or "").lower()
+    if kind in PLACE_VALUES or address_type in PLACE_VALUES:
+        return True
+    if cls == "place":
+        return True
+    return False
+
+
+def _pack_suggest_row(row: dict[str, Any]) -> Optional[dict[str, Any]]:
+    name = (row.get("name") or "").strip()
+    if not name:
+        return None
+    code = (row.get("country_code") or "").upper()
+    country = (row.get("country") or "").strip()
+    currency = currency_for_country(code)
+    return {
+        "name": name,
+        "country": country or None,
+        "country_code": code or None,
+        "currency": currency.value if currency else None,
+        "label": name if not country else f"{name} · {country}",
+    }
+
+
+def _finalize_suggest(
+    rows: list[dict[str, Any]], *, limit: int
+) -> list[dict[str, Any]]:
+    """Дедуп + мягкий приоритет стран из справочника, без алфавитной перетасовки."""
+    # Стабильная сортировка: порядок Photon/Nominatim сохраняется внутри групп.
+    indexed = list(enumerate(rows))
+    indexed.sort(
+        key=lambda pair: (
+            0 if currency_for_country(pair[1].get("country_code")) else 1,
+            pair[0],
+        )
+    )
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for _, row in indexed:
+        packed = _pack_suggest_row(row)
+        if not packed:
+            continue
+        key = f"{packed['name'].casefold()}|{(packed.get('country_code') or '')}"
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(packed)
+        if len(out) >= limit:
+            break
+    return out
+
+
 async def suggest(
     query: str, *, limit: int = 3, lang: Optional[str] = None
 ) -> list[dict[str, Any]]:
@@ -140,40 +249,62 @@ async def suggest(
     locale = normalize_suggest_lang(lang)
 
     candidates = await _photon_suggest(cleaned, fetch=max(limit * 4, 8))
-    localized = await _localize_candidates(candidates, lang=locale, limit=limit)
-    if localized:
-        return localized
-
-    # Запасной путь: прямой поиск Nominatim уже с accept-language.
-    rows = await _nominatim_suggest(cleaned, fetch=max(limit * 3, 6), lang=locale)
-    rows.sort(
-        key=lambda row: (
-            0 if currency_for_country(row.get("country_code")) else 1,
-            (row.get("name") or "").casefold(),
-        )
+    # Берём запас: финальный limit отрежем после ранжирования.
+    localized = await _localize_candidates(
+        candidates, lang=locale, limit=max(limit * 3, 6)
     )
-    out: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for row in rows:
-        name = row.get("name") or ""
-        code = (row.get("country_code") or "").upper()
-        key = f"{name.casefold()}|{code}"
-        if not name or key in seen:
-            continue
-        seen.add(key)
-        currency = currency_for_country(code)
-        country = row.get("country") or ""
-        out.append(
-            {
-                "name": name,
-                "country": country or None,
-                "country_code": code or None,
-                "currency": currency.value if currency else None,
-                "label": name if not country else f"{name} · {country}",
-            }
+    best = max((_match_score(r.get("name") or "", cleaned) for r in localized), default=0.0)
+    # #region agent log
+    _agent_log(
+        "D",
+        "geocode.py:suggest",
+        "photon_localized",
+        {
+            "q": cleaned,
+            "photon_names": [c.get("name") for c in candidates[:8]],
+            "localized": [
+                {"name": r.get("name"), "cc": r.get("country_code")} for r in localized
+            ],
+            "best_score": round(best, 3),
+        },
+    )
+    # #endregion
+    # Исторические имена вроде «Алма-ата» Photon часто не связывает с городом —
+    # тогда уходим в Nominatim (у него alias'ы name:*, addresstype=city).
+    if localized and best >= 0.7:
+        out = _finalize_suggest(localized, limit=limit)
+        # #region agent log
+        _agent_log(
+            "E",
+            "geocode.py:suggest",
+            "suggest_final_photon",
+            {"q": cleaned, "rows": [{"name": r["name"], "cc": r.get("country_code")} for r in out]},
         )
-        if len(out) >= limit:
-            break
+        # #endregion
+        return out
+
+    rows = await _nominatim_suggest(cleaned, fetch=max(limit * 3, 6), lang=locale)
+    # #region agent log
+    _agent_log(
+        "C",
+        "geocode.py:suggest",
+        "nominatim_fallback",
+        {
+            "q": cleaned,
+            "reason": "weak_or_empty_photon",
+            "rows": [{"name": r.get("name"), "cc": r.get("country_code")} for r in rows],
+        },
+    )
+    # #endregion
+    out = _finalize_suggest(rows, limit=limit)
+    # #region agent log
+    _agent_log(
+        "E",
+        "geocode.py:suggest",
+        "suggest_final_nominatim",
+        {"q": cleaned, "rows": [{"name": r["name"], "cc": r.get("country_code")} for r in out]},
+    )
+    # #endregion
     return out
 
 
@@ -219,52 +350,33 @@ async def _localize_candidates(
         logger.exception("nominatim lookup failed")
         return []
 
-    rows: list[dict[str, Any]] = []
+    by_osm: dict[str, dict[str, Any]] = {}
     for item in items:
+        osm_type = item.get("osm_type")
+        osm_id = item.get("osm_id")
+        if osm_id is None:
+            continue
+        key = f"{_osm_prefix(osm_type)}{osm_id}"
         address = item.get("address") or {}
         name = _pick_localized_name(item, lang)
         if not name:
             continue
         code = (address.get("country_code") or "").upper()
         country = (address.get("country") or "").strip() or None
-        rows.append(
-            {
-                "name": name,
-                "country": country,
-                "country_code": code or None,
-            }
-        )
+        by_osm[key] = {
+            "name": name,
+            "country": country,
+            "country_code": code or None,
+        }
 
-    rows.sort(
-        key=lambda row: (
-            0 if currency_for_country(row.get("country_code")) else 1,
-            (row.get("name") or "").casefold(),
-        )
-    )
+    # Порядок Photon важнее алфавита: иначе «Алматы» тонет под «Алмалы*».
+    rows: list[dict[str, Any]] = []
+    for key in osm_ids:
+        row = by_osm.get(key)
+        if row:
+            rows.append(row)
 
-    out: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for row in rows:
-        name = row.get("name") or ""
-        code = (row.get("country_code") or "").upper()
-        key = f"{name.casefold()}|{code}"
-        if not name or key in seen:
-            continue
-        seen.add(key)
-        currency = currency_for_country(code)
-        country = row.get("country") or ""
-        out.append(
-            {
-                "name": name,
-                "country": country or None,
-                "country_code": code or None,
-                "currency": currency.value if currency else None,
-                "label": name if not country else f"{name} · {country}",
-            }
-        )
-        if len(out) >= limit:
-            break
-    return out
+    return _finalize_suggest(rows, limit=limit)
 
 
 async def _photon_suggest(query: str, *, fetch: int) -> list[dict[str, Any]]:
@@ -337,8 +449,7 @@ async def _nominatim_suggest(
 
     rows: list[dict[str, Any]] = []
     for item in data:
-        kind = (item.get("type") or item.get("class") or "").lower()
-        if kind not in PLACE_VALUES and item.get("class") != "place":
+        if not _is_city_like(item):
             continue
         address = item.get("address") or {}
         name = _pick_localized_name(item, lang)
