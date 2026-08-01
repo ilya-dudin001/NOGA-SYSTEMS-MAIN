@@ -1,21 +1,26 @@
-"""Smoke test for chat REST (этап 2, без SSE/файлов). Run: python tests/test_chat.py"""
+"""Smoke test for chat REST (этапы 2–3: без SSE). Run: python tests/test_chat.py"""
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import pathlib
+import shutil
 import sqlite3
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 TEST_DB = pathlib.Path("data/test_chat.db")
+UPLOADS = pathlib.Path("data/test_chat_uploads")
 if TEST_DB.exists():
     TEST_DB.unlink()
+shutil.rmtree(UPLOADS, ignore_errors=True)
 
 os.environ["BOT_POLLING_ENABLED"] = "false"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test_chat.db"
+os.environ["UPLOADS_DIR"] = "./data/test_chat_uploads"
 os.environ["DEV_AUTH_ENABLED"] = "true"
 os.environ["DEV_AUTH_SECRET"] = "dev-only-secret"
 os.environ["OWNER_TELEGRAM_IDS"] = "111111111"
@@ -70,6 +75,30 @@ def send_text(
     )
 
 
+def send_files(
+    client: TestClient,
+    headers: dict[str, str],
+    room_id: int,
+    parts: list,
+    files: list[tuple[str, bytes, str]],
+    *,
+    reply_to_id: int | None = None,
+) -> Any:
+    data = {"content": json.dumps(parts, ensure_ascii=False)}
+    if reply_to_id is not None:
+        data["reply_to_id"] = str(reply_to_id)
+    upload = [
+        ("files", (name, io.BytesIO(payload), content_type))
+        for name, payload, content_type in files
+    ]
+    return client.post(
+        f"/api/chat/rooms/{room_id}/messages",
+        headers=headers,
+        data=data,
+        files=upload,
+    )
+
+
 def count_events() -> int:
     con = sqlite3.connect(TEST_DB)
     try:
@@ -86,6 +115,20 @@ def count_audit(action: str) -> int:
         ).fetchone()[0]
     finally:
         con.close()
+
+
+def chat_disk_files() -> list[pathlib.Path]:
+    root = UPLOADS / "chat"
+    if not root.exists():
+        return []
+    return [p for p in root.rglob("*") if p.is_file() and "_staging" not in p.parts]
+
+
+def staging_files() -> list[pathlib.Path]:
+    root = UPLOADS / "chat" / "_staging"
+    if not root.exists():
+        return []
+    return [p for p in root.rglob("*") if p.is_file()]
 
 
 def main() -> None:
@@ -158,6 +201,7 @@ def main() -> None:
                 {"json": {"last_read_message_id": 1}},
             ),
             ("patch", "/api/chat/mentions/1/read", {}),
+            ("get", "/api/chat/attachments/1", {}),
         ):
             r = getattr(client, method)(path, headers=noga, **kwargs)
             assert r.status_code == 403, (path, r.text)
@@ -719,6 +763,184 @@ def main() -> None:
         r = client.delete(f"/api/chat/messages/{right_msg['id']}", headers=owner)
         assert r.status_code == 204, r.text
         print("delete matrix ok")
+
+        # --- Этап 3: безопасные вложения ---
+
+        # file-only
+        r = send_files(
+            client,
+            owner,
+            general["id"],
+            [],
+            [("note.txt", b"hello-file-only", "text/plain")],
+        )
+        assert r.status_code == 201, r.text
+        file_only = r.json()
+        assert file_only["content"] == []
+        assert len(file_only["attachments"]) == 1
+        assert file_only["attachments"][0]["original_name"] == "note.txt"
+        assert file_only["attachments"][0]["size_bytes"] == len(b"hello-file-only")
+        att_id = file_only["attachments"][0]["id"]
+
+        r = client.get(f"/api/chat/attachments/{att_id}", headers=owner)
+        assert r.status_code == 200, r.text
+        assert r.headers.get("content-type", "").startswith("application/octet-stream")
+        assert "nosniff" in r.headers.get("x-content-type-options", "").lower()
+        assert "no-store" in r.headers.get("cache-control", "")
+        assert "attachment" in r.headers.get("content-disposition", "")
+        assert r.content == b"hello-file-only"
+
+        # mixed text + file
+        r = send_files(
+            client,
+            owner,
+            general["id"],
+            [{"type": "text", "text": "смотрите файл"}],
+            [("doc.bin", b"\x00\x01mixed", "application/octet-stream")],
+        )
+        assert r.status_code == 201, r.text
+        mixed = r.json()
+        assert mixed["content"][0]["text"] == "смотрите файл"
+        assert len(mixed["attachments"]) == 1
+
+        # path traversal в имени не влияет на stored path
+        r = send_files(
+            client,
+            owner,
+            general["id"],
+            [],
+            [("../etc/passwd", b"safe-bytes", "text/plain")],
+        )
+        assert r.status_code == 201, r.text
+        trav = r.json()["attachments"][0]
+        assert trav["original_name"] == "passwd"
+        con = sqlite3.connect(TEST_DB)
+        try:
+            stored = con.execute(
+                "SELECT stored_path FROM chat_attachments WHERE id = ?",
+                (trav["id"],),
+            ).fetchone()[0]
+        finally:
+            con.close()
+        assert ".." not in stored
+        assert stored.startswith("chat/")
+        assert pathlib.Path(stored).name != "passwd"
+        assert (UPLOADS / stored).is_file()
+
+        # 11 файлов → TOO_MANY
+        too_many = [(f"f{i}.txt", b"x", "text/plain") for i in range(11)]
+        r = send_files(client, owner, general["id"], [], too_many)
+        assert r.status_code == 400, r.text
+        assert r.json()["detail"]["code"] == "CHAT_TOO_MANY_FILES"
+        assert staging_files() == []
+
+        # лимит по фактически прочитанным байтам (малый override)
+        chat_service._UPLOAD_MAX_TOTAL_BYTES_OVERRIDE = 32
+        try:
+            disk_before_over = set(chat_disk_files())
+            r = send_files(
+                client,
+                owner,
+                general["id"],
+                [],
+                [("big.bin", b"a" * 64, "application/octet-stream")],
+            )
+            assert r.status_code == 413, r.text
+            assert r.json()["detail"]["code"] == "CHAT_FILES_TOO_LARGE"
+            assert staging_files() == []
+            assert set(chat_disk_files()) == disk_before_over
+        finally:
+            chat_service._UPLOAD_MAX_TOTAL_BYTES_OVERRIDE = None
+
+        # rollback cleanup: падение после переноса файлов
+        events_before = count_events()
+        audit_before = count_audit("chat.message.created")
+        disk_before_rollback = set(chat_disk_files())
+        original_append_event = chat_service.append_event
+
+        async def fail_append_event(*_a: Any, **_k: Any) -> Any:
+            raise RuntimeError("forced file rollback")
+
+        chat_service.append_event = fail_append_event
+        try:
+            try:
+                send_files(
+                    client,
+                    owner,
+                    general["id"],
+                    [{"type": "text", "text": "rollback"}],
+                    [("rb.txt", b"rollback-bytes", "text/plain")],
+                )
+                raise AssertionError("forced failure did not propagate")
+            except RuntimeError as exc:
+                assert str(exc) == "forced file rollback"
+        finally:
+            chat_service.append_event = original_append_event
+        assert count_events() == events_before
+        assert count_audit("chat.message.created") == audit_before
+        assert set(chat_disk_files()) == disk_before_rollback
+        assert staging_files() == []
+        print("attachments upload/limits/rollback ok")
+
+        # download access: direct attachment недоступен третьему
+        r = client.post(
+            "/api/chat/direct",
+            headers=owner,
+            json={"peer_user_id": admin_me["id"]},
+        )
+        assert r.status_code in (200, 201), r.text
+        direct_room = r.json()
+        r = send_files(
+            client,
+            owner,
+            direct_room["id"],
+            [],
+            [("secret.txt", b"top-secret", "text/plain")],
+        )
+        assert r.status_code == 201, r.text
+        secret_att = r.json()["attachments"][0]["id"]
+        secret_msg = r.json()["id"]
+
+        r = client.get(f"/api/chat/attachments/{secret_att}", headers=owner)
+        assert r.status_code == 200, r.text
+        assert r.content == b"top-secret"
+        r = client.get(f"/api/chat/attachments/{secret_att}", headers=admin)
+        assert r.status_code == 200, r.text
+        r = client.get(f"/api/chat/attachments/{secret_att}", headers=admin2)
+        assert r.status_code == 403, r.text
+        assert r.json()["detail"]["code"] == "CHAT_ROOM_FORBIDDEN"
+        r = client.get(f"/api/chat/attachments/{secret_att}", headers=right)
+        assert r.status_code == 403, r.text
+        r = client.get(f"/api/chat/attachments/{secret_att}", headers=noga)
+        assert r.status_code == 403, r.text
+
+        # soft-delete снимает metadata и файл с диска
+        con = sqlite3.connect(TEST_DB)
+        try:
+            stored_secret = con.execute(
+                "SELECT stored_path FROM chat_attachments WHERE id = ?",
+                (secret_att,),
+            ).fetchone()[0]
+        finally:
+            con.close()
+        abs_secret = UPLOADS / stored_secret
+        assert abs_secret.is_file()
+        r = client.delete(f"/api/chat/messages/{secret_msg}", headers=owner)
+        assert r.status_code == 204, r.text
+        con = sqlite3.connect(TEST_DB)
+        try:
+            left = con.execute(
+                "SELECT COUNT(*) FROM chat_attachments WHERE id = ?",
+                (secret_att,),
+            ).fetchone()[0]
+        finally:
+            con.close()
+        assert left == 0
+        assert not abs_secret.exists()
+        r = client.get(f"/api/chat/attachments/{secret_att}", headers=owner)
+        assert r.status_code == 404, r.text
+        assert r.json()["detail"]["code"] == "CHAT_ATTACHMENT_NOT_FOUND"
+        print("attachments download/delete ok")
 
         # --- Direct write + block/role ---
         r = send_text(

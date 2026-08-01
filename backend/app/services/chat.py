@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+import shutil
+import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Optional, Sequence
 
 from sqlalchemy import Select, and_, func, inspect as sa_inspect, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -23,6 +28,7 @@ from app.auth.permissions import (
 )
 from app.config import get_settings
 from app.db.models import (
+    ChatAttachment,
     ChatEvent,
     ChatMention,
     ChatMessage,
@@ -37,17 +43,29 @@ from app.db.models import (
 )
 from app.services.audit import write_audit
 
+logger = logging.getLogger(__name__)
+
 INTERNAL_ROLES = frozenset({UserRole.owner, UserRole.right_hand, UserRole.admin})
 PREVIEW_MAX = 160
 DELETED_PREVIEW = "Сообщение удалено"
+CHUNK_BYTES = 1024 * 1024
+CHAT_STORAGE_PREFIX = "chat"
+CHAT_STAGING_PREFIX = "chat/_staging"
+
+# Подменяемые в тестах лимиты (не создавать 100 МБ fixture).
+_UPLOAD_MAX_TOTAL_BYTES_OVERRIDE: Optional[int] = None
+_UPLOAD_MAX_COUNT_OVERRIDE: Optional[int] = None
 
 
 class ChatError(Exception):
     """Бизнес-ошибка чата → HTTP detail {code, message}."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(
+        self, code: str, message: str, *, status_code: Optional[int] = None
+    ) -> None:
         self.code = code
         self.message = message
+        self.status_code = status_code
         super().__init__(message)
 
 
@@ -55,7 +73,7 @@ CHAT_HTTP_STATUS: dict[str, int] = {
     "CHAT_EMPTY_MESSAGE": 400,
     "CHAT_TEXT_TOO_LONG": 400,
     "CHAT_TOO_MANY_FILES": 400,
-    "CHAT_FILES_TOO_LARGE": 400,
+    "CHAT_FILES_TOO_LARGE": 413,
     "CHAT_BAD_CONTENT": 400,
     "CHAT_SELF_DIRECT": 400,
     "CHAT_FORBIDDEN": 403,
@@ -72,8 +90,164 @@ CHAT_HTTP_STATUS: dict[str, int] = {
 }
 
 
-def http_status_for(code: str) -> int:
+def http_status_for(code: str, *, status_code: Optional[int] = None) -> int:
+    if status_code is not None:
+        return status_code
     return CHAT_HTTP_STATUS.get(code, 400)
+
+
+def uploads_root() -> Path:
+    return Path(get_settings().uploads_dir).resolve()
+
+
+def upload_max_total_bytes() -> int:
+    if _UPLOAD_MAX_TOTAL_BYTES_OVERRIDE is not None:
+        return _UPLOAD_MAX_TOTAL_BYTES_OVERRIDE
+    return get_settings().chat_upload_max_total_mb * 1024 * 1024
+
+
+def upload_max_count() -> int:
+    if _UPLOAD_MAX_COUNT_OVERRIDE is not None:
+        return _UPLOAD_MAX_COUNT_OVERRIDE
+    return get_settings().chat_files_max_count
+
+
+@dataclass
+class StagedFile:
+    temp_path: Path
+    staging_dir: Path
+    original_name: str
+    content_type: str
+    size_bytes: int
+
+
+def safe_original_name(filename: Optional[str]) -> str:
+    """Имя для metadata/Content-Disposition; в filesystem path не идёт."""
+    name = Path(filename or "file").name.replace("\x00", "").strip() or "file"
+    return name[:255]
+
+
+def absolute_stored_path(stored_path: str) -> Path:
+    return uploads_root() / stored_path
+
+
+def ensure_under_chat_root(path: Path) -> Path:
+    """Гарантирует, что путь лежит в UPLOADS_DIR/chat (не staging)."""
+    resolved = path.resolve()
+    chat_root = (uploads_root() / CHAT_STORAGE_PREFIX).resolve()
+    try:
+        resolved.relative_to(chat_root)
+    except ValueError as exc:
+        raise ChatError(
+            "CHAT_ATTACHMENT_NOT_FOUND", "Вложение не найдено"
+        ) from exc
+    if "_staging" in resolved.parts:
+        raise ChatError("CHAT_ATTACHMENT_NOT_FOUND", "Вложение не найдено")
+    return resolved
+
+
+def cleanup_staged(staged: Sequence[StagedFile]) -> None:
+    dirs: set[Path] = set()
+    for item in staged:
+        dirs.add(item.staging_dir)
+        try:
+            item.temp_path.unlink(missing_ok=True)
+        except OSError:
+            logger.exception("Failed to remove staged chat file %s", item.temp_path)
+    for directory in dirs:
+        shutil.rmtree(directory, ignore_errors=True)
+
+
+def delete_stored_files(stored_paths: Sequence[str]) -> None:
+    """Удаляет файлы после commit. Ошибки только в лог."""
+    parents: set[Path] = set()
+    for stored in stored_paths:
+        try:
+            path = absolute_stored_path(stored)
+            ensure_under_chat_root(path)
+            parents.add(path.parent)
+            path.unlink(missing_ok=True)
+        except ChatError:
+            logger.warning("Skip deleting unsafe chat path %s", stored)
+        except OSError:
+            logger.exception("Failed to delete chat attachment %s", stored)
+    for parent in parents:
+        try:
+            if parent.is_dir() and not any(parent.iterdir()):
+                parent.rmdir()
+            grand = parent.parent
+            if grand.is_dir() and not any(grand.iterdir()):
+                grand.rmdir()
+        except OSError:
+            logger.exception("Failed to remove empty chat dir %s", parent)
+
+
+async def stage_uploads(uploads: Sequence[Any]) -> list[StagedFile]:
+    """Пишет UploadFile во временный каталог, проверяя лимиты по чанкам."""
+    candidates = [u for u in uploads if getattr(u, "filename", None)]
+    max_count = upload_max_count()
+    if len(candidates) > max_count:
+        raise ChatError(
+            "CHAT_TOO_MANY_FILES",
+            f"Не больше {max_count} файлов в одном сообщении",
+        )
+
+    max_total = upload_max_total_bytes()
+    staging_dir = uploads_root() / CHAT_STAGING_PREFIX / uuid.uuid4().hex
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    staged: list[StagedFile] = []
+    total = 0
+    try:
+        for upload in candidates:
+            original_name = safe_original_name(upload.filename)
+            declared = getattr(upload, "content_type", None) or "application/octet-stream"
+            content_type = str(declared)[:120] or "application/octet-stream"
+            temp_path = staging_dir / uuid.uuid4().hex
+            size = 0
+            with temp_path.open("wb") as out:
+                while True:
+                    chunk = await upload.read(CHUNK_BYTES)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    total += len(chunk)
+                    if total > max_total:
+                        raise ChatError(
+                            "CHAT_FILES_TOO_LARGE",
+                            "Суммарный размер файлов превышает лимит",
+                            status_code=413,
+                        )
+                    out.write(chunk)
+            if size == 0:
+                temp_path.unlink(missing_ok=True)
+                continue
+            staged.append(
+                StagedFile(
+                    temp_path=temp_path,
+                    staging_dir=staging_dir,
+                    original_name=original_name,
+                    content_type=content_type,
+                    size_bytes=size,
+                )
+            )
+        if not staged:
+            shutil.rmtree(staging_dir, ignore_errors=True)
+        return staged
+    except Exception:
+        cleanup_staged(staged)
+        shutil.rmtree(staging_dir, ignore_errors=True)
+        raise
+
+
+def commit_staged_file(
+    room_id: int, message_id: int, staged: StagedFile
+) -> str:
+    """Переносит файл из staging в конечный каталог. Возвращает relative stored_path."""
+    relative = Path(CHAT_STORAGE_PREFIX) / str(room_id) / str(message_id) / uuid.uuid4().hex
+    target = uploads_root() / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(staged.temp_path), str(target))
+    return relative.as_posix()
 
 
 def direct_key(user_a: int, user_b: int) -> str:
@@ -921,6 +1095,156 @@ async def list_messages(
     return [message_to_dict(m, actor=actor) for m in messages]
 
 
+async def create_message(
+    session: AsyncSession,
+    actor: User,
+    room_id: int,
+    *,
+    content_raw: Any,
+    reply_to_id: Optional[int] = None,
+    staged_files: Optional[Sequence[StagedFile]] = None,
+) -> dict[str, Any]:
+    """Создаёт сообщение: текст и/или уже прочитанные во временный каталог файлы."""
+    staged = list(staged_files or [])
+    final_paths: list[str] = []
+    message_id: Optional[int] = None
+    settings = get_settings()
+    try:
+        # Повторная проверка доступа уже после staging (короткая write-транзакция).
+        room = await require_room(session, actor, room_id, need_write=True)
+
+        mentionable = await mentionable_users(session, actor, room)
+        mention_map = {u.id: u for u in mentionable}
+        content, body, mention_ids = normalize_content(
+            content_raw,
+            mention_users=mention_map,
+            max_chars=settings.chat_message_max_chars,
+        )
+        plain = body.strip()
+        if not plain and not staged:
+            raise ChatError("CHAT_EMPTY_MESSAGE", "Пустое сообщение")
+
+        reply_to: Optional[ChatMessage] = None
+        if reply_to_id is not None:
+            reply_to = await load_message(session, reply_to_id)
+            if reply_to is None or reply_to.room_id != room.id:
+                raise ChatError(
+                    "CHAT_MESSAGE_NOT_FOUND",
+                    "Сообщение для ответа не найдено в этой комнате",
+                )
+
+        message = ChatMessage(
+            room_id=room.id,
+            author_id=actor.id,
+            author_name=actor.display_name,
+            body=plain or None,
+            content=content,
+            reply_to_id=reply_to.id if reply_to is not None else None,
+        )
+        session.add(message)
+        await session.flush()
+        message_id = message.id
+
+        files_total_bytes = 0
+        for item in staged:
+            stored_path = commit_staged_file(room.id, message.id, item)
+            final_paths.append(stored_path)
+            files_total_bytes += item.size_bytes
+            session.add(
+                ChatAttachment(
+                    message_id=message.id,
+                    stored_path=stored_path,
+                    original_name=item.original_name,
+                    content_type=item.content_type,
+                    size_bytes=item.size_bytes,
+                    uploaded_by_id=actor.id,
+                )
+            )
+
+        for uid in mention_ids:
+            if uid == actor.id:
+                continue
+            target = mention_map[uid]
+            session.add(
+                ChatMention(
+                    message_id=message.id,
+                    user_id=target.id,
+                    user_name=target.display_name,
+                    telegram_status=ChatTelegramStatus.pending,
+                    telegram_attempts=0,
+                )
+            )
+
+        await session.flush()
+        loaded = await load_message(session, message.id)
+        assert loaded is not None
+        message_dict = message_to_dict(loaded, actor=actor)
+        event_message = dict(message_dict)
+        event_message["author"] = {
+            "id": message_dict["author"]["id"],
+            "display_name": message_dict["author"]["display_name"],
+        }
+        event_message.pop("can_delete", None)
+
+        await append_event(
+            session,
+            type="message.created",
+            room_id=room.id,
+            payload={"message": _jsonable_message(event_message)},
+        )
+        for uid in mention_ids:
+            if uid == actor.id:
+                continue
+            mention_row = await session.scalar(
+                select(ChatMention).where(
+                    ChatMention.message_id == message.id,
+                    ChatMention.user_id == uid,
+                )
+            )
+            if mention_row is None:
+                continue
+            await append_event(
+                session,
+                type="mention.created",
+                room_id=room.id,
+                target_user_id=uid,
+                payload={
+                    "mention_id": mention_row.id,
+                    "message_id": message.id,
+                    "room_id": room.id,
+                },
+            )
+
+        await write_audit(
+            session,
+            action="chat.message.created",
+            actor_user_id=actor.id,
+            target_type="chat_message",
+            target_id=str(message.id),
+            payload={
+                "room_id": room.id,
+                "kind": room.kind.value,
+                "message_id": message.id,
+                "files_count": len(staged),
+                "files_total_bytes": files_total_bytes,
+                "mentions_count": len([u for u in mention_ids if u != actor.id]),
+                "reply_to_id": reply_to_id,
+            },
+        )
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        delete_stored_files(final_paths)
+        raise
+    finally:
+        cleanup_staged(staged)
+
+    assert message_id is not None
+    loaded = await load_message(session, message_id)
+    assert loaded is not None
+    return message_to_dict(loaded, actor=actor)
+
+
 async def create_text_message(
     session: AsyncSession,
     actor: User,
@@ -930,117 +1254,17 @@ async def create_text_message(
     reply_to_id: Optional[int] = None,
     has_files: bool = False,
 ) -> dict[str, Any]:
-    """Этап 2: только текст. has_files=True отклоняется до этапа 3."""
+    """Совместимость с этапом 2: только текст."""
     if has_files:
-        raise ChatError("CHAT_BAD_CONTENT", "Вложения пока не поддерживаются")
-
-    settings = get_settings()
-    room = await require_room(session, actor, room_id, need_write=True)
-
-    mentionable = await mentionable_users(session, actor, room)
-    mention_map = {u.id: u for u in mentionable}
-    content, body, mention_ids = normalize_content(
-        content_raw,
-        mention_users=mention_map,
-        max_chars=settings.chat_message_max_chars,
-    )
-    if not body.strip():
-        raise ChatError("CHAT_EMPTY_MESSAGE", "Пустое сообщение")
-
-    reply_to: Optional[ChatMessage] = None
-    if reply_to_id is not None:
-        reply_to = await load_message(session, reply_to_id)
-        if reply_to is None or reply_to.room_id != room.id:
-            raise ChatError(
-                "CHAT_MESSAGE_NOT_FOUND",
-                "Сообщение для ответа не найдено в этой комнате",
-            )
-
-    message = ChatMessage(
-        room_id=room.id,
-        author_id=actor.id,
-        author_name=actor.display_name,
-        body=body,
-        content=content,
-        reply_to_id=reply_to.id if reply_to is not None else None,
-    )
-    session.add(message)
-    await session.flush()
-
-    for uid in mention_ids:
-        if uid == actor.id:
-            continue
-        target = mention_map[uid]
-        session.add(
-            ChatMention(
-                message_id=message.id,
-                user_id=target.id,
-                user_name=target.display_name,
-                telegram_status=ChatTelegramStatus.pending,
-                telegram_attempts=0,
-            )
-        )
-
-    await session.flush()
-    loaded = await load_message(session, message.id)
-    assert loaded is not None
-    message_dict = message_to_dict(loaded, actor=actor)
-    event_message = dict(message_dict)
-    event_message["author"] = {
-        "id": message_dict["author"]["id"],
-        "display_name": message_dict["author"]["display_name"],
-    }
-    event_message.pop("can_delete", None)
-
-    await append_event(
+        raise ChatError("CHAT_BAD_CONTENT", "Передайте staged_files через create_message")
+    return await create_message(
         session,
-        type="message.created",
-        room_id=room.id,
-        payload={"message": _jsonable_message(event_message)},
+        actor,
+        room_id,
+        content_raw=content_raw,
+        reply_to_id=reply_to_id,
+        staged_files=[],
     )
-    for uid in mention_ids:
-        if uid == actor.id:
-            continue
-        mention_row = await session.scalar(
-            select(ChatMention).where(
-                ChatMention.message_id == message.id,
-                ChatMention.user_id == uid,
-            )
-        )
-        if mention_row is None:
-            continue
-        await append_event(
-            session,
-            type="mention.created",
-            room_id=room.id,
-            target_user_id=uid,
-            payload={
-                "mention_id": mention_row.id,
-                "message_id": message.id,
-                "room_id": room.id,
-            },
-        )
-
-    await write_audit(
-        session,
-        action="chat.message.created",
-        actor_user_id=actor.id,
-        target_type="chat_message",
-        target_id=str(message.id),
-        payload={
-            "room_id": room.id,
-            "kind": room.kind.value,
-            "message_id": message.id,
-            "files_count": 0,
-            "files_total_bytes": 0,
-            "mentions_count": len([u for u in mention_ids if u != actor.id]),
-            "reply_to_id": reply_to_id,
-        },
-    )
-    await session.commit()
-    loaded = await load_message(session, message.id)
-    assert loaded is not None
-    return message_to_dict(loaded, actor=actor)
 
 
 def _jsonable_message(message_dict: dict[str, Any]) -> dict[str, Any]:
@@ -1066,12 +1290,13 @@ async def soft_delete_message(
     if not can_delete_message(actor, message):
         raise ChatError("CHAT_DELETE_FORBIDDEN", "Нельзя удалить это сообщение")
 
+    stored_paths = [att.stored_path for att in list(message.attachments or [])]
+
     message.body = None
     message.content = []
     message.deleted_at = _utc_now()
     message.deleted_by_id = actor.id
 
-    # Метаданные вложений снимаем сейчас; файлы с диска — на этапе 3 после commit.
     for att in list(message.attachments or []):
         await session.delete(att)
 
@@ -1113,7 +1338,32 @@ async def soft_delete_message(
         },
     )
     await session.commit()
+    delete_stored_files(stored_paths)
     return True
+
+
+async def resolve_attachment_download(
+    session: AsyncSession, actor: User, attachment_id: int
+) -> tuple[ChatAttachment, Path]:
+    """Проверяет доступ к комнате и возвращает (attachment, absolute path)."""
+    attachment = await session.scalar(
+        select(ChatAttachment)
+        .where(ChatAttachment.id == attachment_id)
+        .options(selectinload(ChatAttachment.message))
+    )
+    if attachment is None:
+        raise ChatError("CHAT_ATTACHMENT_NOT_FOUND", "Вложение не найдено")
+
+    message = attachment.message
+    if message is None or message.deleted_at is not None:
+        raise ChatError("CHAT_ATTACHMENT_NOT_FOUND", "Вложение не найдено")
+
+    await require_room(session, actor, message.room_id)
+
+    path = ensure_under_chat_root(absolute_stored_path(attachment.stored_path))
+    if not path.is_file():
+        raise ChatError("CHAT_ATTACHMENT_NOT_FOUND", "Вложение не найдено")
+    return attachment, path
 
 
 # ---------------------------------------------------------------------------
@@ -1276,6 +1526,7 @@ async def list_mentions(
             ChatMention.user_id == actor.id,
             ChatMessage.deleted_at.is_(None),
         )
+        .options(selectinload(ChatMessage.attachments))
         .order_by(ChatMention.id.desc())
         .limit(limit)
     )
@@ -1302,7 +1553,9 @@ async def list_mentions(
                 "message_id": message.id,
                 "author_name": message.author_name,
                 "preview": preview_text(
-                    message.body, has_attachments=False, is_deleted=False
+                    message.body,
+                    has_attachments=bool(message.attachments),
+                    is_deleted=False,
                 ),
                 "created_at": mention.created_at,
                 "read_at": mention.read_at,

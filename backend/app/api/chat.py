@@ -1,4 +1,4 @@
-"""REST API внутреннего чата (без SSE и без файлов — этапы 3–4)."""
+"""REST API внутреннего чата (без SSE — этап 4)."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import get_current_user
@@ -57,7 +58,9 @@ router = APIRouter(
 
 def _raise_chat(exc: ChatError) -> None:
     raise HTTPException(
-        status_code=chat_service.http_status_for(exc.code),
+        status_code=chat_service.http_status_for(
+            exc.code, status_code=exc.status_code
+        ),
         detail={"code": exc.code, "message": exc.message},
     ) from exc
 
@@ -171,28 +174,56 @@ async def send_message(
     reply_to_id: Annotated[Optional[int], Form()] = None,
     files: Annotated[Optional[list[UploadFile]], File()] = None,
 ) -> ChatMessageOut:
+    staged: list[chat_service.StagedFile] = []
     try:
         try:
             content_raw = json.loads(content)
         except json.JSONDecodeError as exc:
             raise ChatError("CHAT_BAD_CONTENT", "Некорректные части сообщения") from exc
 
-        file_list = files or []
-        has_files = any(
-            (f.filename is not None and f.filename != "") for f in file_list
-        )
-        data = await chat_service.create_text_message(
+        # Staging вне write-lock: файлы читаются чанками во временный каталог.
+        staged = await chat_service.stage_uploads(files or [])
+        data = await chat_service.create_message(
             session,
             actor,
             room_id,
             content_raw=content_raw,
             reply_to_id=reply_to_id,
-            has_files=has_files,
+            staged_files=staged,
+        )
+    except ChatError as exc:
+        chat_service.cleanup_staged(staged)
+        _raise_chat(exc)
+        raise  # pragma: no cover
+    except Exception:
+        chat_service.cleanup_staged(staged)
+        raise
+    return ChatMessageOut.model_validate(data)
+
+
+@router.get("/attachments/{attachment_id}")
+async def download_attachment(
+    attachment_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    actor: Annotated[User, Depends(require_chat_read)],
+) -> FileResponse:
+    try:
+        attachment, path = await chat_service.resolve_attachment_download(
+            session, actor, attachment_id
         )
     except ChatError as exc:
         _raise_chat(exc)
         raise  # pragma: no cover
-    return ChatMessageOut.model_validate(data)
+    return FileResponse(
+        path,
+        media_type="application/octet-stream",
+        filename=attachment.original_name,
+        content_disposition_type="attachment",
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @router.delete(
