@@ -1161,13 +1161,13 @@
   z-index: var(--em-z-fab);
 }
 
-.em-chat-room__composer {
+.em-card.em-chat-room__composer {
   position: sticky;
   bottom: 0;
   z-index: var(--em-z-sheet);
   display: flex;
   flex-direction: column;
-  gap: var(--em-space-2);
+  gap: 0;
   /* fluid: на всю ширину экрана, выходим из gutter .screen */
   margin-left: calc(-1 * var(--gutter));
   margin-right: calc(-1 * var(--gutter));
@@ -1178,10 +1178,27 @@
   border-left: 0;
   border-right: 0;
   border-bottom: 0;
-  padding: var(--em-space-3) var(--em-gutter);
-  padding-bottom: calc(var(--em-space-3) + env(safe-area-inset-bottom, 0px));
+  /* Перебиваем .em-card padding; низ без зазора под клавиатуру iOS */
+  padding: 0;
   background: var(--em-surface);
   box-shadow: var(--em-shadow-nav);
+}
+/* Home-indicator только когда клавиатура закрыта */
+.em-card.em-chat-room__composer:not(.is-keyboard) {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.em-card.em-chat-room__composer.is-keyboard {
+  padding-bottom: 0;
+}
+
+/* Надстройки над строкой ввода — свои внутренние отступы */
+.em-chat-room__composer > .em-chat-reply:not([hidden]),
+.em-chat-room__composer > .em-chat-chips:not([hidden]),
+.em-chat-room__composer > .em-chat-files:not([hidden]),
+.em-chat-room__composer > .em-chat-progress:not([hidden]),
+.em-chat-room__composer > .em-chat-mention-picker:not([hidden]),
+.em-chat-room__composer > .em-chat-composer-hint:not([hidden]) {
+  margin: var(--em-space-2) var(--em-space-2) 0;
 }
 
 .em-chat-reply {
@@ -1247,33 +1264,44 @@
 }
 .em-chat-compose-row {
   display: flex;
-  align-items: flex-end;
-  gap: var(--em-space-1);
+  align-items: stretch;
+  gap: 0;
   width: 100%;
+  min-height: var(--em-control-h);
 }
 .em-chat-compose-row > .em-btn-icon {
   flex: 0 0 auto;
+  width: var(--em-tap-min);
+  height: auto;
+  min-height: var(--em-control-h);
+  border-radius: 0;
 }
 .em-chat-compose-field {
   flex: 1 1 auto;
   min-width: 0;
+  align-self: stretch;
   align-items: stretch;
-  /* поле съедает оставшуюся ширину; внутренний отступ компактнее */
+  height: auto;
+  min-height: 100%;
+  border-radius: 0;
+  /* поле занимает всю высоту ряда — без зазоров сверху/снизу */
   padding-left: var(--em-space-3);
   padding-right: var(--em-space-3);
 }
 .em-chat-compose-field .em-input {
   resize: none;
+  width: 100%;
+  height: 100%;
   min-height: var(--em-control-h);
   max-height: calc(var(--em-control-h) * 3);
   padding-top: var(--em-space-3);
   padding-bottom: var(--em-space-3);
   line-height: var(--em-lh-normal);
-  width: 100%;
+  box-sizing: border-box;
 }
 /* Иконки композера чуть плотнее DS-базы 1.6 */
 .em-chat-room__composer .em-btn-icon svg {
-  stroke-width: 2;
+  stroke-width: 2.1;
 }
 .em-chat-composer-hint {
   margin: 0;

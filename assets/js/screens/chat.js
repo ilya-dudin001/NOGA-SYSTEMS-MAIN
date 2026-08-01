@@ -349,6 +349,8 @@
     mentionCandidates = [];
     var input = document.getElementById("chatInput");
     if (input) input.value = "";
+    var composer = document.getElementById("chatComposer");
+    if (composer) composer.classList.remove("is-keyboard");
     renderReplyBar();
     renderMentionChips();
     renderFileList();
@@ -1144,6 +1146,23 @@
         event.preventDefault();
         hideMentionPicker();
       }
+    });
+    /* iOS Mini App: safe-area снизу даёт щель над клавиатурой — снимаем на фокусе */
+    var composer = document.getElementById("chatComposer");
+    var input = document.getElementById("chatInput");
+    function setKeyboardOpen(open) {
+      if (composer) composer.classList.toggle("is-keyboard", Boolean(open));
+    }
+    on(input, "focus", function () {
+      setKeyboardOpen(true);
+    });
+    on(input, "blur", function () {
+      /* небольшая задержка: тап по иконке композера не должен мигать отступом */
+      setTimeout(function () {
+        var active = document.activeElement;
+        if (active && composer && composer.contains(active)) return;
+        setKeyboardOpen(false);
+      }, 50);
     });
   }
 
