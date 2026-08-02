@@ -107,15 +107,22 @@
 
 .em-trubka-money-input {
   width: min(100%, calc(var(--em-frame) / 2));
-  min-height: var(--em-control-h);
+  min-height: var(--em-tap-min);
   padding: 0 var(--em-space-3);
   border: var(--em-line) solid var(--em-border);
   border-radius: var(--em-radius-md);
   background: var(--em-surface-2);
   color: var(--em-gold-100);
   font: inherit;
-  font-size: var(--em-fs-amount);
+  font-size: var(--em-fs-strong);
   font-weight: var(--em-fw-semibold);
+  letter-spacing: var(--em-ls-num);
+}
+
+.em-trubka-money-input::placeholder {
+  font-size: var(--em-fs-meta);
+  font-weight: var(--em-fw-regular);
+  letter-spacing: normal;
 }
 
 .em-trubka-money-input:focus-visible {
