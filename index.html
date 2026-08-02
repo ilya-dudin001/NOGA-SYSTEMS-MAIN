@@ -464,6 +464,40 @@
       <div id="statsTrubkiList"></div>
     </div>
 
+    <!-- ===== BANKOMATY ===== -->
+    <div class="view" id="viewBankomaty" hidden>
+      <div class="users-toolbar">
+        <button class="btn-icon btn-back" type="button" data-back="viewBankomaty" title="Назад в профиль" aria-label="Назад в профиль" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5"/>
+            <path d="m11 6-6 6 6 6"/>
+          </svg>
+        </button>
+        <h2 class="users-toolbar__title">Банкоматы</h2>
+      </div>
+
+      <form class="form-card" id="bankomatyForm" novalidate>
+        <div class="em-field">
+          <label class="em-label" for="bankomatyCity">Город<span class="em-label__req">*</span></label>
+          <input class="em-input" id="bankomatyCity" name="city" type="text" autocomplete="address-level2" required maxlength="160" placeholder="Москва" />
+        </div>
+        <div class="em-field">
+          <label class="em-label" for="bankomatyStreet">Улица<span class="em-label__req">*</span></label>
+          <input class="em-input" id="bankomatyStreet" name="street" type="text" autocomplete="street-address" required maxlength="200" placeholder="Тверская" />
+        </div>
+        <div class="em-field">
+          <label class="em-label" for="bankomatyHouse">Дом</label>
+          <input class="em-input" id="bankomatyHouse" name="house" type="text" autocomplete="off" maxlength="64" placeholder="10" />
+          <span class="em-hint">Необязательно</span>
+        </div>
+        <div class="form-actions">
+          <button class="em-btn em-btn--primary" id="bankomatySubmit" type="submit">Найти</button>
+        </div>
+      </form>
+
+      <div id="bankomatyResults" class="bankomaty-results" aria-live="polite"></div>
+    </div>
+
     <!-- ===== CHAT ROOMS ===== -->
     <div class="view" id="viewChatRooms" hidden>
       <div class="em-header" id="chatRoomsHeader">
@@ -629,6 +663,7 @@
 <script src="assets/js/screens/cities.js"></script>
 <script src="assets/js/screens/trubki.js"></script>
 <script src="assets/js/screens/stats.js"></script>
+<script src="assets/js/screens/bankomaty.js"></script>
 <script src="assets/js/screens/chat.js"></script>
 <script src="assets/js/screens/profile.js"></script>
 <script src="assets/js/screens/create-menu.js"></script>

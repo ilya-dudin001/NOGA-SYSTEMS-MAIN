@@ -658,3 +658,67 @@ class AuthAttempt(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class PlaceKind(str, enum.Enum):
+    atm = "atm"
+    terminal = "terminal"
+    poi = "poi"
+
+
+class PlaceAddressCache(Base):
+    """Геокод адреса для справочника банкоматов."""
+
+    __tablename__ = "place_address_cache"
+    __table_args__ = (
+        UniqueConstraint(
+            "city_norm",
+            "street_norm",
+            "house_norm",
+            name="uq_place_address_norm",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    city_norm: Mapped[str] = mapped_column(String(160), nullable=False)
+    street_norm: Mapped[str] = mapped_column(String(200), nullable=False)
+    house_norm: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lon: Mapped[float] = mapped_column(Float, nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="2gis")
+    external_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    queried_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PlaceObjectCache(Base):
+    """Кэш банкоматов, терминалов и крупных POI рядом с адресами."""
+
+    __tablename__ = "place_object_cache"
+    __table_args__ = (
+        UniqueConstraint("source", "external_id", name="uq_place_object_source_ext"),
+        Index("ix_place_object_street_key", "street_key"),
+        Index("ix_place_object_geohash", "geohash"),
+        Index("ix_place_object_fetched_at", "fetched_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    kind: Mapped[PlaceKind] = mapped_column(
+        Enum(PlaceKind, name="place_kind", native_enum=False),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    bank: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lon: Mapped[float] = mapped_column(Float, nullable=False)
+    street_key: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    geohash: Mapped[str] = mapped_column(String(16), nullable=False, default="")
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    payload: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+

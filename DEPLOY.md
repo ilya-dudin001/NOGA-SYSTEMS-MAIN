@@ -242,6 +242,18 @@ sudo systemctl restart noga-api
 | `CHAT_EVENT_RETENTION_DAYS` | очистка `chat_events` |
 | `CHAT_TELEGRAM_NOTIFICATIONS_ENABLED` | outbox упоминаний в Telegram |
 
+Для справочника банкоматов:
+
+| Переменная | Смысл |
+|------------|--------|
+| `PLACES_ENABLED` | feature flag: `false` → `/api/places/*` 404, пункт в профиле скрыт |
+| `DGIS_API_KEY` | ключ 2ГИС; пусто → детерминированные моки (dev) |
+| `PLACES_RADIUS_M` | радиус поиска, м (по умолчанию 1000) |
+| `PLACES_CACHE_TTL_DAYS` | TTL объектов в SQLite-кэше (по умолчанию 14) |
+| `PLACES_API_TIMEOUT_SEC` | таймаут ответа провайдера (по умолчанию 2) |
+
+Миграция кэша: `010_places_cache` (`place_address_cache`, `place_object_cache`).
+
 ## Вариант с Docker
 
 Если сервис поднят через `docker compose`, а не systemd:

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.initdata import TelegramUser
 from app.auth.permissions import (
     CHAT_READ,
+    PLACES_READ,
     ROLE_LABELS_RU,
     USERS_DELETE,
     has_permission,
@@ -48,7 +49,9 @@ def user_to_me(user: User) -> MeOut:
         permissions=permissions_for(user.role),
         role_label=ROLE_LABELS_RU.get(user.role, user.role.value),
         features=FeaturesOut(
-            chat=get_settings().chat_enabled and has_permission(user.role, CHAT_READ)
+            chat=get_settings().chat_enabled and has_permission(user.role, CHAT_READ),
+            places=get_settings().places_enabled
+            and has_permission(user.role, PLACES_READ),
         ),
     )
 

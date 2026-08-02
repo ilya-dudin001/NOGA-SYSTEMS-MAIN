@@ -177,6 +177,17 @@
     return find(NOGA_FILE_KINDS, value) || NOGA_FILE_KINDS[0];
   }
 
+  var PLACE_KINDS = [
+    { value: "atm", label: "Банкомат" },
+    { value: "terminal", label: "Терминал" },
+    { value: "poi", label: "Крупный объект" },
+  ];
+  var PLACE_BANK_UNKNOWN = "Банк не указан";
+
+  function placeKind(value) {
+    return find(PLACE_KINDS, value) || PLACE_KINDS[2];
+  }
+
   global.NogaDict = {
     CITY_STATUSES: CITY_STATUSES,
     CURRENCIES: CURRENCIES,
@@ -184,11 +195,14 @@
     TRUBKA_STATUSES: TRUBKA_STATUSES,
     TRUBKA_MANUAL_STATUSES: TRUBKA_MANUAL_STATUSES,
     TRUBKA_DELIVERIES: TRUBKA_DELIVERIES,
+    PLACE_KINDS: PLACE_KINDS,
+    PLACE_BANK_UNKNOWN: PLACE_BANK_UNKNOWN,
     cityStatus: cityStatus,
     currency: currency,
     trubkaStatus: trubkaStatus,
     trubkaDelivery: trubkaDelivery,
     fileKind: fileKind,
+    placeKind: placeKind,
     formatNumber: formatNumber,
     formatAmount: formatAmount,
     formatCompactNumber: formatCompactNumber,

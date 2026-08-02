@@ -1584,3 +1584,16 @@
 @media (prefers-reduced-motion: reduce) {
   .em-chat-msg--flash { animation: none; }
 }
+
+.bankomaty-results {
+  margin-top: var(--em-space-4, 16px);
+  padding: 0 4px 24px;
+}
+.bankomaty-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--em-space-3, 12px);
+}
+.bankomaty-card .user-card__line {
+  display: block;
+}

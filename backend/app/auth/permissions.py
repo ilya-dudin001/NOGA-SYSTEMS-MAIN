@@ -34,6 +34,8 @@ CHAT_WRITE = "chat:write"
 CHAT_DIRECT = "chat:direct"
 CHAT_DELETE_OWN = "chat:delete_own"
 CHAT_DELETE_ANY = "chat:delete_any"
+# Справочник банкоматов / терминалов / крупных POI — всем ролям.
+PLACES_READ = "places:read"
 
 ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
     UserRole.owner: frozenset(
@@ -64,6 +66,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             CHAT_DIRECT,
             CHAT_DELETE_OWN,
             CHAT_DELETE_ANY,
+            PLACES_READ,
         }
     ),
     UserRole.right_hand: frozenset(
@@ -91,6 +94,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             CHAT_WRITE,
             CHAT_DIRECT,
             CHAT_DELETE_OWN,
+            PLACES_READ,
         }
     ),
     # Админ ведёт свой участок: заводит и правит только собственные города, ноги и
@@ -115,12 +119,14 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
             CHAT_WRITE,
             CHAT_DIRECT,
             CHAT_DELETE_OWN,
+            PLACES_READ,
         }
     ),
     UserRole.noga: frozenset(
         {
             OPERATIONS_OWN,
             CITIES_READ,
+            PLACES_READ,
         }
     ),
 }

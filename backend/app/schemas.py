@@ -33,6 +33,7 @@ class UserOut(BaseModel):
 
 class FeaturesOut(BaseModel):
     chat: bool = False
+    places: bool = False
 
 
 class MeOut(UserOut):
@@ -486,3 +487,40 @@ class ChatMentionReadOut(BaseModel):
     room_id: int
     message_id: int
     read_at: Optional[datetime] = None
+
+
+class PlacesNearbyIn(BaseModel):
+    city: str = Field(..., min_length=1, max_length=160)
+    street: str = Field(..., min_length=1, max_length=200)
+    house: Optional[str] = Field(default=None, max_length=64)
+
+
+class PlacesNearbyQueryOut(BaseModel):
+    city: str
+    street: str
+    house: Optional[str] = None
+
+
+class PlacesCenterOut(BaseModel):
+    lat: float
+    lon: float
+
+
+class PlaceItemOut(BaseModel):
+    kind: str
+    name: str
+    bank: Optional[str] = None
+    address: Optional[str] = None
+    distance_m: int
+    lat: float
+    lon: float
+    source: str
+    external_id: str
+    from_cache: bool = False
+
+
+class PlacesNearbyOut(BaseModel):
+    query: PlacesNearbyQueryOut
+    center: PlacesCenterOut
+    partial: bool = False
+    items: list[PlaceItemOut]

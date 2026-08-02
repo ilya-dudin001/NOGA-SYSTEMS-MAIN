@@ -61,9 +61,14 @@ NOGA Systems (EM 3.5 — Operations) — закрытая система учё�
 | `razgruz:all` | + | + | − | − |
 | `chat:read` / `chat:write` / `chat:direct` | + / + / + | + / + / + | + / + / + | − / − / − |
 | `chat:delete_own` / `chat:delete_any` | + / + | + / − | + / − | − / − |
+| `places:read` | + | + | + | + |
 
 Чат доступен только owner / right_hand / admin. Роль `noga` не имеет `chat:*`.
 Живой UI дополнительно требует `features.chat` (`CHAT_ENABLED` на сервере).
+
+Справочник банкоматов (`places:read`) есть у **всех** ролей, включая `noga`.
+Живой UI дополнительно требует `features.places` (`PLACES_ENABLED` на сервере).
+Провайдер каркаса — 2ГИС (`DGIS_API_KEY`); без ключа бэкенд отдаёт детерминированные моки.
 
 `cities:read` есть у всех ролей — он нужен для форм операций. Именно поэтому состав
 ответа города режется по правам: без `razgruz:read` список `razgruzy` приходит пустым,
@@ -128,6 +133,11 @@ chat_messages room_id, author_id/author_name, body, content JSON, reply_to_id, d
 chat_attachments message_id → chat_messages ON DELETE CASCADE, stored_path, original_name, …
 chat_events   type, room_id, target_user_id, payload JSON — durable SSE
 chat_mentions message_id, user_id, telegram_status pending|sending|sent|retry|failed|cancelled
+place_address_cache city_norm, street_norm, house_norm, lat, lon, provider, external_id,
+              queried_at                                         UNIQUE (city_norm, street_norm, house_norm)
+place_object_cache source, external_id, kind atm|terminal|poi, name, bank, address,
+              lat, lon, street_key, geohash, fetched_at, payload JSON
+                                                             UNIQUE (source, external_id)
 audit_log     actor_user_id (nullable), action, target_type, target_id, payload JSON
 auth_attempts telegram_id, success, reason
 ```
@@ -136,7 +146,7 @@ auth_attempts telegram_id, success, reason
 Файлы чата: `UPLOADS_DIR/chat/...`.
 
 Enum'ы (`user_role`, `user_status`, `city_status`, `currency`, `noga_file_kind`,
-`trubka_status`, `trubka_delivery`, `trubka_file_kind`) объявлены `native_enum=False` —
+`trubka_status`, `trubka_delivery`, `trubka_file_kind`, `place_kind`) объявлены `native_enum=False` —
 хранятся строками.
 
 - `city_status`: `working` (в работе), `paused` (стоп временно), `stopped` (стоп полностью).
@@ -189,11 +199,13 @@ backend/app/
   config.py          Settings (pydantic-settings, .env), get_settings() кэшируется lru_cache
   db/                Base, engine, SessionLocal (expire_on_commit=False), get_session, models, bootstrap
   auth/              initdata (HMAC), jwt, deps (get_current_user, require_permission), permissions
-  api/               auth, me, users, cities, nogas, razgruzy, trubki, chat, dashboard — все под /api
+  api/               auth, me, users, cities, nogas, razgruzy, trubki, chat, dashboard,
+                     places — все под /api
   services/          users, cities, nogas, razgruzy, trubki, chat, chat_broker,
-                     chat_notifications, audit
+                     chat_notifications, audit, geocode, places, places_dgis,
+                     places_cache, places_normalize
   bot/               create_bot/create_dispatcher/run_polling, middlewares, handlers/{start,users_cmd}
-alembic/versions/    001_initial … 007_chat, 008_trubka_lifecycle
+alembic/versions/    001_initial … 009_city_coords, 010_places_cache
 ```
 
 ChatBroker и rate limiter — in-memory. Production: ровно один uvicorn process
@@ -246,6 +258,7 @@ ChatBroker и rate limiter — in-memory. Production: ровно один uvicor
 | GET | `/api/chat/stream` | `chat:read`, durable SSE |
 | GET | `/api/chat/attachments/{id}` | `chat:read` |
 | GET/PATCH | `/api/chat/mentions`, `.../{id}/read` | `chat:read` |
+| POST | `/api/places/nearby` | `places:read` (+ `PLACES_ENABLED`) |
 | GET | `/api/health` | — |
 
 `PATCH /api/me` принимает единственное поле `display_name` и чистит его через
@@ -334,7 +347,8 @@ polling логируется, но API продолжает работать. К
 - Каждый файл — IIFE `(function (global) { "use strict"; ... })(window)`, экспорт одним
   объектом в `window`: `NOGA_CONFIG`, `NogaTelegram`, `NogaApi`, `NogaRoles`, `NogaDict`,
   `NogaViews`, `NogaDashboard`, `NogaNoAccess`, `NogaUsers`, `NogaNogas`, `NogaCities`,
-  `NogaRazgruzy`, `NogaTrubki`, `NogaChat`, `NogaCreateMenu`, `NogaStats`, `NogaProfile`.
+  `NogaRazgruzy`, `NogaTrubki`, `NogaChat`, `NogaBankomaty`, `NogaCreateMenu`, `NogaStats`,
+  `NogaProfile`.
   Исключение — `auth.js`: он ничего не экспортирует, только запускает `bootstrap()`.
 - Стиль ES5-совместимый (`var`, `Array.prototype.forEach.call`), кроме `async/await` в запросах.
 - Порядок подключения в `index.html` важен: `config → telegram → api → roles → dict →
@@ -425,6 +439,7 @@ python tests/test_chat.py
 python tests/test_chat_sse.py
 python tests/test_chat_notifications.py
 python tests/check_chat_log_hygiene.py
+python tests/test_places.py
 ```
 
 Тесты — самостоятельные скрипты на `TestClient` (не pytest), каждый со своей БД в `data/`;
@@ -461,6 +476,7 @@ rollout с `CHAT_ENABLED=false` → migrate → nginx → enable — см. [DEPL
 | Статистика | `viewStats` | `screens/stats.js` | всем кроме `noga` |
 | Чат (комнаты) | `viewChatRooms` | `screens/chat.js` | `features.chat` + `chat:read` |
 | Чат (комната) | `viewChatRoom` | `screens/chat.js` | `features.chat` + `chat:read` |
+| Банкоматы | `viewBankomaty` | `screens/bankomaty.js` | `features.places` + `places:read` |
 
 Вход в чат — колокольчик на дашборде и пункт «Чат» в меню профиля. Таббар не меняется.
 Глобальный SSE стартует после сессии (`NogaChat.syncAccess`); `release()` на 401.
@@ -511,12 +527,15 @@ FAB «+» в центре таббара открывает вылетающее
 - **Мои города** / **Мои ноги** / **Мои разгрузы** — по `cities:read` / `nogas:read` /
   `razgruz:read`. У ролей с `*:all` подпись без «Мои», потому что списки и так общие.
 - **Трубки** — `NogaTrubki.show()`, общий список заказов; в меню есть у всех кроме `noga`.
+- **Банкоматы** — `NogaBankomaty.show()`, поиск по городу/улице/дому; пункт есть у всех
+  ролей при `features.places`.
 - **Статистика** — `NogaStats.show()`, общесистемные цифры из `GET /api/dashboard/summary`:
   оборот (только с `dashboard:global`), трубки по стадиям из блока `trubki` и справочники
   из блока `cities`. Плитки — те же `.stat`, но с `.stat--static`, чтобы не притворялись
   кликабельными.
 
-У роли `noga` меню пустое (в нём было бы нечего показать), вместо него `.empty-hint`.
+У роли `noga` в меню профиля остаются чат (если включён) и банкоматы (если включены);
+остальные разделы скрыты.
 
 Разделы профиля открываются как обычные экраны, вкладка при этом остаётся на «Профиле».
 Слева в шапке (`.users-toolbar`) каждого из пяти разделов лежит стрелка `.btn-back` с
@@ -621,8 +640,9 @@ FAB «+» в центре таббара открывает вылетающее
 Готово: авторизация, роли и права, пользователи (API + бот + экран), ноги (включая личные
 данные, паспорта и видео), города, разгрузы (API + экраны), трубки (API + дашборд, список,
 детали с картой, форма), **внутренний чат** (REST, durable SSE, Telegram mentions outbox,
-Mini App: комнаты, direct, лента, composer, deep link), меню создания на FAB, аудит,
-сводка по городам на дашборде, профиль с меню разделов и экран статистики.
+Mini App: комнаты, direct, лента, composer, deep link), **справочник банкоматов** (каркас:
+`POST /api/places/nearby`, SQLite-кэш, экран в профиле, 2ГИС / моки), меню создания на FAB,
+аудит, сводка по городам на дашборде, профиль с меню разделов и экран статистики.
 
 Не сделано: кошельки, оборот. «Общий оборот сегодня» на дашборде и `usd_equivalent`
 по-прежнему нули. `completed_orders` у разгруза всегда 0, `recent_orders` у города —

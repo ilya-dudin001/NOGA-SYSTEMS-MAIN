@@ -14,6 +14,7 @@ from app.api import cities as cities_api
 from app.api import dashboard as dashboard_api
 from app.api import me as me_api
 from app.api import nogas as nogas_api
+from app.api import places as places_api
 from app.api import razgruzy as razgruzy_api
 from app.api import trubki as trubki_api
 from app.api import users as users_api
@@ -155,6 +156,7 @@ def create_app() -> FastAPI:
     app.include_router(trubki_api.router)
     app.include_router(chat_api.router)
     app.include_router(dashboard_api.router)
+    app.include_router(places_api.router)
 
     @app.get("/api/health")
     async def health() -> dict:

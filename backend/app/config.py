@@ -80,6 +80,18 @@ class Settings(BaseSettings):
         default=3, ge=1, le=20, alias="CHAT_SSE_MAX_STREAMS_PER_USER"
     )
     geocode_enabled: bool = Field(default=True, alias="GEOCODE_ENABLED")
+    # Справочник банкоматов / POI (2ГИС). Выключен по умолчанию.
+    places_enabled: bool = Field(default=False, alias="PLACES_ENABLED")
+    dgis_api_key: str = Field(default="", alias="DGIS_API_KEY")
+    places_radius_m: int = Field(
+        default=1000, ge=100, le=5000, alias="PLACES_RADIUS_M"
+    )
+    places_cache_ttl_days: int = Field(
+        default=14, ge=1, le=365, alias="PLACES_CACHE_TTL_DAYS"
+    )
+    places_api_timeout_sec: float = Field(
+        default=2.0, ge=0.5, le=30.0, alias="PLACES_API_TIMEOUT_SEC"
+    )
 
     @field_validator(
         "bot_polling_enabled",
@@ -87,6 +99,7 @@ class Settings(BaseSettings):
         "chat_enabled",
         "chat_telegram_notifications_enabled",
         "geocode_enabled",
+        "places_enabled",
         mode="before",
     )
     @classmethod

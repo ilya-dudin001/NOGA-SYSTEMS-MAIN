@@ -26,6 +26,9 @@
     chat:
       '<path d="M4 5.2h16v11.6H9l-5 3.6z"/>' +
       '<path d="M8 9.2h8M8 12.8h5.4"/>',
+    bankomaty:
+      '<path d="M12 20.8s6.2-5.7 6.2-10a6.2 6.2 0 1 0-12.4 0c0 4.3 6.2 10 6.2 10z"/>' +
+      '<circle cx="12" cy="10.6" r="2.4"/>',
     chevron: '<path d="m9 6 6 6-6 6"/>',
   };
 
@@ -188,8 +191,8 @@
   }
 
   /**
-   * Разделы профиля. У роли noga их нет — ей остаётся только карточка:
-   * ни ног, ни общей статистики она не видит.
+   * Разделы профиля. У роли noga — чат и банкоматы (если включены фичи);
+   * справочники и статистика ей недоступны.
    * Пользователи здесь у тех, кто ими управляет; админу список доступен
    * только с дашборда — править он его всё равно не может.
    */
@@ -209,6 +212,23 @@
         view: "viewChatRooms",
         open: function () {
           global.NogaChat.show({ from: "profile" });
+        },
+      });
+    }
+
+    if (
+      user &&
+      user.features &&
+      user.features.places &&
+      can("places:read") &&
+      global.NogaBankomaty
+    ) {
+      items.push({
+        icon: "bankomaty",
+        label: "Банкоматы",
+        view: "viewBankomaty",
+        open: function () {
+          global.NogaBankomaty.show();
         },
       });
     }

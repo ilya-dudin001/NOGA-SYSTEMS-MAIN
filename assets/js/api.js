@@ -546,5 +546,9 @@
     },
     openChatStream: openChatStream,
     createSseParser: createSseParser,
+    /** Поиск банкоматов / терминалов / крупных POI рядом с адресом. */
+    placesNearby: function (payload) {
+      return request("/api/places/nearby", { method: "POST", body: payload });
+    },
   };
 })(window);

@@ -14,6 +14,7 @@
     "viewProfile",
     "viewStats",
     "viewStatsTrubki",
+    "viewBankomaty",
     "viewChatRooms",
     "viewChatRoom",
   ];
