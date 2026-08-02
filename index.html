@@ -115,10 +115,8 @@
             <span class="cities-card__label">Стоп полн.</span>
           </div>
         </div>
-        <p class="cities-card__foot" id="citiesFoot">Ног: 0 · Разгрузов: 0</p>
+        <p class="cities-card__foot" id="citiesFoot">Ног: 0</p>
       </section>
-
-      <button class="btn-all" id="razgruzyEntry" type="button" hidden style="margin-top:16px">Разгрузы</button>
     </div>
 
     <!-- ===== USERS ===== -->
@@ -273,64 +271,12 @@
             </div>
           </div>
         </div>
-        <div class="field" id="cityRazgruzyField">
-          <label>Разгрузы</label>
-          <div class="checklist" id="cityRazgruzy"></div>
-        </div>
         <div class="field" id="cityNogasField">
           <label>Ноги в городе</label>
           <div class="checklist" id="cityNogas"></div>
         </div>
         <div class="form-actions">
           <button class="btn-all" id="btnCancelCity" type="button">Отмена</button>
-          <button class="btn-gold" type="submit" style="flex:1">Сохранить</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- ===== RAZGRUZY ===== -->
-    <div class="view" id="viewRazgruzy" hidden>
-      <div class="users-toolbar">
-        <button class="btn-icon btn-back" type="button" data-back="viewRazgruzy" title="Назад в профиль" aria-label="Назад в профиль" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M19 12H5"/>
-            <path d="m11 6-6 6 6 6"/>
-          </svg>
-        </button>
-        <h2 class="users-toolbar__title" id="razgruzyTitle">Разгрузы</h2>
-        <button class="btn-gold" id="btnAddRazgruz" type="button" hidden>+ Добавить</button>
-      </div>
-
-      <div id="razgruzyList"></div>
-    </div>
-
-    <!-- ===== RAZGRUZ CREATE / EDIT ===== -->
-    <div class="view" id="viewRazgruzCreate" hidden>
-      <div class="users-toolbar">
-        <button class="btn-icon" id="razgruzCreateBack" type="button" title="Назад к разгрузам" aria-label="Назад к разгрузам">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M19 12H5"/>
-            <path d="m11 6-6 6 6 6"/>
-          </svg>
-        </button>
-        <h2 class="users-toolbar__title" id="razgruzFormTitle">Новый разгруз</h2>
-      </div>
-
-      <form class="form-card" id="razgruzForm">
-        <div class="field">
-          <label for="razgruzName">Название</label>
-          <input id="razgruzName" type="text" required placeholder="Альфа">
-        </div>
-        <div class="field">
-          <label for="razgruzPercent">Комиссия, %</label>
-          <input id="razgruzPercent" type="number" min="0" max="100" step="0.01" inputmode="decimal" placeholder="3.5">
-        </div>
-        <div class="field">
-          <label for="razgruzContact">Контакт</label>
-          <input id="razgruzContact" type="text" placeholder="@username или телефон">
-        </div>
-        <div class="form-actions">
-          <button class="btn-all" id="btnCancelRazgruz" type="button">Отмена</button>
           <button class="btn-gold" type="submit" style="flex:1">Сохранить</button>
         </div>
       </form>
@@ -688,7 +634,6 @@
 <script src="assets/js/screens/users.js"></script>
 <script src="assets/js/screens/nogas.js"></script>
 <script src="assets/js/screens/cities.js"></script>
-<script src="assets/js/screens/razgruzy.js"></script>
 <script src="assets/js/screens/trubki.js"></script>
 <script src="assets/js/screens/stats.js"></script>
 <script src="assets/js/screens/chat.js"></script>

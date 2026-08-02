@@ -161,9 +161,6 @@
       );
 
       var directories = [statCard(format(cities.nogas), "Ног в системе")];
-      if (global.NogaRoles.can("razgruz:read")) {
-        directories.push(statCard(format(cities.razgruzy), "Разгрузов"));
-      }
       body.appendChild(block("Справочники", directories, 2));
     }
   }

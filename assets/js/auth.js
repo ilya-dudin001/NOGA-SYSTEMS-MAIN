@@ -22,13 +22,6 @@
     if (tabbar) tabbar.hidden = false;
     if (splash) splash.classList.add("is-hidden");
 
-    var razgruzyEntry = document.getElementById("razgruzyEntry");
-    if (razgruzyEntry) {
-      razgruzyEntry.hidden = !(
-        global.NogaRoles.can("razgruz:manage") || global.NogaRoles.can("razgruz:read")
-      );
-    }
-
     // Плашка городов сама открывает витрину — отдельной кнопки больше нет.
     var citiesCard = document.getElementById("citiesCard");
     if (citiesCard) {
@@ -144,9 +137,6 @@
       });
     });
 
-    bindEntry("razgruzyEntry", function () {
-      global.NogaRazgruzy.show();
-    });
     // Плашка городов на дашборде — витрина «В работе».
     bindCitiesCard();
     // Трубки — часть дашборда, поэтому подсветка остаётся на «Панели».

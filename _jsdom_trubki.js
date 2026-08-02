@@ -145,7 +145,6 @@ window.fetch = async (url, options = {}) => {
   "assets/js/screens/users.js",
   "assets/js/screens/nogas.js",
   "assets/js/screens/cities.js",
-  "assets/js/screens/razgruzy.js",
   "assets/js/screens/trubki.js",
   "assets/js/screens/stats.js",
   "assets/js/screens/profile.js",

@@ -117,8 +117,7 @@
 
     var foot = document.getElementById("citiesFoot");
     if (foot) {
-      foot.textContent =
-        "Ног: " + format(cities.nogas || 0) + " · Разгрузов: " + format(cities.razgruzy || 0);
+      foot.textContent = "Ног: " + format(cities.nogas || 0);
     }
 
     applyGeography(cities);

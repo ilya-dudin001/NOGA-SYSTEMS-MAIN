@@ -1,7 +1,6 @@
 (function (global) {
   "use strict";
 
-  var razgruzy = [];
   var nogas = [];
   var editingId = null;
   var editingCity = null;
@@ -26,10 +25,6 @@
   /** Правка города: у админа — только свои, остальное решает сервер флагом can_manage. */
   function canManageCity(city) {
     return canManage() && city.can_manage !== false;
-  }
-
-  function canSeeRazgruzy() {
-    return global.NogaRoles.can("razgruz:read");
   }
 
   function canManageNogas() {
@@ -155,17 +150,13 @@
     "Всё равно оставить статус «В работе»?";
 
   /**
-   * Аварии города в работе: заказ некому отдать (нет ноги) или некуда разгрузить
-   * (нет разгруза). Про разгрузы молчим у ролей, которым их не показывают.
+   * Аварии города в работе: заказ некому отдать (нет ноги).
    */
   function cityProblems(city) {
     if (city.status !== "working") return [];
     var problems = [];
     if (!city.nogas_count) {
       problems.push("Нет ноги");
-    }
-    if (canSeeRazgruzy() && !(city.razgruzy || []).length) {
-      problems.push("Нет разгруза");
     }
     return problems;
   }
@@ -196,7 +187,6 @@
       );
     }
     parts.push("Ног: " + city.nogas_count);
-    if (canSeeRazgruzy()) parts.push("Разгрузов: " + city.razgruzy.length);
     head.appendChild(el("p", "user-card__meta", parts.join(" · ")));
     if (!canManageCity(city)) {
       head.appendChild(
@@ -207,16 +197,6 @@
     card.appendChild(top);
 
     appendWarnings(card, problems);
-
-    if (canSeeRazgruzy() && city.razgruzy.length) {
-      var chips = el("div", "chips");
-      city.razgruzy.forEach(function (r) {
-        chips.appendChild(
-          el("span", "chip", r.name + " · " + global.NogaDict.formatPercent(r.commission_percent))
-        );
-      });
-      card.appendChild(chips);
-    }
 
     if (canManageCity(city)) {
       card.appendChild(buildStatusSwitch(city));
@@ -373,40 +353,6 @@
       }
     }
 
-    if (canSeeRazgruzy()) {
-      container.appendChild(el("p", "detail__title", "Разгрузы (" + city.razgruzy.length + ")"));
-      if (!city.razgruzy.length) {
-        container.appendChild(el("p", "detail__empty", "Разгрузы не привязаны"));
-      } else {
-        var razgruzList = el("ul", "detail-list");
-        city.razgruzy.forEach(function (r) {
-          var line = el("li", "detail-list__item");
-          line.appendChild(
-            el(
-              "span",
-              "detail-list__name",
-              r.name + " — " + global.NogaDict.formatPercent(r.commission_percent)
-            )
-          );
-          line.appendChild(
-            el(
-              "span",
-              "detail-list__meta",
-              "успешно разгружено: " +
-                r.completed_orders +
-                " · добавил " +
-                (r.created_by_name || "—") +
-                " · " +
-                global.NogaDict.formatDate(r.created_at) +
-                (r.contact ? " · " + r.contact : "")
-            )
-          );
-          razgruzList.appendChild(line);
-        });
-        container.appendChild(razgruzList);
-      }
-    }
-
     container.appendChild(el("p", "detail__title", "Последние заказы"));
     if (!city.recent_orders.length) {
       container.appendChild(
@@ -421,7 +367,7 @@
           el(
             "span",
             "detail-list__meta",
-            "нога: " + (order.noga_name || "—") + " · разгруз: " + (order.razgruz_name || "—")
+            "нога: " + (order.noga_name || "—")
           )
         );
         orders.appendChild(line);
@@ -700,74 +646,6 @@
     }
   }
 
-  async function loadRazgruzy() {
-    if (!canSeeRazgruzy()) {
-      razgruzy = [];
-      return;
-    }
-    try {
-      razgruzy = await global.NogaApi.listRazgruzy();
-    } catch (err) {
-      razgruzy = [];
-    }
-  }
-
-  /** Свои разгрузы подставляются в новый город: их автор ведёт участок целиком. */
-  function ownRazgruzIds() {
-    return razgruzy
-      .filter(function (r) {
-        return r.created_by_me && r.is_active;
-      })
-      .map(function (r) {
-        return r.id;
-      });
-  }
-
-  function fillRazgruzChecklist(selectedIds, prefilled) {
-    var field = document.getElementById("cityRazgruzyField");
-    var box = document.getElementById("cityRazgruzy");
-    if (!field || !box) return;
-    field.hidden = !canSeeRazgruzy();
-    box.innerHTML = "";
-
-    if (prefilled && selectedIds.length) {
-      box.appendChild(
-        el("p", "detail__empty", "Ваши разгрузы отмечены сразу — лишние можно снять")
-      );
-    }
-
-    if (!razgruzy.length) {
-      box.appendChild(
-        el("p", "detail__empty", "Разгрузов пока нет — добавьте их на экране «Разгрузы»")
-      );
-      return;
-    }
-
-    razgruzy.forEach(function (r) {
-      var row = el("label", "checklist__row");
-      var input = document.createElement("input");
-      input.type = "checkbox";
-      input.value = String(r.id);
-      input.checked = selectedIds.indexOf(r.id) !== -1;
-      row.appendChild(input);
-      row.appendChild(
-        el(
-          "span",
-          "checklist__label",
-          r.name +
-            " · " +
-            global.NogaDict.formatPercent(r.commission_percent) +
-            (r.is_active ? "" : " · выключен")
-        )
-      );
-      box.appendChild(row);
-    });
-  }
-
-  function selectedRazgruzIds() {
-    return checkedIds("cityRazgruzy");
-  }
-
   function checkedIds(boxId) {
     var box = document.getElementById(boxId);
     if (!box) return [];
@@ -864,7 +742,6 @@
 
   async function openForm(city) {
     bindForm();
-    await loadRazgruzy();
     await loadNogas();
     fillStatusSelect();
     fillCurrencySelect();
@@ -892,16 +769,6 @@
       )
     );
 
-    if (city && city.razgruzy) {
-      fillRazgruzChecklist(
-        city.razgruzy.map(function (r) {
-          return r.id;
-        }),
-        false
-      );
-    } else {
-      fillRazgruzChecklist(ownRazgruzIds(), true);
-    }
     fillNogaChecklist(city || null);
 
     if (global.NogaProfile && global.NogaProfile.hideBack) global.NogaProfile.hideBack();
@@ -949,7 +816,6 @@
       min_amount: thresholdOn ? Number(rawAmount) : null,
       min_amount_currency: thresholdOn ? currency : null,
     };
-    if (canSeeRazgruzy()) payload.razgruz_ids = selectedRazgruzIds();
     if (canManageNogas()) payload.noga_ids = checkedIds("cityNogas");
     return payload;
   }
@@ -1024,7 +890,6 @@
     bindForm();
     renderModes();
     global.NogaNogas.release();
-    await loadRazgruzy();
     await loadNogas();
     await loadAndRender();
   }

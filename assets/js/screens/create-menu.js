@@ -11,9 +11,6 @@
     noga:
       '<circle cx="12" cy="7" r="3.2"/>' +
       '<path d="M6 21v-2.2A4.8 4.8 0 0 1 10.8 14h2.4A4.8 4.8 0 0 1 18 18.8V21"/>',
-    razgruz:
-      '<path d="M4 8.5h13"/><path d="m14 5.5 3 3-3 3"/>' +
-      '<path d="M20 15.5H7"/><path d="m10 12.5-3 3 3 3"/>',
   };
 
   var bound = false;
@@ -56,15 +53,6 @@
         label: "Нога",
         open: function () {
           return global.NogaNogas.openCreate();
-        },
-      });
-    }
-    if (can("razgruz:manage")) {
-      list.push({
-        icon: "razgruz",
-        label: "Разгруз",
-        open: function () {
-          return global.NogaRazgruzy.openCreate();
         },
       });
     }

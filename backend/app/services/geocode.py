@@ -239,85 +239,12 @@ async def suggest(
         candidates, lang=locale, limit=max(limit * 3, 6)
     )
     best = max((_match_score(r.get("name") or "", cleaned) for r in localized), default=0.0)
-    # #region agent log
-    try:
-        import json as _json
-        from pathlib import Path as _Path
-
-        _log = {
-            "sessionId": "328f38",
-            "location": "geocode.py:suggest",
-            "message": "suggest_path",
-            "hypothesisId": "H-Baku",
-            "timestamp": int(__import__("time").time() * 1000),
-            "data": {
-                "query": cleaned,
-                "norm_q": _norm_place_token(cleaned),
-                "photon_count": len(candidates),
-                "photon": [
-                    {
-                        "name": c.get("name"),
-                        "cc": c.get("country_code"),
-                        "osm": f"{c.get('osm_type')}:{c.get('osm_id')}",
-                    }
-                    for c in candidates[:8]
-                ],
-                "localized": [
-                    {
-                        "name": r.get("name"),
-                        "cc": r.get("country_code"),
-                        "score": round(
-                            _match_score(r.get("name") or "", cleaned), 3
-                        ),
-                    }
-                    for r in localized
-                ],
-                "best": round(best, 3),
-                "use_photon_exact": bool(localized) and best >= 1.0,
-                "runId": "baku-post-fix",
-            },
-        }
-        _Path(__file__).resolve().parents[3].joinpath("debug-328f38.log").open(
-            "a", encoding="utf-8"
-        ).write(_json.dumps(_log, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # #endregion
     # Только точное совпадение Photon — без Nominatim (rate limit).
     # Prefix 0.9 («Бакур» на запрос «Баку») раньше отрезал настоящий город.
     if localized and best >= 1.0:
         return _finalize_suggest(localized, limit=limit, query=cleaned)
 
     rows = await _nominatim_suggest(cleaned, fetch=max(limit * 3, 6), lang=locale)
-    # #region agent log
-    try:
-        import json as _json
-        from pathlib import Path as _Path
-
-        _log2 = {
-            "sessionId": "328f38",
-            "location": "geocode.py:suggest:nominatim",
-            "message": "nominatim_fallback",
-            "hypothesisId": "H-Baku",
-            "timestamp": int(__import__("time").time() * 1000),
-            "data": {
-                "query": cleaned,
-                "nominatim": [
-                    {"name": r.get("name"), "cc": r.get("country_code")}
-                    for r in rows[:8]
-                ],
-                "final": _finalize_suggest(
-                    list(localized) + list(rows), limit=limit, query=cleaned
-                ),
-                "runId": "baku-post-fix",
-            },
-        }
-        _Path(__file__).resolve().parents[3].joinpath("debug-328f38.log").open(
-            "a", encoding="utf-8"
-        ).write(_json.dumps(_log2, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # #endregion
     return _finalize_suggest(list(localized) + list(rows), limit=limit, query=cleaned)
 
 

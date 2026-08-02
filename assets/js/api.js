@@ -428,19 +428,6 @@
       var query = options && options.detachNogas ? "?detach_nogas=true" : "";
       return request("/api/cities/" + id + query, { method: "DELETE" });
     },
-    listRazgruzy: function () {
-      return request("/api/razgruzy");
-    },
-    createRazgruz: function (payload) {
-      return request("/api/razgruzy", { method: "POST", body: payload });
-    },
-    updateRazgruz: function (id, payload) {
-      return request("/api/razgruzy/" + id, { method: "PATCH", body: payload });
-    },
-    deleteRazgruz: function (id, options) {
-      var query = options && options.detachCities ? "?detach_cities=true" : "";
-      return request("/api/razgruzy/" + id + query, { method: "DELETE" });
-    },
     /** params: { status, city_id, limit, offset, include_reported, with_total } */
     listTrubki: function (params) {
       var query = [];

@@ -8,8 +8,6 @@
     "viewNogaCreate",
     "viewCities",
     "viewCityCreate",
-    "viewRazgruzy",
-    "viewRazgruzCreate",
     "viewTrubki",
     "viewTrubkaCreate",
     "viewTrubka",
