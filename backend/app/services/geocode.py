@@ -188,14 +188,16 @@ def _pack_suggest_row(row: dict[str, Any]) -> Optional[dict[str, Any]]:
 
 
 def _finalize_suggest(
-    rows: list[dict[str, Any]], *, limit: int
+    rows: list[dict[str, Any]], *, limit: int, query: str = ""
 ) -> list[dict[str, Any]]:
-    """Дедуп + мягкий приоритет стран из справочника, без алфавитной перетасовки."""
-    # Стабильная сортировка: порядок Photon/Nominatim сохраняется внутри групп.
+    """Дедуп: сначала страны из справочника валют, затем похожесть на запрос."""
+    # Валютный приоритет важнее score: после локализации «Bakı»→«Баку»
+    # латиница «Baku» даёт score 0, а тёзки без валюты — 1.0.
     indexed = list(enumerate(rows))
     indexed.sort(
         key=lambda pair: (
             0 if currency_for_country(pair[1].get("country_code")) else 1,
+            -_match_score(pair[1].get("name") or "", query) if query else 0.0,
             pair[0],
         )
     )
@@ -246,7 +248,7 @@ async def suggest(
             "sessionId": "328f38",
             "location": "geocode.py:suggest",
             "message": "suggest_path",
-            "hypothesisId": "H1-H4",
+            "hypothesisId": "H-Baku",
             "timestamp": int(__import__("time").time() * 1000),
             "data": {
                 "query": cleaned,
@@ -271,8 +273,8 @@ async def suggest(
                     for r in localized
                 ],
                 "best": round(best, 3),
-                "use_photon_path": bool(localized) and best >= 0.9,
-                "runId": "post-fix",
+                "use_photon_exact": bool(localized) and best >= 1.0,
+                "runId": "baku-post-fix",
             },
         }
         _Path(__file__).resolve().parents[3].joinpath("debug-328f38.log").open(
@@ -281,11 +283,10 @@ async def suggest(
     except Exception:
         pass
     # #endregion
-    # Исторические имена вроде «Алма-ата» Photon часто не связывает с городом —
-    # тогда уходим в Nominatim (у него alias'ы name:*, addresstype=city).
-    # Порог 0.9: иначе короткий «Кишин» (UA) с prefix-score 0.9 блокирует «Кишинёв».
-    if localized and best >= 0.9:
-        return _finalize_suggest(localized, limit=limit)
+    # Только точное совпадение Photon — без Nominatim (rate limit).
+    # Prefix 0.9 («Бакур» на запрос «Баку») раньше отрезал настоящий город.
+    if localized and best >= 1.0:
+        return _finalize_suggest(localized, limit=limit, query=cleaned)
 
     rows = await _nominatim_suggest(cleaned, fetch=max(limit * 3, 6), lang=locale)
     # #region agent log
@@ -297,7 +298,7 @@ async def suggest(
             "sessionId": "328f38",
             "location": "geocode.py:suggest:nominatim",
             "message": "nominatim_fallback",
-            "hypothesisId": "H2-H4",
+            "hypothesisId": "H-Baku",
             "timestamp": int(__import__("time").time() * 1000),
             "data": {
                 "query": cleaned,
@@ -305,7 +306,10 @@ async def suggest(
                     {"name": r.get("name"), "cc": r.get("country_code")}
                     for r in rows[:8]
                 ],
-                "final": _finalize_suggest(rows, limit=limit),
+                "final": _finalize_suggest(
+                    list(localized) + list(rows), limit=limit, query=cleaned
+                ),
+                "runId": "baku-post-fix",
             },
         }
         _Path(__file__).resolve().parents[3].joinpath("debug-328f38.log").open(
@@ -314,7 +318,7 @@ async def suggest(
     except Exception:
         pass
     # #endregion
-    return _finalize_suggest(rows, limit=limit)
+    return _finalize_suggest(list(localized) + list(rows), limit=limit, query=cleaned)
 
 
 async def _localize_candidates(
