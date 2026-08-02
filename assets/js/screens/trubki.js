@@ -818,13 +818,6 @@
     if (!form) return;
     if (!cities.length) await loadCities();
     fillSelect(
-      "trubkaStatusField",
-      global.NogaDict.TRUBKA_MANUAL_STATUSES.map(function (item) {
-        return { value: item.value, label: item.label };
-      }),
-      "zacep"
-    );
-    fillSelect(
       "trubkaCity",
       cities.map(function (city) {
         return { value: city.id, label: city.name };
@@ -913,7 +906,7 @@
       save.classList.add("is-loading");
       try {
         var created = await global.NogaApi.createTrubka({
-          status: document.getElementById("trubkaStatusField").value || "zacep",
+          status: "zacep",
           city_id: Number(cityId),
           noga_id: Number(nogaId),
           amount: Number(amount),

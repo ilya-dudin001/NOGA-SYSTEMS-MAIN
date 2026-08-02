@@ -193,8 +193,9 @@ const $ = (id) => window.document.getElementById(id);
 
   await window.NogaTrubki.openCreate();
   assert($("viewTrubkaCreate").hidden === false, "открыт экран создания трубки");
-  assert($("trubkaStatusField").value === "zacep", "первичный статус — «Зацеп»");
+  assert(!$("trubkaStatusField"), "на первом шаге нет выбора статуса");
   assert(!$("trubkaStepOne").hidden && $("trubkaStepTwo").hidden, "открыт первый шаг");
+  assert($("trubkaCity"), "на первом шаге есть выбор города");
 
   $("trubkaCity").value = "1";
   $("btnTrubkaNext").click();
